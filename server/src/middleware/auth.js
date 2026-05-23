@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pawchart-secret-key';
@@ -136,3 +137,16 @@ export const checkClinicAdminOrSuper = (req, res, next) => {
 
   next();
 };
+
+export const getQueryFilter = (req) => {
+  const clinicId = req.header('x-clinic-id') || req.query.clinic_id || (req.user && req.user.clinicId);
+  if (clinicId) {
+    let clinicObjId = clinicId;
+    if (mongoose.Types.ObjectId.isValid(clinicId)) {
+      clinicObjId = new mongoose.Types.ObjectId(clinicId);
+    }
+    return { $or: [{ clinic_id: clinicObjId }, { clinic_id: { $exists: false } }, { clinic_id: null }] };
+  }
+  return {};
+};
+
