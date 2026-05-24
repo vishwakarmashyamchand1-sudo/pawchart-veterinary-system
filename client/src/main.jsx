@@ -349,6 +349,25 @@ function App() {
   const [bookingClient, setBookingClient] = useState(null);
   const [bookingPet, setBookingPet] = useState(null);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info' }
+  const [confirmState, setConfirmState] = useState(null); // { message, onConfirm }
+
+  useEffect(() => {
+    window.showToast = (message, type = 'success') => {
+      setToast({ message, type });
+      setTimeout(() => {
+        setToast(null);
+      }, 4000);
+    };
+
+    window.showConfirm = (message, onConfirm) => {
+      setConfirmState({ message, onConfirm });
+    };
+
+    window.alert = (msg) => {
+      window.showToast?.(msg, 'info');
+    };
+  }, []);
 
   const { data, loading, error, create, update, remove, reload } = useApi(selectedClinic?._id);
   const [screen, setScreen] = useState('dashboard');
@@ -413,7 +432,7 @@ function App() {
       });
       if (res.ok) {
         const updated = await res.json();
-        alert('Clinic details updated successfully!');
+        window.showToast('Clinic details updated successfully!');
         await loadClinics();
         if (selectedClinic && selectedClinic._id === updated._id) {
           setSelectedClinic(updated);
@@ -425,30 +444,29 @@ function App() {
         throw new Error(errData.message || 'Failed to update clinic');
       }
     } catch (err) {
-      alert(err.message);
+      window.showToast(err.message, 'error');
     }
   }
 
   async function handleDeleteClinic(clinic) {
-    if (!confirm(`Are you sure you want to permanently delete "${clinic.name}"? All associated vets, appointments, and client records under this clinic will no longer be accessible.`)) {
-      return;
-    }
-    try {
-      const res = await fetch(`${API_URL}/clinics/${clinic._id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        alert('Clinic successfully deleted!');
-        await loadClinics();
-        if (selectedClinic && selectedClinic._id === clinic._id) {
-          selectClinic(null);
+    window.showConfirm(`Are you sure you want to permanently delete "${clinic.name}"? All associated vets, appointments, and client records under this clinic will no longer be accessible.`, async () => {
+      try {
+        const res = await fetch(`${API_URL}/clinics/${clinic._id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          window.showToast('Clinic successfully deleted!');
+          await loadClinics();
+          if (selectedClinic && selectedClinic._id === clinic._id) {
+            selectClinic(null);
+          }
+        } else {
+          throw new Error('Failed to delete clinic');
         }
-      } else {
-        throw new Error('Failed to delete clinic');
+      } catch (err) {
+        window.showToast(err.message, 'error');
       }
-    } catch (err) {
-      alert(err.message);
-    }
+    });
   }
 
   const activePet = useMemo(() => {
@@ -625,6 +643,57 @@ function App() {
           onSave={handleUpdateClinic} 
         />
       )}
+
+      {/* Custom Confirmation Modal */}
+      {confirmState && (
+        <div className="modal-wrap">
+          <div className="modal" style={{ width: '420px', padding: '24px' }}>
+            <div className="modal-hd" style={{ marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Confirm Action</h3>
+              <button className="modal-x" onClick={() => setConfirmState(null)}>×</button>
+            </div>
+            <p style={{ color: 'var(--text-2)', fontSize: '13px', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              {confirmState.message}
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-outline" onClick={() => setConfirmState(null)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ background: 'var(--red)', color: 'white' }} 
+                onClick={() => {
+                  confirmState.onConfirm();
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Toast Notification System */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          background: toast.type === 'error' ? 'var(--red)' : toast.type === 'info' ? 'var(--brand)' : 'var(--green)',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+          zIndex: 1000,
+          fontWeight: '600',
+          fontSize: '13px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          <span>{toast.type === 'error' ? '⚠️' : '✓'}</span>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
@@ -684,26 +753,97 @@ function MonitoringBox({ count = 3 }) {
 
 function Dashboard({ data, go }) {
   const stats = data?.stats || {};
+  
+  // Real time date
+  const todayStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  const subtitle = `${todayStr} · live clinic dashboard`;
+
+  // Get real alerts from vaccinations & follow-ups
+  const alertsList = [];
+
+  // 1. Process vaccinations as alerts
+  if (data?.alerts && data.alerts.length > 0) {
+    data.alerts.forEach((vax) => {
+      alertsList.push({
+        _id: vax._id,
+        type: vax.status === 'Overdue' ? 'red' : 'amber',
+        petName: vax.petName,
+        title: `${vax.vaccine} vaccine ${vax.status?.toLowerCase() || 'due'}`,
+        sub: `Due date: ${vax.dueDate} · Status: ${vax.status}`
+      });
+    });
+  }
+
+  // 2. Process monitoring followups as alerts
+  if (data?.monitoring && data.monitoring.length > 0) {
+    data.monitoring.forEach((follow) => {
+      alertsList.push({
+        _id: follow._id,
+        type: 'purple',
+        petName: follow.petName,
+        title: `Follow-up pending (${follow.purpose})`,
+        sub: `Planned for: ${follow.planDate} · Doctor: ${follow.vetName}`
+      });
+    });
+  }
+
   return (
     <Screen 
       title="Dashboard" 
-      sub="Friday, May 22, 2026 · live clinic dashboard" 
+      sub={subtitle} 
       action={<button className="btn btn-primary" onClick={() => go('booking')}>+ New Appointment</button>}
     >
       <div className="stat-grid">
-        <Stat label="TODAY'S APPOINTMENTS" value={stats.appointmentsToday ?? 14} hint={stats.appointmentsTodayHint || "2 more than yesterday"} primary />
-        <Stat label="ACTIVE PATIENTS" value={stats.activePatients ?? 247} hint={stats.activePatientsHint || "8 new this month"} />
-        <Stat label="VACCINES DUE" value={stats.vaccinesDue ?? 5} hint={stats.vaccinesDueHint || "2 overdue"} danger />
-        <Stat label="FOLLOW-UPS PENDING" value={stats.followUpsPending ?? 3} hint={stats.followUpsPendingHint || "1 from yesterday"} />
+        <Stat 
+          label="TODAY'S APPOINTMENTS" 
+          value={stats.appointmentsToday ?? 0} 
+          hint={stats.appointmentsTodayHint || "No appointments compared to yesterday"} 
+          primary 
+        />
+        <Stat 
+          label="ACTIVE PATIENTS" 
+          value={stats.activePatients ?? 0} 
+          hint={stats.activePatientsHint || "No new patients this month"} 
+        />
+        <Stat 
+          label="VACCINES DUE" 
+          value={stats.vaccinesDue ?? 0} 
+          hint={stats.vaccinesDueHint || "No vaccines due"} 
+          danger 
+        />
+        <Stat 
+          label="FOLLOW-UPS PENDING" 
+          value={stats.followUpsPending ?? 0} 
+          hint={stats.followUpsPendingHint || "No pending follow-ups"} 
+        />
       </div>
       
       <div className="grid-two">
         <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <strong style={{ fontSize: '15px' }}>Today's Appointments</strong>
-            <span className="badge b-blue" style={{ fontSize: '11px', padding: '2px 8px' }}>{stats.appointmentsToday ?? 14} total</span>
+            <span className="badge b-blue" style={{ fontSize: '11px', padding: '2px 8px' }}>
+              {stats.appointmentsToday ?? 0} total
+            </span>
           </div>
-          <AppointmentList rows={data?.appointments || []} />
+          
+          {(data?.appointments && data.appointments.length > 0) ? (
+            <AppointmentList rows={data.appointments} />
+          ) : (
+            <div style={{
+              padding: '40px 24px',
+              textAlign: 'center',
+              color: 'var(--text-3)',
+              fontSize: '13px'
+            }}>
+              No appointments today
+            </div>
+          )}
         </section>
         
         <section className="panel" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
@@ -711,26 +851,32 @@ function Dashboard({ data, go }) {
             ALERTS & REMINDERS
           </div>
           
-          <AlertCard 
-            type="amber" 
-            petName="Buddy" 
-            title="Rabies overdue" 
-            sub="Overdue 3 days · Click to open vaccination tracker" 
-          />
-          <AlertCard 
-            type="purple" 
-            petName="Luna" 
-            title="Follow-up pending" 
-            sub="Planned May 19 · Click to open follow-up tracker" 
-          />
-          <AlertCard 
-            type="red" 
-            petName="Max" 
-            title="Weight concern" 
-            sub="+2.4 lbs in 6 weeks · Click to view weight chart" 
-          />
+          {alertsList.length > 0 ? (
+            alertsList.slice(0, 4).map((alert) => (
+              <AlertCard 
+                key={alert._id || alert.title}
+                type={alert.type} 
+                petName={alert.petName} 
+                title={alert.title} 
+                sub={alert.sub} 
+              />
+            ))
+          ) : (
+            <div style={{
+              padding: '30px 16px',
+              textAlign: 'center',
+              color: 'var(--text-3)',
+              fontSize: '13px',
+              border: '1.5px dashed var(--border)',
+              borderRadius: '8px',
+              marginBottom: '12px',
+              fontStyle: 'italic'
+            }}>
+              No alerts or reminders
+            </div>
+          )}
           
-          <MonitoringBox count={stats.followUpsPending ?? 3} />
+          <MonitoringBox count={stats.followUpsPending ?? 0} />
         </section>
       </div>
     </Screen>
@@ -794,9 +940,9 @@ function Vets({ vets, create, update, onDelete }) {
                         className="btn btn-outline" 
                         style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
                         onClick={() => {
-                          if (confirm(`Are you sure you want to delete Dr. ${vet.name}?`)) {
+                          window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
                             onDelete('vets', vet._id);
-                          }
+                          });
                         }}
                       >
                         🗑️
