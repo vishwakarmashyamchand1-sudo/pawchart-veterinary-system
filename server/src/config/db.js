@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pawchart';
 
 export async function connectDb(uri) {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
   const primaryUri = uri || MONGO_URI;
   const options = {
     autoIndex: true,

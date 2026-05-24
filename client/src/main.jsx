@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import { API_BASE_URL as API_URL } from './config/api.js';
+import { API_BASE_URL as API_URL } from './services/api.js';
 
 const navByRole = {
   admin: [
