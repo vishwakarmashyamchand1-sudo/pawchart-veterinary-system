@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { API_BASE_URL as API_URL } from './services/api.js';
+import { DoctorDashboard } from './components/DoctorDashboard.jsx';
 
 const navByRole = {
   admin: [
@@ -598,7 +599,19 @@ function App() {
                 {screen === 'soap' && <Soap note={data.soapnotes[0]} create={create} />}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} />}
                 {screen === 'followup' && <FollowUps rows={data.followups} />}
-                {screen === 'calendar' && <Calendar appointments={selectedDoctor ? data.appointments.filter(a => a.vetName === selectedDoctor.name) : data.appointments} go={setScreen} />}
+                {screen === 'calendar' && (
+                  role === 'doctor' ? (
+                    <DoctorDashboard 
+                      appointments={data.appointments} 
+                      selectedDoctor={selectedDoctor} 
+                      selectedClinic={selectedClinic} 
+                      go={setScreen} 
+                      update={update} 
+                    />
+                  ) : (
+                    <Calendar appointments={selectedDoctor ? data.appointments.filter(a => a.vetName === selectedDoctor.name) : data.appointments} go={setScreen} />
+                  )
+                )}
               </>
             )
           )}
@@ -2301,7 +2314,7 @@ function Calendar({ appointments, go }) {
   </Screen>;
 }
 
-function Screen({ title, sub, action, children }) {
+export function Screen({ title, sub, action, children }) {
   return <div className="main-scroll"><div className="main-pad"><div className="topbar"><div><h2>{title}</h2><div className="sub">{sub}</div></div>{action}</div>{children}</div></div>;
 }
 
