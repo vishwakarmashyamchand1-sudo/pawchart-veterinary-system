@@ -19,9 +19,7 @@ const navByRole = {
     ['Follow-ups', 'followup', 'loop']
   ],
   superadmin: [
-    ['Dashboard', 'dashboard', 'home'],
-    ['All Vets', 'vets', 'vet'],
-    ['Reports', 'dashboard', 'chart']
+    ['Dashboard', 'dashboard', 'home']
   ]
 };
 
@@ -349,6 +347,7 @@ function App() {
   const [selectedPet, setSelectedPet] = useState(null);
   const [bookingClient, setBookingClient] = useState(null);
   const [bookingPet, setBookingPet] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
 
   const { data, loading, error, create, update, remove, reload } = useApi(selectedClinic?._id);
   const [screen, setScreen] = useState('dashboard');
@@ -494,10 +493,42 @@ function App() {
             <div className="sb-brand"><span className="paw-mark">◆</span> Paw<span>Chart</span></div>
             <label className="sb-field-label">Role</label>
             <select className="sb-select" value={role} onChange={(event) => switchRole(event.target.value)}>
+              <option value="superadmin">Super Admin</option>
               <option value="admin">Clinic Admin</option>
               <option value="doctor">Doctor</option>
-              <option value="superadmin">Super Admin</option>
             </select>
+            
+            {role === 'doctor' && (
+              <>
+                <label className="sb-field-label" style={{ marginTop: '16px' }}>Clinic</label>
+                <select 
+                  className="sb-select"
+                  value={selectedClinic?._id || ''}
+                  onChange={(e) => {
+                    const c = clinics.find(item => item._id === e.target.value);
+                    selectClinic(c);
+                    setSelectedDoctor(null);
+                  }}
+                >
+                  <option value="" disabled>Select clinic...</option>
+                  {clinics.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                </select>
+
+                <label className="sb-field-label" style={{ marginTop: '16px' }}>Doctor</label>
+                <select 
+                  className="sb-select"
+                  value={selectedDoctor?._id || ''}
+                  onChange={(e) => {
+                    const d = data.vets?.find(item => item._id === e.target.value);
+                    setSelectedDoctor(d || null);
+                  }}
+                  disabled={!selectedClinic || !data.vets?.length}
+                >
+                  <option value="" disabled>{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
+                  {data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                </select>
+              </>
+            )}
           </div>
           
           {role === 'admin' && clinics.length > 0 ? (
@@ -516,21 +547,23 @@ function App() {
               </select>
             </div>
           ) : (
-            <div className="sb-clinic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', color: '#cbd5e1', padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,.06)', fontSize: '11px', fontWeight: '600' }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {selectedClinic ? selectedClinic.name : 'Riverside Veterinary Clinic'}
-              </span>
-              {role === 'superadmin' && selectedClinic && (
-                <button
-                  className="btn btn-outline"
-                  style={{ padding: '3px 6px', fontSize: '9px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', height: 'auto', display: 'inline-flex', alignItems: 'center', borderRadius: '4px' }}
-                  onClick={() => selectClinic(null)}
-                  title="Return to Clinics Panel"
-                >
-                  ◀ Exit
-                </button>
-              )}
-            </div>
+            role !== 'doctor' && selectedClinic && (
+              <div className="sb-clinic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', color: '#cbd5e1', padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,.06)', fontSize: '11px', fontWeight: '600' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedClinic.name}
+                </span>
+                {role === 'superadmin' && (
+                  <button
+                    className="btn btn-outline"
+                    style={{ padding: '3px 6px', fontSize: '9px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', height: 'auto', display: 'inline-flex', alignItems: 'center', borderRadius: '4px' }}
+                    onClick={() => selectClinic(null)}
+                    title="Return to Clinics Panel"
+                  >
+                    ◀ Exit
+                  </button>
+                )}
+              </div>
+            )
           )}
 
           <nav className="sb-nav">
@@ -565,7 +598,7 @@ function App() {
                 {screen === 'soap' && <Soap note={data.soapnotes[0]} create={create} />}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} />}
                 {screen === 'followup' && <FollowUps rows={data.followups} />}
-                {screen === 'calendar' && <Calendar appointments={data.appointments} go={setScreen} />}
+                {screen === 'calendar' && <Calendar appointments={selectedDoctor ? data.appointments.filter(a => a.vetName === selectedDoctor.name) : data.appointments} go={setScreen} />}
               </>
             )
           )}
@@ -1446,7 +1479,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     return clients.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
   }, [clients, searchQuery]);
 
-  const allPossibleSlots = ['09:00', '09:15', '09:30', '09:45', '10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45'];
+  const allPossibleSlots = ['09:00', '09:15', '09:30', '09:45', '10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45' ,'12:00' , '21:00'];
 
   const getSlotStatus = (slotTime) => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -2220,14 +2253,17 @@ function Soap({ note, create }) {
         <button 
           className="btn btn-primary" 
           style={{ width: '100%', padding: '10px', justifyContent: 'center' }} 
-          onClick={() => create('soapnotes', { 
-            ...draft, 
-            petName: draft.petName || 'Buddy', 
-            ownerName: draft.ownerName || 'James Martinez', 
-            vetName: draft.vetName || 'Dr. Sarah Chen' 
-          }).then(() => {
-            alert("SOAP Medical Note saved successfully!");
-          })}
+          onClick={() => {
+            const { _id, createdAt, updatedAt, __v, clinic_id, ...rest } = draft;
+            create('soapnotes', { 
+              ...rest, 
+              petName: rest.petName || 'Buddy', 
+              ownerName: rest.ownerName || 'James Martinez', 
+              vetName: rest.vetName || 'Dr. Sarah Chen' 
+            }).then(() => {
+              alert("SOAP Medical Note saved successfully!");
+            });
+          }}
         >
           💾 Save SOAP Consultation Note
         </button>

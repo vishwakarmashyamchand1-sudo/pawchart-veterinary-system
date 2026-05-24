@@ -1,4 +1,5 @@
 import 'dotenv/config';
+console.log("MONGO_URI =", process.env.MONGO_URI);
 import cors from 'cors';
 import express from 'express';
 import { connectDb } from './db.js';

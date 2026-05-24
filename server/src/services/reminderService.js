@@ -3,6 +3,7 @@ import { Vaccination, FollowUp } from '../models.js';
 let Queue = null;
 let reminderQueue = null;
 let isRedisOnline = false;
+let _redisErrorLogged = false;
 
 /**
  * Safely initialize the reminder scheduler
@@ -21,9 +22,12 @@ export async function initReminderScheduler() {
       }
     });
 
-    // Check for redis connection error
+    // Check for redis connection error (log once to avoid noisy repeated warnings)
     reminderQueue.on('error', (err) => {
-      console.warn("⚠️ Redis connection failed. Switched to offline in-memory reminder backup scheduler.");
+      if (!_redisErrorLogged) {
+        console.warn("⚠️ Redis connection failed. Switched to offline in-memory reminder backup scheduler.", err.message || err);
+        _redisErrorLogged = true;
+      }
       isRedisOnline = false;
     });
 
