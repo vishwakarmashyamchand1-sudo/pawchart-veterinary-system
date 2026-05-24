@@ -1,4 +1,5 @@
 import 'dotenv/config';
+console.log("MONGO_URI =", process.env.MONGO_URI);
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -207,7 +208,7 @@ const getQueryFilter = (req) => {
     if (mongoose.Types.ObjectId.isValid(clinicId)) {
       clinicObjId = new mongoose.Types.ObjectId(clinicId);
     }
-    return { $or: [{ clinic_id: clinicObjId }, { clinic_id: { $exists: false } }, { clinic_id: null }] };
+    return { clinic_id: clinicObjId };
   }
   return {};
 };
