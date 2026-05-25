@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { API_BASE_URL as API_URL } from './services/api.js';
 import { DoctorDashboard } from './components/DoctorDashboard.jsx';
+import { Soap } from './components/SoapConsultation.jsx';
 
 const navByRole = {
   admin: [
@@ -349,6 +350,7 @@ function App() {
   const [bookingClient, setBookingClient] = useState(null);
   const [bookingPet, setBookingPet] = useState(null);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info' }
   const [confirmState, setConfirmState] = useState(null); // { message, onConfirm }
 
@@ -614,17 +616,34 @@ function App() {
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} />}
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} />}
                 {screen === 'booking' && <Booking vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
-                {screen === 'soap' && <Soap note={data.soapnotes[0]} create={create} />}
+                {screen === 'soap' && (
+                  <Soap 
+                    appointment={selectedAppointment} 
+                    clients={data.clients}
+                    appointments={data.appointments}
+                    soapNotes={data.soapnotes}
+                    vaccinations={data.vaccinations}
+                    weights={data.weights}
+                    followups={data.followups}
+                    create={create}
+                    update={update}
+                    go={setScreen} 
+                    setBookingClient={setBookingClient}
+                    setBookingPet={setBookingPet}
+                  />
+                )}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} />}
                 {screen === 'followup' && <FollowUps rows={data.followups} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
                     <DoctorDashboard 
                       appointments={data.appointments} 
+                      clients={data.clients}
                       selectedDoctor={selectedDoctor} 
                       selectedClinic={selectedClinic} 
                       go={setScreen} 
                       update={update} 
+                      onStartConsultation={setSelectedAppointment}
                     />
                   ) : (
                     <Calendar appointments={selectedDoctor ? data.appointments.filter(a => a.vetName === selectedDoctor.name) : data.appointments} go={setScreen} />
@@ -1674,8 +1693,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
 
     const appointmentBody = {
       petName: bookingPet.name,
-      petSpecies: bookingPet.species,
-      petBreed: bookingPet.breed || '',
+      species: bookingPet.species,
+      breed: bookingPet.breed || '',
       ownerName: bookingClient.name,
       vetName: selectedVet.name,
       reason: visitType,
@@ -2226,7 +2245,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   );
 }
 
-function Soap({ note, create }) {
+function LegacySoap({ note, create }) {
   const [draft, setDraft] = useState(note || { subjective: '', objective: '', assessment: '', plan: '' });
   const [transcript, setTranscript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);

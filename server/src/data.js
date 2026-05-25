@@ -25,11 +25,11 @@ export const seedData = {
     ] }
   ],
   appointments: [
-    { petName: 'Buddy', ownerName: 'James Martinez', vetName: 'Dr. Sarah Chen', reason: 'Annual Wellness', date: '2026-05-22', time: '10:00', type: 'Checkup', status: 'Now' },
-    { petName: 'Mochi', ownerName: 'Sarah Kim', vetName: 'Dr. Raj Patel', reason: 'Vaccination', date: '2026-05-22', time: '10:30', type: 'Vaccination', status: 'Scheduled' },
-    { petName: 'Cinnamon', ownerName: 'Amy Liu', vetName: 'Dr. Sarah Chen', reason: 'Dental exam', date: '2026-05-23', time: '11:00', type: 'Checkup', status: 'Scheduled' },
-    { petName: 'Kiwi', ownerName: 'Tom Wilson', vetName: 'Dr. Tom Reed', reason: 'Wing check', date: '2026-05-22', time: '11:30', type: 'Checkup', status: 'Scheduled' },
-    { petName: 'Luna', ownerName: 'Maria Garcia', vetName: 'Dr. Sarah Chen', reason: 'Post-op follow-up', date: '2026-05-22', time: '14:00', type: 'Follow-up', status: 'Scheduled' }
+    { petName: 'Buddy', ownerName: 'James Martinez', species: 'Dog', breed: 'Golden Retriever', vetName: 'Dr. Sarah Chen', reason: 'Annual Wellness', date: '2026-05-22', time: '10:00', type: 'Checkup', status: 'Now' },
+    { petName: 'Mochi', ownerName: 'Sarah Kim', species: 'Cat', breed: 'Siamese Cat', vetName: 'Dr. Raj Patel', reason: 'Vaccination', date: '2026-05-22', time: '10:30', type: 'Vaccination', status: 'Scheduled' },
+    { petName: 'Cinnamon', ownerName: 'Amy Liu', species: 'Rabbit', breed: 'Mini Rex', vetName: 'Dr. Sarah Chen', reason: 'Dental exam', date: '2026-05-23', time: '11:00', type: 'Checkup', status: 'Scheduled' },
+    { petName: 'Kiwi', ownerName: 'Tom Wilson', species: 'Bird', breed: 'Parrot', vetName: 'Dr. Tom Reed', reason: 'Wing check', date: '2026-05-22', time: '11:30', type: 'Checkup', status: 'Scheduled' },
+    { petName: 'Luna', ownerName: 'Maria Garcia', species: 'Dog', breed: 'French Bulldog', vetName: 'Dr. Sarah Chen', reason: 'Post-op follow-up', date: '2026-05-22', time: '14:00', type: 'Follow-up', status: 'Scheduled' }
   ],
   vaccinations: [
     { petName: 'Buddy', ownerName: 'James Martinez', breed: 'Golden Retriever', vaccine: 'Rabies', lastDate: '2025-05-18', dueDate: '2026-05-18', status: 'Overdue', reminderStatus: 'Not sent' },

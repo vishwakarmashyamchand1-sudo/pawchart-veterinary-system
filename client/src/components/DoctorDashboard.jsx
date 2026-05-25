@@ -7,13 +7,32 @@ import { getTodayDate } from '../utils/dateUtils.js';
 
 export function DoctorDashboard({ 
   appointments = [], 
+  clients = [], 
   selectedDoctor, 
   selectedClinic, 
   go, 
-  update 
+  update,
+  onStartConsultation
 }) {
   const [currentDate, setCurrentDate] = useState(getTodayDate());
   const [viewMode, onViewModeChange] = useState('Week');
+
+  // Helper to dynamically attach species/breed if missing on appointment
+  const mapPetDetails = (appt) => {
+    let species = appt.species || '';
+    let breed = appt.breed || '';
+    if (!species && clients && clients.length > 0) {
+      const client = clients.find(c => c.name.toLowerCase() === appt.ownerName.toLowerCase());
+      if (client && client.pets) {
+        const pet = client.pets.find(p => p.name.toLowerCase() === appt.petName.toLowerCase());
+        if (pet) {
+          species = pet.species;
+          breed = pet.breed;
+        }
+      }
+    }
+    return { ...appt, species, breed };
+  };
 
   // 1. Dynamic Doctor & Clinic Scoping Filtration
   const scopedAppointments = useMemo(() => {
@@ -24,14 +43,15 @@ export function DoctorDashboard({
       const matchesDoctor = !selectedDoctor || appt.vetName === selectedDoctor.name;
       
       return matchesClinic && matchesDoctor;
-    });
-  }, [appointments, selectedClinic, selectedDoctor]);
+    }).map(mapPetDetails);
+  }, [appointments, selectedClinic, selectedDoctor, clients]);
 
   // 2. Queue calculations for TODAY
   const todayAppts = useMemo(() => {
     const doctorName = selectedDoctor?.name || null;
-    return getTodayAppointments(appointments, getTodayDate(), doctorName);
-  }, [appointments, selectedDoctor]);
+    const rawToday = getTodayAppointments(appointments, getTodayDate(), doctorName);
+    return rawToday.map(mapPetDetails);
+  }, [appointments, selectedDoctor, clients]);
 
   const nowInRoom = useMemo(() => getNowInRoom(todayAppts), [todayAppts]);
   const upNext = useMemo(() => getUpNext(todayAppts), [todayAppts]);
@@ -62,6 +82,8 @@ export function DoctorDashboard({
   };
 
   const handleStartSoap = (appt) => {
+    // Save selected appointment to parent state
+    onStartConsultation?.(appt);
     // Navigate straight to the AI SOAP consultation module
     go('soap');
   };

@@ -56,6 +56,8 @@ const appointmentSchema = new Schema(
   {
     petName: { type: String, required: true },
     ownerName: { type: String, required: true },
+    species: String,
+    breed: String,
     vetName: String,
     reason: { type: String, required: true },
     date: { type: String, required: true },

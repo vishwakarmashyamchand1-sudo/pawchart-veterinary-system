@@ -59,46 +59,51 @@ export function WeeklyCalendar({
     
     if (status === 'Now') {
       return {
-        bg: '#dbeafe',
-        border: '1.5px solid #2563eb',
-        color: '#1e3a8a',
+        bg: '#f0f7ff',
+        borderLeft: '4px solid #2563eb',
+        border: '1px solid rgba(37, 99, 235, 0.08)',
+        color: '#1e40af',
         tagColor: '#2563eb'
       };
     }
     
     if (r.includes('vaccin') || t.includes('vaccin')) {
       return {
-        bg: '#fef3c7',
-        border: '1.5px solid #d97706',
-        color: '#78350f',
+        bg: '#fffbeb',
+        borderLeft: '4px solid #d97706',
+        border: '1px solid rgba(217, 119, 6, 0.08)',
+        color: '#92400e',
         tagColor: '#d97706'
       };
     }
     
     if (r.includes('dental') || r.includes('teeth')) {
       return {
-        bg: '#f3e8ff',
-        border: '1.5px solid #7c3aed',
-        color: '#581c87',
+        bg: '#faf5ff',
+        borderLeft: '4px solid #7c3aed',
+        border: '1px solid rgba(124, 58, 237, 0.08)',
+        color: '#6b21a8',
         tagColor: '#7c3aed'
       };
     }
     
-    if (r.includes('ear') || r.includes('throat') || r.includes('sneeze') || r.includes('cough')) {
+    if (r.includes('ear') || r.includes('throat') || r.includes('sneeze') || r.includes('cough') || r.includes('post-op')) {
       return {
-        bg: '#fee2e2',
-        border: '1.5px solid #dc2626',
-        color: '#7f1d1d',
-        tagColor: '#dc2626'
+        bg: '#fef2f2',
+        borderLeft: '4px solid #ef4444',
+        border: '1px solid rgba(239, 68, 68, 0.08)',
+        color: '#991b1b',
+        tagColor: '#ef4444'
       };
     }
     
     // Default Scheduled Checkup / General Consultation
     return {
-      bg: '#eff6ff',
-      border: '1.5px solid #3b82f6',
-      color: '#1e40af',
-      tagColor: '#3b82f6'
+      bg: '#f0fdf4',
+      borderLeft: '4px solid #10b981',
+      border: '1px solid rgba(16, 185, 129, 0.08)',
+      color: '#065f46',
+      tagColor: '#10b981'
     };
   };
 
@@ -199,7 +204,7 @@ export function WeeklyCalendar({
       </div>
 
       {/* Grid Layout Container */}
-      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', maxHeight: '430px' }}>
+      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative' }}>
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
@@ -214,7 +219,10 @@ export function WeeklyCalendar({
                 padding: '10px',
                 background: 'var(--surface-2)',
                 borderBottom: '2px solid var(--border)',
-                borderRight: '1px solid var(--border)'
+                borderRight: '1px solid var(--border)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 4
               }} />
               
               {/* Day Columns Header */}
@@ -231,7 +239,10 @@ export function WeeklyCalendar({
                       textAlign: 'center',
                       fontSize: '13px',
                       fontWeight: '700',
-                      color: header.isToday ? 'var(--brand)' : 'var(--text-2)'
+                      color: header.isToday ? 'var(--brand)' : 'var(--text-2)',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 3
                     }}
                   >
                     {header.text}
@@ -254,7 +265,11 @@ export function WeeklyCalendar({
                   textAlign: 'right',
                   verticalAlign: 'top',
                   borderBottom: '1px solid var(--border)',
-                  borderRight: '1px solid var(--border)'
+                  borderRight: '1px solid var(--border)',
+                  position: 'sticky',
+                  left: 0,
+                  background: 'var(--surface)',
+                  zIndex: 2
                 }}>
                   {slot.label}
                 </td>
@@ -270,7 +285,14 @@ export function WeeklyCalendar({
                         borderBottom: '1px solid var(--border)',
                         borderRight: '1px solid var(--border)',
                         verticalAlign: 'top',
-                        background: isSameDay(date, today) ? 'rgba(37,99,235,0.01)' : 'transparent'
+                        background: isSameDay(date, today) ? 'rgba(37,99,235,0.01)' : 'transparent',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(37,99,235,0.03)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isSameDay(date, today) ? 'rgba(37,99,235,0.01)' : 'transparent';
                       }}
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -283,14 +305,15 @@ export function WeeklyCalendar({
                               style={{
                                 background: card.bg,
                                 border: card.border,
-                                borderRadius: '8px',
+                                borderLeft: card.borderLeft,
+                                borderRadius: '6px',
                                 padding: '8px 10px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '3px',
                                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'translateY(-1px)';
@@ -298,11 +321,11 @@ export function WeeklyCalendar({
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'none';
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.03)';
                               }}
                             >
-                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                <span style={{ fontSize: '14px' }}>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '14px', flexShrink: 0 }}>
                                   {getSpeciesEmoji(appt.species, appt.breed)}
                                 </span>
                                 <strong style={{ color: card.color, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
