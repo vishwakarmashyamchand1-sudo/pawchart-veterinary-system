@@ -632,7 +632,7 @@ function App() {
                     setBookingPet={setBookingPet}
                   />
                 )}
-                {screen === 'weight' && <Weights weights={data.weights} create={create} />}
+                {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} />}
                 {screen === 'followup' && <FollowUps rows={data.followups} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
@@ -2451,15 +2451,204 @@ function LegacySoap({ note, create }) {
   </Screen>;
 }
 
-function Weights({ weights, create }) {
-  const [value, setValue] = useState('32.4');
-  const buddy = weights.filter((row) => row.petName === 'Buddy');
-  return <Screen title="Weight Tracker · Buddy" sub="Golden Retriever · healthy range: 29-34 lbs" action={<button className="btn btn-primary btn-sm" onClick={() => create('weights', { petName: 'Buddy', ownerName: 'James Martinez', value: Number(value), unit: 'lbs', date: new Date().toISOString().slice(0, 10), note: 'Manual entry' })}>+ Log Weight</button>}>
-    <div className="grid-two">
-      <section className="panel"><div className="chart-bars">{buddy.map((row) => <div key={row._id} style={{ height: `${row.value * 4}px` }} title={`${row.value} lbs`} />)}</div><input className="input" value={value} onChange={(event) => setValue(event.target.value)} /></section>
-      <section className="panel">{buddy.map((row) => <div className="log-row" key={row._id}><strong>{row.value} {row.unit}</strong><span>{row.date}</span><span>{row.note}</span></div>)}</section>
+function Weights({ weights, create, activePet, clients, go }) {
+  const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐕', age: '4 yrs' };
+  
+  let ownerName = 'James Martinez';
+  if (clients) {
+    const owner = clients.find(c => c.pets && c.pets.some(p => p.name === pet.name));
+    if (owner) ownerName = owner.name;
+  }
+
+  const petWeights = [...weights]
+    .filter(w => w.petName === pet.name)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const currentWeightRecord = petWeights[petWeights.length - 1];
+  const currentWeight = currentWeightRecord ? currentWeightRecord.value : 32.4;
+  const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
+  
+  const previousWeightRecord = petWeights.length > 1 ? petWeights[petWeights.length - 2] : null;
+  const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value).toFixed(1) : '0.0';
+  const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ ${lastDiff}`;
+  const lastDiffColor = lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  let sixMonthWeight = currentWeightRecord;
+  for (let i = petWeights.length - 1; i >= 0; i--) {
+    if (new Date(petWeights[i].date) <= sixMonthsAgo) {
+      sixMonthWeight = petWeights[i];
+      break;
+    }
+  }
+  if (!sixMonthWeight && petWeights.length > 0) sixMonthWeight = petWeights[0];
+  
+  const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value).toFixed(1) : '0.0';
+  const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff}` : sixMonthDiff;
+  const sixMonthDiffColor = sixMonthDiff > 0 ? 'var(--amber)' : sixMonthDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+
+  const idealMin = 29;
+  const idealMax = 34;
+  const isWithinRange = currentWeight >= idealMin && currentWeight <= idealMax;
+  const rangeColor = isWithinRange ? 'var(--green)' : 'var(--amber)';
+  const rangeStr = isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
+
+  const logList = [...petWeights].reverse();
+  const chartData = petWeights.slice(-6); 
+  
+  const points = chartData.map((w, index) => {
+    let x = 90;
+    if (chartData.length > 1) {
+       x = 90 + (350 / (chartData.length - 1)) * index;
+    } else {
+       x = 265;
+    }
+    let y = 124 - (w.value - 28) * 15;
+    if (y < 16) y = 16;
+    if (y > 124) y = 124;
+    return { x, y, value: w.value, date: new Date(w.date) };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+
+  const handleLogWeight = () => {
+    const val = prompt(`Enter new weight in ${currentUnit} for ${pet.name}:`, currentWeight);
+    if (val && !isNaN(val)) {
+      create('weights', { 
+        petName: pet.name, 
+        ownerName: ownerName, 
+        value: Number(val), 
+        unit: currentUnit, 
+        date: new Date().toISOString().slice(0, 10), 
+        note: 'Manual entry' 
+      });
+    }
+  };
+
+  return (
+    <div className="main-scroll" style={{ background: 'var(--bg)' }}>
+      <div className="main-pad">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '12px', color: 'var(--text-3)', cursor: 'pointer' }} onClick={() => go && go('petprofile')}>
+          ← Back to {pet.name}'s profile
+        </div>
+        <div className="topbar">
+          <div>
+            <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)' }}>
+              Weight Tracker — <span style={{ color: 'var(--brand)' }}>{pet.emoji || '🐕'} {pet.name}</span>
+            </h2>
+            <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
+              {pet.breed || 'Golden Retriever'} · {pet.age || '4 yrs'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
+            </div>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleLogWeight}>+ Log Weight</button>
+        </div>
+
+        <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+            <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr} {currentUnit} from last visit</div>
+          </div>
+          <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>6-MONTH CHANGE</div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+            <div style={{ fontSize: '11px', color: sixMonthDiffColor, marginTop: '3px', fontWeight: '500' }}>{sixMonthDiff > 1 ? '⚠ Dietary review recommended' : 'Stable weight trend'}</div>
+          </div>
+          <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>IDEAL RANGE</div>
+            <div style={{ fontSize: '26px', fontWeight: '700', color: rangeColor }}>{idealMin}–{idealMax} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+            <div style={{ fontSize: '11px', color: rangeColor, marginTop: '3px', fontWeight: '500' }}>{rangeStr}</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: '16px' }}>
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Last 12 months · All clinic visits</div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <span className="badge b-blue">12 months</span>
+                <span className="badge b-gray">All time</span>
+              </div>
+            </div>
+            
+            <svg viewBox="0 0 500 150" style={{ width: '100%', height: '150px', display: 'block' }}>
+              <defs>
+                <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12"/>
+                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+              <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+              <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+              <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+              
+              <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">34</text>
+              <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">32</text>
+              <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">30</text>
+              <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">28</text>
+              
+              {points.map(p => (
+                <text key={p.x} x={p.x} y="142" fontSize="9" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">
+                  {p.date.toLocaleString('default', { month: 'short' })}
+                </text>
+              ))}
+
+              <rect x="44" y="16" width="446" height="108" fill="#16A34A" fillOpacity="0.04" rx="2"/>
+              
+              {points.length > 0 && (
+                <>
+                  <path d={`${pathD} L ${points[points.length-1].x},124 L ${points[0].x},124 Z`} fill="url(#bg2)"/>
+                  <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  {points.map((p, i) => (
+                    <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2"/>
+                  ))}
+                </>
+              )}
+            </svg>
+          </div>
+          
+          <div className="card" style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>Visit Log</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {logList.map((row, i) => {
+                let diffStr = '→ —';
+                let diffColor = 'var(--text-3)';
+                if (i < logList.length - 1) {
+                  const diff = (row.value - logList[i+1].value).toFixed(1);
+                  if (diff > 0) {
+                    diffStr = `↑ +${diff}`;
+                    diffColor = 'var(--amber)';
+                  } else if (diff < 0) {
+                    diffStr = `↓ ${Math.abs(diff).toFixed(1)}`;
+                    diffColor = 'var(--green)';
+                  }
+                }
+                
+                return (
+                  <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-3)', width: '70px' }}>
+                      {new Date(row.date).toLocaleString('default', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                      {row.value} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: diffColor, fontWeight: '500', width: '40px', textAlign: 'right' }}>
+                      {diffStr}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </Screen>;
+  );
 }
 
 function FollowUps({ rows }) {
@@ -2736,7 +2925,16 @@ function ClientModal({ onClose, onSave }) {
 
   const handleUpdatePetField = (index, field, value) => {
     setPets(
-      pets.map((p, idx) => (idx === index ? { ...p, [field]: value } : p))
+      pets.map((p, idx) => {
+        if (idx === index) {
+          const updated = { ...p, [field]: value };
+          if (field === 'species') {
+            updated.breed = '';
+          }
+          return updated;
+        }
+        return p;
+      })
     );
   };
 
@@ -2781,6 +2979,14 @@ function ClientModal({ onClose, onSave }) {
   const speciesOptions = ['Dog', 'Cat', 'Rabbit', 'Parrot/Bird', 'Other'];
   const sexOptions = ['Male', 'Female'];
   const spayedOptions = ['Yes', 'No'];
+
+  const breedOptions = {
+    'Dog': ['Golden Retriever', 'Labrador Retriever', 'French Bulldog', 'Beagle', 'Poodle', 'German Shepherd', 'Bulldog', 'Mixed Breed', 'Other'],
+    'Cat': ['Domestic Shorthair', 'Domestic Longhair', 'Siamese', 'Persian', 'Maine Coon', 'Ragdoll', 'British Shorthair', 'Mixed Breed', 'Other'],
+    'Rabbit': ['Mini Rex', 'Holland Lop', 'Lionhead', 'Flemish Giant', 'Netherland Dwarf', 'Other'],
+    'Parrot/Bird': ['Parrot', 'Parakeet', 'Cockatiel', 'African Grey', 'Macaw', 'Cockatoo', 'Canary', 'Other'],
+    'Other': ['Other']
+  };
 
   return (
     <Modal title="Register New Client & Pets" onClose={onClose}>
@@ -2888,12 +3094,16 @@ function ClientModal({ onClose, onSave }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
                   <label className="field-label">
                     Breed
-                    <input 
+                    <select 
                       className="input" 
-                      placeholder="e.g. Golden Retriever" 
                       value={pet.breed} 
-                      onChange={e => handleUpdatePetField(index, 'breed', e.target.value)} 
-                    />
+                      onChange={e => handleUpdatePetField(index, 'breed', e.target.value)}
+                    >
+                      <option value="">Select breed</option>
+                      {(breedOptions[pet.species] || ['Other']).map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="field-label">
                     Date of Birth

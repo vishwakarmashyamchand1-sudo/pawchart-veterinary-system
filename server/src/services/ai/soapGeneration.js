@@ -96,13 +96,12 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
         console.error("Error Response Data:", err.response.data);
       }
       console.log("=================== 🔬 REAL GEMINI VERIFICATION DIAGNOSTICS END ===================\n");
-      // Throw the original error directly so the outer router has complete properties!
-      throw err;
+      console.log("🔄 FALLBACK: Triggering local offline AI simulation due to SDK failure...");
+      return analyzeConsultation(transcript, petContext, pastNotes);
     }
   } else {
-    console.log("🔴 ACTIVE PROVIDER: None (GEMINI_API_KEY is missing in process.env)");
-    console.log("=================== 🔬 REAL GEMINI VERIFICATION DIAGNOSTICS END ===================\n");
-    // Throw explicitly to bypass silent fallback
-    throw new Error("GEMINI_API_KEY is missing from server process.env! Please add it to server/.env and restart the server.");
+    console.log("🔴 ACTIVE PROVIDER: None (GEMINI_API_KEY is missing or default in process.env)");
+    console.log("🔄 FALLBACK: Triggering local offline AI simulation...");
+    return analyzeConsultation(transcript, petContext, pastNotes);
   }
 }

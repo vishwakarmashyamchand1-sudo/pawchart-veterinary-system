@@ -145,7 +145,7 @@ export const getQueryFilter = (req) => {
     if (mongoose.Types.ObjectId.isValid(clinicId)) {
       clinicObjId = new mongoose.Types.ObjectId(clinicId);
     }
-    return { $or: [{ clinic_id: clinicObjId }, { clinic_id: { $exists: false } }, { clinic_id: null }] };
+    return { clinic_id: clinicObjId };
   }
   return {};
 };
