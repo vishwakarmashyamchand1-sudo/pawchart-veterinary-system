@@ -42,13 +42,43 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
 
   // 1. Force Gemini SDK Call (Temporarily disable fallback to identify errors directly)
   if (geminiKey) {
-    console.log("🟢 ACTIVE PROVIDER: Google Gemini SDK (gemini-1.5-flash)");
     try {
       console.log("🤖 Initializing Official Google Generative AI SDK...");
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      console.log("⚡ Routing SOAP generation through Gemini-1.5-flash...");
+      // Diagnostics 1: Resilient model discovery based on active API Key permissions
+      let targetModel = "gemini-1.5-flash";
+      try {
+        console.log("🔍 Fetching available models for this API key to avoid 404 errors...");
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiKey}`);
+        const listData = await listRes.json();
+        if (listData.models) {
+          const permitted = listData.models.map(m => m.name);
+          console.log("📋 PERMITTED MODELS FOR THIS KEY:", permitted);
+          
+          if (permitted.some(m => m.includes('gemini-2.5-flash'))) {
+            targetModel = "gemini-2.5-flash";
+          } else if (permitted.some(m => m.includes('gemini-2.0-flash'))) {
+            targetModel = "gemini-2.0-flash";
+          } else if (permitted.some(m => m.includes('gemini-1.5-flash'))) {
+            targetModel = "gemini-1.5-flash";
+          } else {
+            // Find any flash model
+            const flashModel = permitted.find(m => m.includes('-flash'));
+            if (flashModel) {
+              targetModel = flashModel.replace('models/', '');
+            } else if (permitted.length > 0) {
+              targetModel = permitted[0].replace('models/', '');
+            }
+          }
+        }
+      } catch (listErr) {
+        console.warn("⚠️ Permitted models check failed, defaulting to gemini-1.5-flash:", listErr.message);
+      }
+
+      console.log(`🟢 ACTIVE PROVIDER: Google Gemini SDK (${targetModel})`);
+      console.log(`⚡ Routing SOAP generation through ${targetModel}...`);
+      const model = genAI.getGenerativeModel({ model: targetModel });
       console.log("📤 TRANSCRIPT SENT TO GEMINI:", transcript);
       
       const result = await model.generateContent({

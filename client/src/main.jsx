@@ -1,9 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { API_BASE_URL as API_URL } from './services/api.js';
 import { DoctorDashboard } from './components/DoctorDashboard.jsx';
 import { Soap } from './components/SoapConsultation.jsx';
+
+const CLINIC_SPECIALTIES = [
+  'Surgery',
+  'Grooming and Spa Services',
+  'Rehabilitation and Physiotherapy',
+  'Veterinary Medicine',
+  'Multi-Species Primary Care',
+  'In-House Pathology Lab',
+  '24-Hour In-Patient Care'
+];
 
 const navByRole = {
   admin: [
@@ -21,23 +31,9 @@ const navByRole = {
     ['Follow-ups', 'followup', 'loop']
   ],
   superadmin: [
-    ['Dashboard', 'dashboard', 'home']
+    ['Clinics', 'dashboard', 'home']
   ]
 };
-
-const tabs = [
-  ['Dashboard', 'dashboard'],
-  ['Veterinarians', 'vets'],
-  ['Clients & Pets', 'clients'],
-  ['Pet Profile', 'petprofile'],
-  ['Vaccination Tracker', 'vax'],
-  ['Book Appointment', 'booking'],
-  ['AI SOAP Note', 'soap'],
-  ['Weight Tracker', 'weight'],
-  ['Follow-up Tracker', 'followup'],
-  ['Doctor Calendar', 'calendar']
-];
-
 const icons = {
   home: '⌂',
   vet: '+',
@@ -132,7 +128,7 @@ function useApi(selectedClinicId) {
   return { data, loading, error, create, update, remove, reload: load };
 }
 
-function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
+function ClinicCreateModal({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [regNum, setRegNum] = useState('');
   const [street, setStreet] = useState('');
@@ -141,8 +137,29 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
   const [zip, setZip] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [specialties, setSpecialties] = useState('');
-  const [openForm, setOpenForm] = useState(false);
+  const [selectedSpecs, setSelectedSpecs] = useState([]);
+
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (wrapRef.current) {
+        wrapRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      const modalEl = document.querySelector('.clinic-create-card');
+      if (modalEl) {
+        modalEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }, []);
+
+  const handleSpecChange = (spec, isChecked) => {
+    if (isChecked) {
+      setSelectedSpecs(prev => [...prev, spec]);
+    } else {
+      setSelectedSpecs(prev => prev.filter(item => item !== spec));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -154,25 +171,136 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
       alert("Postal code must be exactly 6 digits (numeric only)!");
       return;
     }
-    onCreate({
+    onSave({
       name,
       registration_number: regNum,
       address: { street, city, state, postal_code: zip },
       contact: { phone, email },
-      specialties: specialties || 'General Practice, Vaccines, Surgery'
-    }).then(() => {
-      setName('');
-      setRegNum('');
-      setStreet('');
-      setCity('');
-      setState('');
-      setZip('');
-      setPhone('');
-      setEmail('');
-      setSpecialties('');
-      setOpenForm(false);
+      specialties: selectedSpecs.join(', ') || 'Veterinary Medicine'
     });
   };
+
+  return (
+    <div 
+      ref={wrapRef}
+      className="modal-wrap"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        overflowY: 'auto',
+        padding: '24px 16px'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section 
+        className="modal clinic-create-card"
+        style={{
+          width: 'min(560px, calc(100% - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
+          background: 'white',
+          borderRadius: '12px',
+          padding: '22px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 'auto'
+        }}
+      >
+        <div className="modal-hd" style={{ flexShrink: 0 }}>
+          <h3>Create New Veterinary Clinic</h3>
+          <button type="button" className="modal-x" onClick={onClose}>×</button>
+        </div>
+        
+        <form 
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            marginBottom: '18px', 
+            maxHeight: 'calc(100vh - 220px)', 
+            overflowY: 'auto', 
+            paddingRight: '6px',
+            minHeight: 0,
+            flex: 1
+          }}>
+            <label className="field-label">Clinic Name<input className="input" required value={name} onChange={e => setName(e.target.value)} /></label>
+            <label className="field-label">Registration ID<input className="input" required value={regNum} onChange={e => setRegNum(e.target.value)} /></label>
+            <label className="field-label">Street Address<input className="input" required value={street} onChange={e => setStreet(e.target.value)} /></label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label className="field-label">City<input className="input" required value={city} onChange={e => setCity(e.target.value)} /></label>
+              <label className="field-label">State<input className="input" required value={state} onChange={e => setState(e.target.value)} /></label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label className="field-label">Postal Code<input className="input" required value={zip} onChange={e => setZip(e.target.value)} placeholder="6 digits" pattern="\d{6}" title="Postal code must be exactly 6 digits (numeric only)" /></label>
+              <label className="field-label">Phone<input className="input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="10 digits" pattern="\d{10}" title="Phone number must be exactly 10 digits (numeric only)" /></label>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span className="field-label" style={{ fontWeight: '700' }}>Specialties / Services</span>
+              <div style={{
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                background: '#fff',
+                marginTop: '4px'
+              }}>
+                {CLINIC_SPECIALTIES.map(spec => {
+                  const checked = selectedSpecs.includes(spec);
+                  return (
+                    <label key={spec} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-2)', fontWeight: '500' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={checked} 
+                        onChange={(e) => handleSpecChange(spec, e.target.checked)} 
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      {spec}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            justifyContent: 'flex-end', 
+            borderTop: '1px solid var(--border)', 
+            paddingTop: '14px',
+            flexShrink: 0,
+            flexWrap: 'wrap'
+          }}>
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save & Onboard</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
+  const [openForm, setOpenForm] = useState(false);
 
   return (
     <div className="main-scroll">
@@ -254,29 +382,10 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
       </div>
 
       {openForm && (
-        <Modal title="Create New Veterinary Clinic" onClose={() => setOpenForm(false)}>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-              <label className="field-label">Clinic Name<input className="input" required value={name} onChange={e => setName(e.target.value)} /></label>
-              <label className="field-label">Registration ID<input className="input" required value={regNum} onChange={e => setRegNum(e.target.value)} /></label>
-              <label className="field-label">Street Address<input className="input" required value={street} onChange={e => setStreet(e.target.value)} /></label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <label className="field-label">City<input className="input" required value={city} onChange={e => setCity(e.target.value)} /></label>
-                <label className="field-label">State<input className="input" required value={state} onChange={e => setState(e.target.value)} /></label>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <label className="field-label">Postal Code<input className="input" required value={zip} onChange={e => setZip(e.target.value)} placeholder="6 digits" pattern="\d{6}" title="Postal code must be exactly 6 digits (numeric only)" /></label>
-                <label className="field-label">Phone<input className="input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="10 digits" pattern="\d{10}" title="Phone number must be exactly 10 digits (numeric only)" /></label>
-              </div>
-              <label className="field-label">Specialties / Services<input className="input" value={specialties} onChange={e => setSpecialties(e.target.value)} placeholder="e.g. Surgery, Dentistry, General Practice" /></label>
-              <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-outline" onClick={() => setOpenForm(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary">Save & Onboard</button>
-            </div>
-          </form>
-        </Modal>
+        <ClinicCreateModal 
+          onClose={() => setOpenForm(false)} 
+          onSave={(body) => onCreate(body).then(() => setOpenForm(false))} 
+        />
       )}
     </div>
   );
@@ -291,7 +400,32 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
   const [zip, setZip] = useState(clinic.address?.postal_code || '');
   const [phone, setPhone] = useState(clinic.contact?.phone || '');
   const [email, setEmail] = useState(clinic.contact?.email || '');
-  const [specialties, setSpecialties] = useState(clinic.specialties || 'General Practice, Vaccines, Surgery');
+  const [selectedSpecs, setSelectedSpecs] = useState(() => {
+    if (!clinic.specialties) return [];
+    return clinic.specialties.split(',').map(s => s.trim()).filter(Boolean);
+  });
+
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (wrapRef.current) {
+        wrapRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      const modalEl = document.querySelector('.clinic-edit-card');
+      if (modalEl) {
+        modalEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }, []);
+
+  const handleSpecChange = (spec, isChecked) => {
+    if (isChecked) {
+      setSelectedSpecs(prev => [...prev, spec]);
+    } else {
+      setSelectedSpecs(prev => prev.filter(item => item !== spec));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -308,34 +442,126 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
       registration_number: regNum,
       address: { street, city, state, postal_code: zip },
       contact: { phone, email },
-      specialties
+      specialties: selectedSpecs.join(', ') || 'Veterinary Medicine'
     });
   };
 
   return (
-    <Modal title={`Edit Clinic - ${clinic.name}`} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-          <label className="field-label">Clinic Name<input className="input" required value={name} onChange={e => setName(e.target.value)} /></label>
-          <label className="field-label">Registration ID<input className="input" required disabled value={regNum} /></label>
-          <label className="field-label">Street Address<input className="input" required value={street} onChange={e => setStreet(e.target.value)} /></label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <label className="field-label">City<input className="input" required value={city} onChange={e => setCity(e.target.value)} /></label>
-            <label className="field-label">State<input className="input" required value={state} onChange={e => setState(e.target.value)} /></label>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <label className="field-label">Postal Code<input className="input" required value={zip} onChange={e => setZip(e.target.value)} placeholder="6 digits" pattern="\d{6}" title="Postal code must be exactly 6 digits (numeric only)" /></label>
-            <label className="field-label">Phone<input className="input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="10 digits" pattern="\d{10}" title="Phone number must be exactly 10 digits (numeric only)" /></label>
-          </div>
-          <label className="field-label">Specialties / Services<input className="input" value={specialties} onChange={e => setSpecialties(e.target.value)} placeholder="e.g. Surgery, Dentistry, General Practice" /></label>
-          <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
+    <div 
+      ref={wrapRef}
+      className="modal-wrap"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        overflowY: 'auto',
+        padding: '24px 16px'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section 
+        className="modal clinic-edit-card"
+        style={{
+          width: 'min(560px, calc(100% - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
+          background: 'white',
+          borderRadius: '12px',
+          padding: '22px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 'auto'
+        }}
+      >
+        <div className="modal-hd" style={{ flexShrink: 0 }}>
+          <h3>Edit Clinic - {clinic.name}</h3>
+          <button type="button" className="modal-x" onClick={onClose}>×</button>
         </div>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">Save Changes</button>
-        </div>
-      </form>
-    </Modal>
+        
+        <form 
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            marginBottom: '18px', 
+            maxHeight: 'calc(100vh - 220px)', 
+            overflowY: 'auto', 
+            paddingRight: '6px',
+            minHeight: 0,
+            flex: 1
+          }}>
+            <label className="field-label">Clinic Name<input className="input" required value={name} onChange={e => setName(e.target.value)} /></label>
+            <label className="field-label">Registration ID<input className="input" required disabled value={regNum} /></label>
+            <label className="field-label">Street Address<input className="input" required value={street} onChange={e => setStreet(e.target.value)} /></label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label className="field-label">City<input className="input" required value={city} onChange={e => setCity(e.target.value)} /></label>
+              <label className="field-label">State<input className="input" required value={state} onChange={e => setState(e.target.value)} /></label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label className="field-label">Postal Code<input className="input" required value={zip} onChange={e => setZip(e.target.value)} placeholder="6 digits" pattern="\d{6}" title="Postal code must be exactly 6 digits (numeric only)" /></label>
+              <label className="field-label">Phone<input className="input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="10 digits" pattern="\d{10}" title="Phone number must be exactly 10 digits (numeric only)" /></label>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span className="field-label" style={{ fontWeight: '700' }}>Specialties / Services</span>
+              <div style={{
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                background: '#fff',
+                marginTop: '4px'
+              }}>
+                {CLINIC_SPECIALTIES.map(spec => {
+                  const checked = selectedSpecs.includes(spec);
+                  return (
+                    <label key={spec} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-2)', fontWeight: '500' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={checked} 
+                        onChange={(e) => handleSpecChange(spec, e.target.checked)} 
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      {spec}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            justifyContent: 'flex-end', 
+            borderTop: '1px solid var(--border)', 
+            paddingTop: '14px',
+            flexShrink: 0,
+            flexWrap: 'wrap'
+          }}>
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
@@ -499,15 +725,6 @@ function App() {
 
   return (
     <div className="proto-shell">
-      <header className="proto-header">
-        <h1>PawChart MERN</h1>
-        <p>Clinic operations, patient records, bookings, reminders, and SOAP notes backed by MongoDB.</p>
-      </header>
-
-      <div className="screen-tabs">
-        {tabs.map(([label, id]) => <button key={id} className={`stab ${screen === id ? 'active' : ''}`} onClick={() => setScreen(id)}>{label}</button>)}
-      </div>
-
       <div className="app-frame">
         <aside className="sidebar">
           <div className="sb-top">
@@ -610,10 +827,10 @@ function App() {
               <ClinicSelector clinics={clinics} onSelect={selectClinic} onCreate={handleCreateClinic} onEdit={setEditingClinic} onDelete={handleDeleteClinic} />
             ) : (
               <>
-                {screen === 'dashboard' && <Dashboard data={data.dashboard} go={setScreen} />}
+                {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} go={setScreen} />}
                 {screen === 'vets' && <Vets vets={data.vets} create={create} update={update} onDelete={remove} />}
-                {screen === 'clients' && <Clients clients={data.clients} create={create} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
-                {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} />}
+                {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
+                {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} />}
                 {screen === 'booking' && <Booking vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
                 {screen === 'soap' && (
@@ -770,7 +987,7 @@ function MonitoringBox({ count = 3 }) {
   );
 }
 
-function Dashboard({ data, go }) {
+function Dashboard({ data, appointments = [], go }) {
   const stats = data?.stats || {};
   
   // Real time date
@@ -781,6 +998,35 @@ function Dashboard({ data, go }) {
     year: 'numeric'
   });
   const subtitle = `${todayStr} · live clinic dashboard`;
+
+  // Calculate Today's Appointments count dynamically from actual appointments list
+  const localTodayStr = getLocalDateString();
+  const todayAppts = appointments.filter(a => {
+    const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
+    return apptDateOnly === localTodayStr;
+  });
+  const todayCount = todayAppts.length;
+
+  // Calculate Yesterday's Appointments count for the dynamic hint comparison
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  const yesterdayAppts = appointments.filter(a => {
+    const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
+    return apptDateOnly === yesterdayStr;
+  });
+  const yesterdayCount = yesterdayAppts.length;
+  const diff = todayCount - yesterdayCount;
+  const apptsHint = diff >= 0 
+    ? `+${diff} appointments compared to yesterday` 
+    : `${diff} appointments compared to yesterday`;
+
+  // Filter and sort today's appointments for the dashboard list
+  const todayApptsSorted = [...todayAppts].sort((a, b) => {
+    const timeA = a.time.includes('-') ? a.time.split('-')[0] : a.time;
+    const timeB = b.time.includes('-') ? b.time.split('-')[0] : b.time;
+    return timeA.localeCompare(timeB);
+  });
 
   // Get real alerts from vaccinations & follow-ups
   const alertsList = [];
@@ -820,8 +1066,8 @@ function Dashboard({ data, go }) {
       <div className="stat-grid">
         <Stat 
           label="TODAY'S APPOINTMENTS" 
-          value={stats.appointmentsToday ?? 0} 
-          hint={stats.appointmentsTodayHint || "No appointments compared to yesterday"} 
+          value={todayCount} 
+          hint={apptsHint} 
           primary 
         />
         <Stat 
@@ -847,12 +1093,12 @@ function Dashboard({ data, go }) {
           <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <strong style={{ fontSize: '15px' }}>Today's Appointments</strong>
             <span className="badge b-blue" style={{ fontSize: '11px', padding: '2px 8px' }}>
-              {stats.appointmentsToday ?? 0} total
+              {todayCount} total
             </span>
           </div>
           
-          {(data?.appointments && data.appointments.length > 0) ? (
-            <AppointmentList rows={data.appointments} />
+          {todayApptsSorted.length > 0 ? (
+            <AppointmentList rows={todayApptsSorted} />
           ) : (
             <div style={{
               padding: '40px 24px',
@@ -1012,8 +1258,9 @@ function Vets({ vets, create, update, onDelete }) {
   );
 }
 
-function Clients({ clients, create, appointments, vaccinations, go, onSelectPet }) {
+function Clients({ clients, create, update, appointments, vaccinations, go, onSelectPet }) {
   const [open, setOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -1058,19 +1305,35 @@ function Clients({ clients, create, appointments, vaccinations, go, onSelectPet 
     
     if (clientAppts.length === 0) return <span style={{ color: 'var(--text-3)' }}>None</span>;
 
-    clientAppts.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    clientAppts.sort((a, b) => {
+      const timeA = a.time.includes('-') ? a.time.split('-')[0] : a.time;
+      const timeB = b.time.includes('-') ? b.time.split('-')[0] : b.time;
+      return new Date(`${a.date}T${timeA}`) - new Date(`${b.date}T${timeB}`);
+    });
     const next = clientAppts[0];
     
     let timeStr = next.time;
     try {
-      const [h, m] = next.time.split(':');
-      const hr = parseInt(h);
-      const ampm = hr >= 12 ? 'PM' : 'AM';
-      const hr12 = hr % 12 || 12;
-      timeStr = `${hr12}:${m} ${ampm}`;
+      if (next.time.includes('-')) {
+        const parts = next.time.split('-');
+        const formatSingle = (singleT) => {
+          const [h, m] = singleT.split(':');
+          const hr = parseInt(h);
+          const ampm = hr >= 12 ? 'PM' : 'AM';
+          const hr12 = hr % 12 || 12;
+          return `${hr12}:${m} ${ampm}`;
+        };
+        timeStr = `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+      } else {
+        const [h, m] = next.time.split(':');
+        const hr = parseInt(h);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const hr12 = hr % 12 || 12;
+        timeStr = `${hr12}:${m} ${ampm}`;
+      }
     } catch (e) {}
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     let prefix = next.date === todayStr ? 'Today ' : `${new Date(next.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} `;
     
     let badgeColor = 'blue';
@@ -1171,18 +1434,32 @@ function Clients({ clients, create, appointments, vaccinations, go, onSelectPet 
                   <td>{getNextAppointmentBadge(client.pets, appointments)}</td>
                   <td>{getVaccinesBadgeForClient(client.pets, vaccinations)}</td>
                   <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                    <button 
-                      className="btn btn-outline" 
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                      onClick={() => {
-                        if (client.pets && client.pets.length > 0) {
-                          onSelectPet(client.pets[0]);
-                        }
-                        go('petprofile');
-                      }}
-                    >
-                      View →
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '6px 8px', color: 'var(--text-2)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => {
+                          if (client.pets && client.pets.length > 0) {
+                            onSelectPet(client.pets[0]);
+                          }
+                          go('petprofile');
+                        }}
+                        title="View Pet Profile"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ display: 'block' }}>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      </button>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
+                        onClick={() => setEditingClient(client)}
+                        title="Edit Client & Pets"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1203,36 +1480,280 @@ function Clients({ clients, create, appointments, vaccinations, go, onSelectPet 
           onSave={(body) => create('clients', body).then(() => setOpen(false))} 
         />
       )}
+
+      {editingClient && (
+        <ClientModal 
+          client={editingClient}
+          onClose={() => setEditingClient(null)} 
+          onSave={(body) => update('clients', editingClient._id, body).then(() => setEditingClient(null))} 
+        />
+      )}
     </Screen>
   );
 }
 
-function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet }) {
+// Time-aware appointment parsing helper
+const parseApptDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return new Date();
+  const actualTime = timeStr.includes('-') ? timeStr.split('-')[0] : timeStr;
+  const dateParts = dateStr.split('-');
+  const timeParts = actualTime.split(':');
+  if (dateParts.length === 3 && timeParts.length === 2) {
+    const year = parseInt(dateParts[0], 10);
+    const monthIndex = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    return new Date(year, monthIndex, day, hours, minutes);
+  }
+  return new Date(`${dateStr}T${actualTime}:00`); // fallback
+};
+
+// Timezone-resilient date helpers
+const formatDateSafe = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[monthIndex]} ${day}, ${year}`;
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+};
+
+const formatMonthSafe = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[monthIndex] || '';
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[d.getUTCMonth()] || '';
+};
+
+const getLocalDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Configurable species/breed ideal range map
+const parseWeightRange = (rangeStr) => {
+  if (!rangeStr) return null;
+  const cleaned = rangeStr.replace(/[a-zA-Z\s]/g, '');
+  const parts = cleaned.split('-');
+  if (parts.length === 2) {
+    const min = parseFloat(parts[0]);
+    const max = parseFloat(parts[1]);
+    if (!isNaN(min) && !isNaN(max)) {
+      return { min, max };
+    }
+  }
+  return null;
+};
+
+const getIdealRange = (species = '', breed = '') => {
+  const s = species.toLowerCase();
+  const b = breed.toLowerCase();
+  
+  // Dogs
+  if (s.includes('dog')) {
+    if (b.includes('retriever') || b.includes('shepherd')) return { min: 60, max: 80 };
+    if (b.includes('bulldog')) return { min: 40, max: 55 };
+    if (b.includes('beagle')) return { min: 20, max: 30 };
+    if (b.includes('poodle')) {
+      if (b.includes('toy') || b.includes('mini')) return { min: 6, max: 15 };
+      return { min: 45, max: 70 };
+    }
+    if (b.includes('french')) return { min: 16, max: 28 };
+    return { min: 25, max: 75 }; // Default dog
+  }
+  
+  // Cats
+  if (s.includes('cat')) {
+    if (b.includes('maine coon')) return { min: 11, max: 25 };
+    if (b.includes('siamese') || b.includes('persian')) return { min: 7, max: 12 };
+    return { min: 8, max: 15 }; // Default cat
+  }
+  
+  // Rabbits
+  if (s.includes('rabbit') || s.includes('lop')) {
+    if (b.includes('flemish')) return { min: 10, max: 22 };
+    if (b.includes('netherland') || b.includes('dwarf')) return { min: 1.5, max: 3.5 };
+    return { min: 3, max: 10 }; // Default rabbit
+  }
+  
+  // Birds
+  if (s.includes('bird') || s.includes('parrot')) {
+    if (b.includes('macaw')) return { min: 2, max: 4.5 };
+    if (b.includes('cockatiel')) return { min: 0.15, max: 0.25 };
+    return { min: 0.1, max: 4 }; // Default bird
+  }
+  
+  return { min: 5, max: 50 }; // Safe overall fallback
+};
+
+function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create }) {
+  const [currentPet, setCurrentPet] = useState(pet);
   const [activeTab, setActiveTab] = useState('visits');
   const [weightVal, setWeightVal] = useState('32.4');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  if (!pet) return <Status message="Select a pet to view profile." />;
+  useEffect(() => {
+    setCurrentPet(pet);
+  }, [pet]);
 
-  const owner = clients.find(c => (c.pets || []).some(p => p.name.toLowerCase() === pet.name.toLowerCase()));
-  const ownerName = owner ? owner.name : (pet.ownerName || 'James Martinez');
-  const ownerEmail = owner ? owner.email : (pet.email || 'james.m@email.com');
-  const ownerPhone = owner ? owner.phone : (pet.phone || '(555) 824-3901');
+  if (!currentPet) return <Status message="Select a pet to view profile." />;
+
+  const owner = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()));
+  const ownerName = owner ? owner.name : (currentPet.ownerName || 'James Martinez');
+  const ownerEmail = owner ? owner.email : (currentPet.email || 'james.m@email.com');
+  const ownerPhone = owner ? owner.phone : (currentPet.phone || '(555) 824-3901');
+
+  useEffect(() => {
+    if (currentPet && onSetBookingPet) {
+      onSetBookingPet(currentPet);
+    }
+    if (owner && onSetBookingClient) {
+      onSetBookingClient(owner);
+    }
+  }, [currentPet, owner]);
+
+  const ownerPets = owner ? (owner.pets || []) : [currentPet];
+
+  const handlePrevPet = () => {
+    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
+    if (currentIndex !== -1) {
+      const prevIndex = (currentIndex - 1 + ownerPets.length) % ownerPets.length;
+      setCurrentPet(ownerPets[prevIndex]);
+    }
+  };
+
+  const handleNextPet = () => {
+    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
+    if (currentIndex !== -1) {
+      const nextIndex = (currentIndex + 1) % ownerPets.length;
+      setCurrentPet(ownerPets[nextIndex]);
+    }
+  };
+
+  const petEmoji = (species = '') => {
+    const s = species.toLowerCase();
+    if (s.includes('dog')) return '🐶';
+    if (s.includes('cat')) return '🐱';
+    if (s.includes('rabbit') || s.includes('lop')) return '🐰';
+    if (s.includes('parrot') || s.includes('bird')) return '🦜';
+    return '🐾';
+  };
 
   // Latest weight check
-  const petWeights = weights.filter(w => w.petName.toLowerCase() === pet.name.toLowerCase());
-  const currentWeight = petWeights.length > 0 ? `${petWeights[0].value} ${petWeights[0].unit || 'lbs'}` : '32.4 lbs';
+  const getWeightDisplay = (weightRangeVal) => {
+    if (!weightRangeVal) return 'Not Provided';
+    const trimmed = String(weightRangeVal).trim();
+    if (trimmed.toLowerCase().endsWith('lbs') || trimmed.toLowerCase().endsWith('kg')) {
+      return trimmed;
+    }
+    return `${trimmed} lbs`;
+  };
+  const petWeights = weights.filter(w => w.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const latestWeightLog = [...petWeights].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  const currentWeight = latestWeightLog ? `${latestWeightLog.value} ${latestWeightLog.unit || 'lbs'}` : getWeightDisplay(currentPet.weightRange);
 
   // dynamic timeline records (visits) from SoapNotes
-  const petVisits = soapnotes.filter(s => s.petName.toLowerCase() === pet.name.toLowerCase());
+  const petVisits = soapnotes.filter(s => s.petName.toLowerCase() === currentPet.name.toLowerCase());
   
   // dynamic vaccinations
-  const petVax = vaccinations.filter(v => v.petName.toLowerCase() === pet.name.toLowerCase());
+  const petVax = vaccinations.filter(v => v.petName.toLowerCase() === currentPet.name.toLowerCase());
+
+  // Find the first assigned vet name from the appointments
+  const petAppts = appointments.filter(a => a.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const assignedVetAppt = petAppts.find(a => a.vetName);
+  const primaryVetName = assignedVetAppt ? assignedVetAppt.vetName : null;
 
   const handleBookAppointment = () => {
     onSetBookingClient(owner);
-    onSetBookingPet(pet);
+    onSetBookingPet(currentPet);
     go('booking');
   };
+
+  const formatDOB = (dobStr) => {
+    if (!dobStr) return '';
+    try {
+      const d = new Date(dobStr);
+      if (isNaN(d.getTime())) return dobStr;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return dobStr;
+    }
+  };
+
+  const getAgeStr = (dobStr) => {
+    if (!dobStr) return '';
+    try {
+      const birth = new Date(dobStr);
+      if (isNaN(birth.getTime())) return dobStr;
+      const today = new Date();
+      
+      let years = today.getFullYear() - birth.getFullYear();
+      let months = today.getMonth() - birth.getMonth();
+      let days = today.getDate() - birth.getDate();
+      
+      if (days < 0) {
+        months--;
+        const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += prevMonth.getDate();
+      }
+      
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      if (years > 0) {
+        if (months > 0) {
+          return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
+        }
+        return `${years} yr${years > 1 ? 's' : ''}`;
+      } else {
+        if (months > 0) {
+          return `${months} mo${months > 1 ? 's' : ''}`;
+        }
+        return `${days} day${days !== 1 ? 's' : ''}`;
+      }
+    } catch (e) {
+      return dobStr;
+    }
+  };
+
+  const calculatedAge = getAgeStr(currentPet.dateOfBirth) || currentPet.age || 'Not Provided';
+
+  const petDetailsList = [];
+  
+  if (currentPet.petId) {
+    petDetailsList.push({ label: 'Pet ID', value: currentPet.petId });
+  }
+  
+  petDetailsList.push({ label: 'Date of Birth', value: currentPet.dateOfBirth ? formatDOB(currentPet.dateOfBirth) : 'Not Provided' });
+
+  petDetailsList.push({ label: 'Microchip', value: (currentPet.microchip && currentPet.microchip.trim()) ? currentPet.microchip : 'Not Provided' });
+
+  petDetailsList.push({ label: 'Insurance', value: (currentPet.insurance && currentPet.insurance.trim() && currentPet.insurance !== 'None') ? currentPet.insurance : 'Not Provided' });
+
+  petDetailsList.push({ label: 'Blood Group', value: currentPet.bloodType || 'Not Provided' });
+
+  petDetailsList.push({ label: 'Primary Vet', value: primaryVetName || 'Not Assigned' });
+  petDetailsList.push({ label: 'Owner', value: ownerName, isLink: true });
 
   const breadcrumbs = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-3)' }}>
@@ -1241,7 +1762,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       <span style={{ color: 'var(--text-2)' }}>{ownerName}</span>
       <span>›</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', color: 'var(--text)' }}>
-        🐕 {pet.name}
+        🐕 {currentPet.name}
       </span>
     </div>
   );
@@ -1253,325 +1774,623 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     </div>
   );
 
-  const petDetailsList = [
-    { label: 'Pet ID', value: pet.petId || 'PET-2024-0042' },
-    { label: 'Date of Birth', value: pet.dateOfBirth || 'Mar 15, 2022' },
-    { label: 'Microchip', value: pet.microchip || '985112003456789' },
-    { label: 'Insurance', value: pet.insurance || 'Nationwide Pet' },
-    { label: 'Primary Vet', value: pet.primaryVet || 'Dr. Sarah Chen' },
-    { label: 'Owner', value: ownerName, isLink: true }
-  ];
+  const handleSavePetDetails = async (updatedPetFields) => {
+    try {
+      const ownerClient = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()));
+      if (!ownerClient) {
+        alert("Parent client account not found!");
+        return;
+      }
+
+      // If weight was modified, let's also create a weight log so it syncs with the weight chart and lists!
+      const oldWeight = String(currentPet.weightRange || '').trim();
+      const newWeight = String(updatedPetFields.weightRange || '').trim();
+      if (newWeight && newWeight !== oldWeight) {
+        const parsedWeight = parseFloat(newWeight);
+        if (!isNaN(parsedWeight)) {
+          await create('weights', {
+            petName: currentPet.name,
+            ownerName: ownerClient.name,
+            value: parsedWeight,
+            unit: 'lbs',
+            date: getLocalDateString(),
+            note: 'Updated via profile edit'
+          });
+        }
+      }
+
+      const updatedPets = (ownerClient.pets || []).map(p => {
+        if (p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()) {
+          return {
+            ...p,
+            microchip: updatedPetFields.microchip,
+            insurance: updatedPetFields.insurance,
+            bloodType: updatedPetFields.bloodType,
+            weightRange: updatedPetFields.weightRange
+          };
+        }
+        return p;
+      });
+
+      const updatedClientBody = {
+        ...ownerClient,
+        pets: updatedPets
+      };
+
+      await update('clients', ownerClient._id, updatedClientBody);
+
+      // Find the updated pet inside updatedPets
+      const savedPet = updatedPets.find(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
+      if (savedPet) {
+        setCurrentPet({
+          ...savedPet,
+          ownerId: ownerClient._id,
+          ownerName: ownerClient.name,
+          email: ownerClient.email,
+          phone: ownerClient.phone
+        });
+      }
+
+      setIsEditModalOpen(false);
+      window.showToast?.('Pet medical profile details saved successfully!');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save pet details: " + err.message);
+    }
+  };
 
   return (
-    <Screen title={breadcrumbs} sub="" action={actionButtons}>
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
-        
-        {/* LEFT COLUMN: PET CARDS & DETAILS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <>
+      <Screen title={breadcrumbs} sub="" action={actionButtons}>
+        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
           
-          {/* BLUE HERO CARD */}
-          <div style={{
-            background: 'var(--brand)',
-            borderRadius: '16px',
-            padding: '24px 16px',
-            color: '#fff',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            boxShadow: '0 4px 12px rgba(37,99,235,0.15)'
-          }}>
-            <div style={{ fontSize: '48px', lineHeight: '1' }}>🐕</div>
-            <h2 style={{ fontSize: '26px', margin: '12px 0 2px 0', fontWeight: '800', color: '#fff' }}>{pet.name}</h2>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>
-              {pet.breed || 'Golden Retriever'} - {pet.sex || 'Male'} - {pet.spayedNeutered || 'Neutered'}
-            </div>
+          {/* LEFT COLUMN: PET CARDS & DETAILS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
-            <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                Age {pet.age || '4'}
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                {currentWeight}
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                {pet.bloodType || 'B+'}
-              </span>
-            </div>
-          </div>
-
-          {/* PET DETAILS PANEL */}
-          <section className="panel" style={{ padding: '16px 18px', borderRadius: '12px', background: '#fff' }}>
-            <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '800', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: '14px' }}>
-              PET DETAILS
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {petDetailsList.map((item) => (
-                <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                  <span style={{ color: 'var(--text-3)' }}>{item.label}</span>
-                  {item.isLink ? (
-                    <span 
-                      style={{ color: 'var(--brand)', fontWeight: '700', cursor: 'pointer' }}
-                      onClick={() => go('clients')}
-                    >
-                      {item.value}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text)', fontWeight: '700' }}>{item.value}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* VACCINATION STATUS SUMMARY */}
-          <section className="panel" style={{ padding: '16px 18px', borderRadius: '12px', background: '#fff' }}>
-            <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '800', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: '14px' }}>
-              VACCINATION STATUS
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {petVax.length > 0 ? (
-                petVax.map(v => (
-                  <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: v.status === 'Overdue' ? 'var(--red)' : v.status === 'Due soon' ? 'var(--amber)' : 'var(--green)', fontSize: '14px' }}>●</span>
-                      <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
-                    </div>
-                    <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                  </div>
-                ))
-              ) : (
-                <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>No vaccination records found</div>
-              )}
-            </div>
-          </section>
-
-        </div>
-
-        {/* RIGHT COLUMN: TABS & TIMELINE CONTENT */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* TAB HEADERS */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '24px', paddingBottom: '4px' }}>
-            {[
-              ['Visit History', 'visits'],
-              ['Weight Chart', 'weight'],
-              ['Vaccinations', 'vaccines'],
-              ['Prescriptions', 'prescriptions']
-            ].map(([label, id]) => (
-              <button 
-                key={id} 
-                style={{
-                  border: 0,
-                  borderBottom: activeTab === id ? '2px solid var(--brand)' : '2px solid transparent',
-                  background: 'transparent',
-                  padding: '6px 0 10px 0',
-                  fontSize: '14px',
-                  fontWeight: activeTab === id ? '700' : '500',
-                  color: activeTab === id ? 'var(--brand)' : 'var(--text-3)',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setActiveTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* TAB CONTENT PANEL */}
-          <div style={{ minHeight: '400px' }}>
-            
-            {/* VISIT HISTORY TIMELINE */}
-            {activeTab === 'visits' && (
-              <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: '24px' }}>
-                {/* Timeline vertical bar */}
-                <div style={{
-                  position: 'absolute',
-                  left: '8px',
-                  top: '12px',
-                  bottom: '12px',
-                  width: '2px',
-                  background: 'var(--border)',
-                  zIndex: '1'
-                }} />
+            {/* BLUE HERO CARD */}
+            <div style={{
+              background: 'var(--brand)',
+              borderRadius: '16px',
+              padding: '24px 16px',
+              color: '#fff',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(37,99,235,0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+                {ownerPets.length > 1 ? (
+                  <button 
+                    type="button"
+                    style={{
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 0,
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '28px',
+                      height: '28px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'background 0.2s'
+                    }}
+                    onClick={handlePrevPet}
+                    title="Previous Pet"
+                  >
+                    &lt;
+                  </button>
+                ) : <div style={{ width: '28px' }} />}
                 
-                {petVisits.length > 0 ? (
-                  petVisits.map((visit, index) => {
-                    const visitType = visit.assessment.includes('Vaccinations') ? 'Vaccination' : visit.assessment.includes('Gastro') ? 'Sick visit' : 'Annual Wellness';
-                    const icon = visitType === 'Vaccination' ? '💉' : visitType === 'Sick visit' ? '💊' : '🩺';
-                    const formattedDate = visit.createdAt ? new Date(visit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026';
-                    
-                    return (
-                      <div key={visit._id} style={{ display: 'flex', gap: '16px', marginBottom: '20px', position: 'relative' }}>
-                        {/* Timeline node */}
-                        <div style={{
-                          position: 'absolute',
-                          left: '-26px',
-                          top: '6px',
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
-                          background: '#fff',
-                          border: '2px solid var(--brand)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          fontSize: '11px',
-                          zIndex: '2'
-                        }}>
-                          {icon}
-                        </div>
-                        
-                        {/* Timeline Card */}
-                        <div className="panel" style={{ flex: 1, padding: '14px 18px', background: '#fff', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>
-                            {formattedDate} · {visit.vetName || 'Dr. Sarah Chen'} · {visitType}
-                          </div>
-                          <h4 style={{ fontSize: '15px', margin: '0 0 8px 0', fontWeight: '800', color: 'var(--text)' }}>
-                            {visit.assessment.split('.')[0]}
-                          </h4>
-                          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
-                            {visit.subjective} {visit.objective} {visit.plan}
-                          </p>
-                          {visit.tags && visit.tags.length > 0 && (
-                            <div className="chips">
-                              {visit.tags.map(t => (
-                                <span 
-                                  className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`} 
-                                  key={t}
-                                  style={{ fontSize: '11px', padding: '2px 8px' }}
-                                >
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                <div style={{ fontSize: '48px', lineHeight: '1' }}>{petEmoji(currentPet.species)}</div>
+                
+                {ownerPets.length > 1 ? (
+                  <button 
+                    type="button"
+                    style={{
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 0,
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '28px',
+                      height: '28px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'background 0.2s'
+                    }}
+                    onClick={handleNextPet}
+                    title="Next Pet"
+                  >
+                    &gt;
+                  </button>
+                ) : <div style={{ width: '28px' }} />}
+              </div>
+
+              <h2 style={{ fontSize: '26px', margin: '12px 0 2px 0', fontWeight: '800', color: '#fff' }}>{currentPet.name}</h2>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>
+                {currentPet.breed || 'Mixed Breed'} - {currentPet.sex || 'Male'} - {currentPet.spayedNeutered === 'Yes' ? 'Neutered/Spayed' : 'Intact'}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
+                  Age {calculatedAge}
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
+                  {currentWeight}
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
+                  Blood: {currentPet.bloodType || 'Not Provided'}
+                </span>
+              </div>
+            </div>
+
+            {/* PET DETAILS PANEL */}
+            <section className="panel" style={{ padding: '16px 18px', borderRadius: '12px', background: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '800', letterSpacing: '.07em', textTransform: 'uppercase', margin: 0 }}>
+                  PET DETAILS
+                </div>
+                <button 
+                  type="button" 
+                  style={{ 
+                    background: 'transparent', 
+                    border: 0, 
+                    color: 'var(--brand)', 
+                    fontSize: '11px', 
+                    fontWeight: '700', 
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onClick={() => setIsEditModalOpen(true)}
+                >
+                  Edit
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {petDetailsList.map((item) => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-3)' }}>{item.label}</span>
+                    {item.isLink ? (
+                      <span 
+                        style={{ color: 'var(--brand)', fontWeight: '700', cursor: 'pointer' }}
+                        onClick={() => go('clients')}
+                      >
+                        {item.value}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text)', fontWeight: '700' }}>{item.value}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* VACCINATION STATUS SUMMARY */}
+            <section className="panel" style={{ padding: '16px 18px', borderRadius: '12px', background: '#fff' }}>
+              <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '800', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: '14px' }}>
+                VACCINATION STATUS
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {petVax.length > 0 ? (
+                  petVax.map(v => (
+                    <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: v.status === 'Overdue' ? 'var(--red)' : v.status === 'Due soon' ? 'var(--amber)' : 'var(--green)', fontSize: '14px' }}>●</span>
+                        <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
                       </div>
-                    );
-                  })
+                      <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  ))
                 ) : (
-                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-3)' }}>No visit history found. Click Start Consultation to log one.</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>No vaccination records found</div>
                 )}
               </div>
-            )}
+            </section>
 
-            {/* WEIGHT CHART TABS */}
-            {activeTab === 'weight' && (
-              <div className="panel" style={{ background: '#fff', borderRadius: '12px', padding: '18px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div className="card-label" style={{ margin: 0 }}>Buddy Weight Log History</div>
-                  <div style={{ display: 'inline-flex', gap: '8px' }}>
-                    <input 
-                      className="input" 
-                      style={{ width: '80px', padding: '4px 8px', height: '30px' }} 
-                      type="number" 
-                      step="0.1" 
-                      value={weightVal} 
-                      onChange={(event) => setWeightVal(event.target.value)} 
-                    />
-                    <button 
-                      className="btn btn-primary btn-sm" 
-                      style={{ padding: '4px 10px' }}
-                      onClick={() => {
-                        if (!weightVal) return;
-                        create('weights', { 
-                          petName: pet.name, 
-                          ownerName: ownerName, 
-                          value: Number(weightVal), 
-                          unit: 'lbs', 
-                          date: new Date().toISOString().slice(0, 10), 
-                          note: 'Routine check' 
-                        }).then(() => {
-                          alert('Weight log saved successfully!');
-                        });
-                      }}
-                    >
-                      Log
-                    </button>
-                  </div>
+          </div>
+
+          {/* RIGHT COLUMN: TABS & TIMELINE CONTENT */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            {/* TAB HEADERS */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '24px', paddingBottom: '4px' }}>
+              {[
+                ['Visit History', 'visits'],
+                ['Weight Chart', 'weight'],
+                ['Vaccinations', 'vaccines'],
+                ['Prescriptions', 'prescriptions']
+              ].map(([label, id]) => (
+                <button 
+                  key={id} 
+                  style={{
+                    border: 0,
+                    borderBottom: activeTab === id ? '2px solid var(--brand)' : '2px solid transparent',
+                    background: 'transparent',
+                    padding: '6px 0 10px 0',
+                    fontSize: '14px',
+                    fontWeight: activeTab === id ? '700' : '500',
+                    color: activeTab === id ? 'var(--brand)' : 'var(--text-3)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setActiveTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB CONTENT PANEL */}
+            <div style={{ minHeight: '400px' }}>
+              
+              {/* VISIT HISTORY TIMELINE */}
+              {activeTab === 'visits' && (
+                <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: '24px' }}>
+                  {/* Timeline vertical bar */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '8px',
+                    top: '12px',
+                    bottom: '12px',
+                    width: '2px',
+                    background: 'var(--border)',
+                    zIndex: '1'
+                  }} />
+                  
+                  {petVisits.length > 0 ? (
+                    petVisits.map((visit, index) => {
+                      const visitType = visit.assessment.includes('Vaccinations') ? 'Vaccination' : visit.assessment.includes('Gastro') ? 'Sick visit' : 'Annual Wellness';
+                      const icon = visitType === 'Vaccination' ? '💉' : visitType === 'Sick visit' ? '💊' : '🩺';
+                      const formattedDate = visit.createdAt ? new Date(visit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026';
+                      
+                      return (
+                        <div key={visit._id} style={{ display: 'flex', gap: '16px', marginBottom: '20px', position: 'relative' }}>
+                          {/* Timeline node */}
+                          <div style={{
+                            position: 'absolute',
+                            left: '-26px',
+                            top: '6px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: '#fff',
+                            border: '2px solid var(--brand)',
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: '11px',
+                            zIndex: '2'
+                          }}>
+                            {icon}
+                          </div>
+                          
+                          {/* Timeline Card */}
+                          <div className="panel" style={{ flex: 1, padding: '14px 18px', background: '#fff', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>
+                              {formattedDate} · {visit.vetName || 'Dr. Sarah Chen'} · {visitType}
+                            </div>
+                            <h4 style={{ fontSize: '15px', margin: '0 0 8px 0', fontWeight: '800', color: 'var(--text)' }}>
+                              {visit.assessment.split('.')[0]}
+                            </h4>
+                            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+                              {visit.subjective} {visit.objective} {visit.plan}
+                            </p>
+                            {visit.tags && visit.tags.length > 0 && (
+                              <div className="chips">
+                                {visit.tags.map(t => (
+                                  <span 
+                                    className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`} 
+                                    key={t}
+                                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                                  >
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-3)' }}>No visit history found. Click Start Consultation to log one.</div>
+                  )}
                 </div>
+              )}
 
-                <div className="grid-two" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div className="chart-bars" style={{ height: '140px' }}>
-                      {petWeights.map((row) => (
-                        <div key={row._id} style={{ height: `${Math.min(100, row.value * 2.8)}px` }} title={`${row.value} lbs`} />
-                      ))}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center' }}>
-                      Chronological weight values (lbs)
-                    </div>
-                  </div>
-                  <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                    {petWeights.map((row) => (
-                      <div className="log-row" key={row._id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', padding: '6px 0', fontSize: '12px' }}>
-                        <strong>{row.value} {row.unit || 'lbs'}</strong>
-                        <span style={{ color: 'var(--text-3)' }}>{row.date}</span>
+              {/* WEIGHT CHART TABS */}
+              {activeTab === 'weight' && (() => {
+                const sortedPetWeights = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const petSpecies = currentPet.species || 'Dog';
+                const petBreed = currentPet.breed || 'Golden Retriever';
+                
+                const parsedRange = parseWeightRange(currentPet.weightRange);
+                const idealRange = parsedRange || getIdealRange(petSpecies, petBreed);
+                const idealMin = idealRange.min;
+                const idealMax = idealRange.max;
+                
+                const currentWeightRecord = sortedPetWeights[sortedPetWeights.length - 1];
+                let currentWeight = 32.4;
+                if (currentWeightRecord) {
+                  currentWeight = currentWeightRecord.value;
+                } else if (currentPet.weightRange && !isNaN(parseFloat(currentPet.weightRange))) {
+                  currentWeight = parseFloat(currentPet.weightRange);
+                }
+                const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
+                
+                const previousWeightRecord = sortedPetWeights.length > 1 ? sortedPetWeights[sortedPetWeights.length - 2] : null;
+                const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
+                const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff.toFixed(1)}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ 0.0`;
+                const lastDiffColor = lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+
+                const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
+                const sixMonthsAgo = new Date(latestWeightDate);
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                
+                let sixMonthWeight = currentWeightRecord;
+                for (let i = sortedPetWeights.length - 1; i >= 0; i--) {
+                  if (new Date(sortedPetWeights[i].date) <= sixMonthsAgo) {
+                    sixMonthWeight = sortedPetWeights[i];
+                    break;
+                  }
+                }
+                if (!sixMonthWeight && sortedPetWeights.length > 0) sixMonthWeight = sortedPetWeights[0];
+                
+                const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
+                const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
+                
+                const initialWeight = currentWeight - sixMonthDiff;
+                const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
+                const isSignificant = Math.abs(pctChange) > 5;
+                
+                let sixMonthTrendStr = 'Stable weight trend';
+                let sixMonthDiffColor = 'var(--green)';
+                if (isSignificant) {
+                  sixMonthTrendStr = '⚠ Dietary review recommended';
+                  sixMonthDiffColor = 'var(--amber)';
+                }
+                
+                const isWithinRange = currentWeight >= idealMin && currentWeight <= idealMax;
+                const rangeColor = isWithinRange ? 'var(--green)' : 'var(--amber)';
+                const rangeStr = isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
+
+                const logList = [...sortedPetWeights].reverse();
+                const chartData = sortedPetWeights.slice(-6);
+
+                // Dynamic Weight Graph Scaling
+                const weightValues = chartData.map(w => w.value);
+                let minWeight = Math.min(...weightValues, idealMin);
+                let maxWeight = Math.max(...weightValues, idealMax);
+                
+                const weightRangeDiff = maxWeight - minWeight;
+                const paddingVal = weightRangeDiff > 0 ? weightRangeDiff * 0.15 : 2;
+                minWeight = Math.max(0, minWeight - paddingVal);
+                maxWeight = maxWeight + paddingVal;
+
+                const yRange = 108;
+                const points = chartData.map((w, index) => {
+                  let x = 90;
+                  if (chartData.length > 1) {
+                     x = 90 + (350 / (chartData.length - 1)) * index;
+                  } else {
+                     x = 265;
+                  }
+                  let y = 124;
+                  const diff = maxWeight - minWeight;
+                  if (diff > 0) {
+                    y = 124 - ((w.value - minWeight) / diff) * yRange;
+                  } else {
+                    y = 70;
+                  }
+                  if (y < 16) y = 16;
+                  if (y > 124) y = 124;
+                  return { x, y, value: w.value, dateStr: w.date };
+                });
+
+                const getWeightAtY = (yCoord) => {
+                  const diff = maxWeight - minWeight;
+                  if (diff > 0) {
+                    return (minWeight + ((124 - yCoord) / yRange) * diff).toFixed(1);
+                  }
+                  return minWeight.toFixed(1);
+                };
+
+                let idealYMax = 124;
+                let idealYMin = 16;
+                const diff = maxWeight - minWeight;
+                if (diff > 0) {
+                  idealYMin = 124 - ((idealMax - minWeight) / diff) * yRange;
+                  idealYMax = 124 - ((idealMin - minWeight) / diff) * yRange;
+                }
+                if (idealYMin < 16) idealYMin = 16;
+                if (idealYMin > 124) idealYMin = 124;
+                if (idealYMax < 16) idealYMax = 16;
+                if (idealYMax > 124) idealYMax = 124;
+                
+                const idealHeight = idealYMax - idealYMin;
+                const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+
+                const handleLogWeightInTab = () => {
+                  const val = prompt(`Enter new weight in ${currentUnit} for ${currentPet.name}:`, currentWeight);
+                  if (val && !isNaN(val)) {
+                    create('weights', {
+                      petName: currentPet.name,
+                      ownerName: ownerName,
+                      value: Number(val),
+                      unit: currentUnit,
+                      date: getLocalDateString(),
+                      note: 'Manual entry via profile'
+                    }).then(() => {
+                      window.showToast?.('Weight logged successfully!');
+                    });
+                  }
+                };
+
+                return (
+                  <div className="panel" style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <div className="card-label" style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
+                        Weight Analytics & History
                       </div>
-                    ))}
+                      <button className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={handleLogWeightInTab}>
+                        + Log Weight
+                      </button>
+                    </div>
+
+                    <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>CURRENT WEIGHT</div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+                        <div style={{ fontSize: '10px', color: lastDiffColor, marginTop: '2px', fontWeight: '500' }}>{lastDiffStr} lbs from last visit</div>
+                      </div>
+                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>6-MONTH CHANGE</div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+                        <div style={{ fontSize: '10px', color: sixMonthDiffColor, marginTop: '2px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sixMonthTrendStr}</div>
+                      </div>
+                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>IDEAL RANGE</div>
+                        <div style={{ fontSize: '18px', fontWeight: '700', color: rangeColor }}>{idealMin}–{idealMax} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+                        <div style={{ fontSize: '10px', color: rangeColor, marginTop: '2px', fontWeight: '500' }}>{rangeStr}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '14px' }}>
+                      <div className="card" style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <span className="badge b-blue" style={{ fontSize: '8px', padding: '1px 4px' }}>12m</span>
+                          </div>
+                        </div>
+
+                        <svg viewBox="0 0 500 150" style={{ width: '100%', height: '120px', display: 'block' }}>
+                          <defs>
+                            <linearGradient id="tabBg" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12"/>
+                              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+                            </linearGradient>
+                          </defs>
+                          <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+                          <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+                          <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+                          <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
+                          
+                          <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(16)}</text>
+                          <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(52)}</text>
+                          <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(88)}</text>
+                          <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(124)}</text>
+                          
+                          {points.map(p => (
+                            <text key={p.x} x={p.x} y="142" fontSize="9" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">
+                              {formatMonthSafe(p.dateStr)}
+                            </text>
+                          ))}
+
+                          <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2"/>
+                          
+                          {points.length > 0 && (
+                            <>
+                              <path d={`${pathD} L ${points[points.length-1].x},124 L ${points[0].x},124 Z`} fill="url(#tabBg)"/>
+                              <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              {points.map((p, i) => (
+                                <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2"/>
+                              ))}
+                            </>
+                          )}
+                        </svg>
+                      </div>
+
+                      <div className="card" style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '144px', overflowY: 'auto' }}>
+                        <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: '8px' }}>Visit Log</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {logList.map((row, i) => {
+                            let diffStr = '—';
+                            let diffColor = 'var(--text-3)';
+                            if (i < logList.length - 1) {
+                              const diff = row.value - logList[i+1].value;
+                              if (diff > 0) {
+                                diffStr = `↑ +${diff.toFixed(1)}`;
+                                diffColor = 'var(--amber)';
+                              } else if (diff < 0) {
+                                diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
+                                diffColor = 'var(--green)';
+                              }
+                            }
+                            
+                            return (
+                              <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '11px' }}>
+                                <div style={{ color: 'var(--text-3)', width: '65px' }}>
+                                  {formatDateSafe(row.date)}
+                                </div>
+                                <div style={{ fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                                  {row.value} <span style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit}</span>
+                                </div>
+                                <div style={{ color: diffColor, fontWeight: '500', width: '40px', textAlign: 'right' }}>
+                                  {diffStr}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              })()}
 
-            {/* VACCINATIONS TAB */}
-            {activeTab === 'vaccines' && (
-              <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th style={{ paddingLeft: '14px' }}>Vaccine</th>
-                      <th>Last Administered</th>
-                      <th>Next Due Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {petVax.length > 0 ? (
-                      petVax.map(v => (
-                        <tr key={v._id}>
-                          <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
-                          <td>{v.lastDate || 'N/A'}</td>
-                          <td>{v.dueDate}</td>
-                          <td><Badge value={v.status} /></td>
-                        </tr>
-                      ))
-                    ) : (
+              {/* VACCINATIONS TAB */}
+              {activeTab === 'vaccines' && (
+                <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
+                  <table className="data-table">
+                    <thead>
                       <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
-                          No vaccination logs available
-                        </td>
+                        <th style={{ paddingLeft: '14px' }}>Vaccine</th>
+                        <th>Last Administered</th>
+                        <th>Next Due Date</th>
+                        <th>Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </section>
-            )}
+                    </thead>
+                    <tbody>
+                      {petVax.length > 0 ? (
+                        petVax.map(v => (
+                          <tr key={v._id}>
+                            <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
+                            <td>{v.lastDate || 'N/A'}</td>
+                            <td>{v.dueDate}</td>
+                            <td><Badge value={v.status} /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
+                            No vaccination logs available
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </section>
+              )}
 
-            {/* PRESCRIPTIONS TAB */}
-            {activeTab === 'prescriptions' && (
-              <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th style={{ paddingLeft: '14px' }}>Prescription / Drug</th>
-                      <th>Instructions</th>
-                      <th>Visit Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {petVisits.flatMap(v => {
-                      const list = [];
-                      if (v.plan.includes('Otomax')) {
-                        list.push({ id: v._id + '1', drug: 'Otomax ear drops', instruction: 'Apply Otomax ointment twice daily for 7 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026', status: 'Active' });
-                      }
-                      if (v.plan.includes('Metronidazole')) {
-                        list.push({ id: v._id + '2', drug: 'Metronidazole 250mg', instruction: 'Take twice daily for 5 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025', status: 'Completed' });
-                      }
-                      return list;
-                    }).length > 0 ? (
-                      petVisits.flatMap(v => {
+              {/* PRESCRIPTIONS TAB */}
+              {activeTab === 'prescriptions' && (
+                <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ paddingLeft: '14px' }}>Prescription / Drug</th>
+                        <th>Instructions</th>
+                        <th>Visit Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {petVisits.flatMap(v => {
                         const list = [];
                         if (v.plan.includes('Otomax')) {
                           list.push({ id: v._id + '1', drug: 'Otomax ear drops', instruction: 'Apply Otomax ointment twice daily for 7 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026', status: 'Active' });
@@ -1580,34 +2399,222 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           list.push({ id: v._id + '2', drug: 'Metronidazole 250mg', instruction: 'Take twice daily for 5 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025', status: 'Completed' });
                         }
                         return list;
-                      }).map(p => (
-                        <tr key={p.id}>
-                          <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{p.drug}</td>
-                          <td>{p.instruction}</td>
-                          <td>{p.date}</td>
-                          <td>
-                            <span className={`badge b-${p.status === 'Active' ? 'blue' : 'green'}`}>{p.status}</span>
+                      }).length > 0 ? (
+                        petVisits.flatMap(v => {
+                          const list = [];
+                          if (v.plan.includes('Otomax')) {
+                            list.push({ id: v._id + '1', drug: 'Otomax ear drops', instruction: 'Apply Otomax ointment twice daily for 7 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026', status: 'Active' });
+                          }
+                          if (v.plan.includes('Metronidazole')) {
+                            list.push({ id: v._id + '2', drug: 'Metronidazole 250mg', instruction: 'Take twice daily for 5 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025', status: 'Completed' });
+                          }
+                          return list;
+                        }).map(p => (
+                          <tr key={p.id}>
+                            <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{p.drug}</td>
+                            <td>{p.instruction}</td>
+                            <td>{p.date}</td>
+                            <td>
+                              <span className={`badge b-${p.status === 'Active' ? 'blue' : 'green'}`}>{p.status}</span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
+                            No active or completed prescriptions logged
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
-                          No active or completed prescriptions logged
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </section>
-            )}
+                      )}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+
+            </div>
 
           </div>
 
         </div>
+      </Screen>
+      {isEditModalOpen && (
+        <PetEditModal 
+          pet={currentPet} 
+          owner={owner} 
+          onClose={() => setIsEditModalOpen(false)} 
+          onSave={handleSavePetDetails} 
+        />
+      )}
+    </>
+  );
+}
 
-      </div>
-    </Screen>
+function PetEditModal({ pet, owner, onClose, onSave }) {
+  const [microchip, setMicrochip] = useState(pet.microchip || '');
+  const [insurance, setInsurance] = useState(pet.insurance || '');
+  const [bloodType, setBloodType] = useState(pet.bloodType || '');
+  const [weight, setWeight] = useState(pet.weightRange || '');
+
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (wrapRef.current) {
+        wrapRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 60);
+  }, []);
+
+  const speciesKey = String(pet.species || 'Dog').toLowerCase();
+  let bloodGroupOptions = [];
+  if (speciesKey.includes('dog')) {
+    bloodGroupOptions = ['DEA 1.1 Positive', 'DEA 1.1 Negative', 'DEA 1.2', 'DEA 3', 'DEA 4', 'DEA 5', 'DEA 7'];
+  } else if (speciesKey.includes('cat')) {
+    bloodGroupOptions = ['A', 'B', 'AB'];
+  } else if (speciesKey.includes('rabbit')) {
+    bloodGroupOptions = ['A', 'B'];
+  } else if (speciesKey.includes('bird') || speciesKey.includes('parrot')) {
+    bloodGroupOptions = ['Unknown', 'Not Tested'];
+  } else {
+    bloodGroupOptions = ['Unknown', 'Not Tested'];
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({
+      microchip: microchip || undefined,
+      insurance: insurance || undefined,
+      bloodType: bloodType || undefined,
+      weightRange: weight || undefined
+    });
+  };
+
+  return (
+    <div 
+      ref={wrapRef}
+      className="modal-wrap"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        overflowY: 'auto',
+        padding: '24px 16px'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section 
+        className="modal client-modal-card"
+        style={{
+          width: 'min(480px, calc(100% - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
+          background: 'white',
+          borderRadius: '12px',
+          padding: '22px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 'auto'
+        }}
+      >
+        <div className="modal-hd" style={{ flexShrink: 0 }}>
+          <h3>Edit Medical Profile</h3>
+          <button type="button" className="modal-x" onClick={onClose}>×</button>
+        </div>
+        
+        <form 
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            marginBottom: '18px', 
+            maxHeight: 'calc(100vh - 220px)', 
+            overflowY: 'auto', 
+            paddingRight: '6px',
+            minHeight: 0,
+            flex: 1
+          }}>
+            
+            <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginBottom: '8px' }}>
+              Medical & Profile Extensions ({pet.name})
+            </div>
+
+            <label className="field-label">
+              Microchip #
+              <input 
+                className="input" 
+                placeholder="Not Provided" 
+                value={microchip} 
+                onChange={e => setMicrochip(e.target.value)} 
+              />
+            </label>
+
+            <label className="field-label">
+              Insurance
+              <input 
+                className="input" 
+                placeholder="e.g. Nationwide, Trupanion" 
+                value={insurance} 
+                onChange={e => setInsurance(e.target.value)} 
+              />
+            </label>
+
+            <label className="field-label">
+              Blood Group
+              <select 
+                className="input" 
+                value={bloodType} 
+                onChange={e => setBloodType(e.target.value)}
+              >
+                <option value="">Not Provided</option>
+                {bloodGroupOptions.map(bg => (
+                  <option key={bg} value={bg}>{bg}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-label">
+              Weight (lbs)
+              <input 
+                className="input" 
+                type="number" 
+                step="0.1" 
+                placeholder="Not Provided" 
+                value={weight} 
+                onChange={e => setWeight(e.target.value)} 
+              />
+            </label>
+
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            justifyContent: 'flex-end', 
+            borderTop: '1px solid var(--border)', 
+            paddingTop: '14px',
+            flexShrink: 0,
+            flexWrap: 'wrap'
+          }}>
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
@@ -1627,7 +2634,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   const [activeSubTab, setActiveSubTab] = useState('today');
 
   const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    return getLocalDateString();
   });
   const [selectedVet, setSelectedVet] = useState(vets[0] || null);
   const [visitType, setVisitType] = useState('Annual Wellness Exam');
@@ -1657,13 +2664,37 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     return clients.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
   }, [clients, searchQuery]);
 
-  const allPossibleSlots = ['09:00', '09:15', '09:30', '09:45', '10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45' ,'12:00' , '21:00'];
+  const allPossibleSlots = useMemo(() => {
+    const slots = [];
+    let startHour = 9;
+    let startMin = 0;
+    while (startHour < 18) {
+      const sh = String(startHour).padStart(2, '0');
+      const sm = String(startMin).padStart(2, '0');
+      
+      let endMin = startMin + 30;
+      let endHour = startHour;
+      if (endMin >= 60) {
+        endMin = 0;
+        endHour += 1;
+      }
+      const eh = String(endHour).padStart(2, '0');
+      const em = String(endMin).padStart(2, '0');
+      
+      slots.push(`${sh}:${sm}-${eh}:${em}`);
+      
+      startHour = endHour;
+      startMin = endMin;
+    }
+    return slots;
+  }, []);
 
   const getSlotStatus = (slotTime) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     if (selectedDate === todayStr) {
       const now = new Date();
-      const [sh, sm] = slotTime.split(':');
+      const actualTime = slotTime.includes('-') ? slotTime.split('-')[0] : slotTime;
+      const [sh, sm] = actualTime.split(':');
       const slotDateTime = new Date();
       slotDateTime.setHours(parseInt(sh), parseInt(sm), 0, 0);
       if (slotDateTime <= now) {
@@ -1676,7 +2707,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       if (appt.date !== selectedDate) return false;
       if (selectedVet && appt.vetName !== selectedVet.name) return false;
       const apptTime = appt.time.replace(/\s*[AP]M\s*$/i, '');
-      return apptTime === normalizedTime && appt.status !== 'Cancelled';
+      const apptStart = apptTime.includes('-') ? apptTime.split('-')[0] : apptTime;
+      const slotStart = normalizedTime.includes('-') ? normalizedTime.split('-')[0] : normalizedTime;
+      return (apptTime === normalizedTime || apptStart === slotStart) && appt.status !== 'Cancelled';
     });
 
     if (isBooked) return 'booked';
@@ -1718,6 +2751,17 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
 
   const format12h = (t) => {
     if (!t) return '';
+    if (t.includes('-')) {
+      const parts = t.split('-');
+      const formatSingle = (singleT) => {
+        const [h, m] = singleT.split(':');
+        const hr = parseInt(h);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const hr12 = hr % 12 || 12;
+        return `${hr12}:${m} ${ampm}`;
+      };
+      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+    }
     const [h, m] = t.split(':');
     const hr = parseInt(h);
     const ampm = hr >= 12 ? 'PM' : 'AM';
@@ -1734,11 +2778,14 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     return '🐾';
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   const getFilteredAppointments = () => {
     if (activeSubTab === 'today') {
-      return appointments.filter(a => a.date === todayStr);
+      return appointments.filter(a => {
+        const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
+        return apptDateOnly === todayStr;
+      });
     }
     if (activeSubTab === 'week') {
       const today = new Date();
@@ -1755,7 +2802,16 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       });
     }
     if (activeSubTab === 'upcoming') {
-      return appointments.filter(a => a.date > todayStr);
+      return appointments.filter(a => {
+        if (a.status === 'Completed') return false;
+        const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
+        if (apptDateOnly > todayStr) return true;
+        if (apptDateOnly === todayStr) {
+          const apptDateTime = parseApptDateTime(a.date, a.time);
+          return apptDateTime > new Date();
+        }
+        return false;
+      });
     }
     return appointments;
   };
@@ -2095,6 +3151,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                   <option value="Vaccination Appointment">Vaccination Appointment</option>
                   <option value="Follow-up Checkup">Follow-up Checkup</option>
                   <option value="Dental Scaling & Cleaning">Dental Scaling & Cleaning</option>
+                  <option value="Wellness Spa">Wellness Spa</option>
                 </select>
               </label>
             </div>
@@ -2108,7 +3165,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               Green = available · Grey = booked/disabled · Blue = selected
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
               {allPossibleSlots.map((slot) => {
                 const status = getSlotStatus(slot);
                 const formattedTime = format12h(slot);
@@ -2155,7 +3212,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                     onClick={handleClickSlot}
                     disabled={status === 'past' || status === 'booked'}
                   >
-                    {formattedTime.replace(' AM', '').replace(' PM', '')}
+                    {slot.includes('-') ? formattedTime : formattedTime.replace(' AM', '').replace(' PM', '')}
                     {status === 'selected' ? ' ✓' : ''}
                   </button>
                 );
@@ -2456,25 +3513,47 @@ function Weights({ weights, create, activePet, clients, go }) {
   
   let ownerName = 'James Martinez';
   if (clients) {
-    const owner = clients.find(c => c.pets && c.pets.some(p => p.name === pet.name));
+    const owner = clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase()));
     if (owner) ownerName = owner.name;
   }
 
+  // Resilient case-insensitive name mapping
   const petWeights = [...weights]
-    .filter(w => w.petName === pet.name)
+    .filter(w => w.petName.toLowerCase() === pet.name.toLowerCase())
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  // Determine species & breed from DB dynamically
+  const clientOwner = clients ? clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase())) : null;
+  const petInDb = clientOwner ? clientOwner.pets.find(p => p.name.toLowerCase() === pet.name.toLowerCase()) : null;
+  const petSpecies = petInDb ? petInDb.species : (pet.species || 'Dog');
+  const petBreed = petInDb ? petInDb.breed : (pet.breed || 'Golden Retriever');
+
+  // Resolve ideal range dynamically from pet.weightRange or shared species/breed-aware helper
+  const parsedRange = parseWeightRange(pet.weightRange);
+  const idealRange = parsedRange || getIdealRange(petSpecies, petBreed);
+  const idealMin = idealRange.min;
+  const idealMax = idealRange.max;
+
   const currentWeightRecord = petWeights[petWeights.length - 1];
-  const currentWeight = currentWeightRecord ? currentWeightRecord.value : 32.4;
+  
+  let currentWeight = 32.4;
+  if (currentWeightRecord) {
+    currentWeight = currentWeightRecord.value;
+  } else if (pet.weightRange && !isNaN(parseFloat(pet.weightRange))) {
+    currentWeight = parseFloat(pet.weightRange);
+  }
   const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
   
   const previousWeightRecord = petWeights.length > 1 ? petWeights[petWeights.length - 2] : null;
-  const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value).toFixed(1) : '0.0';
-  const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ ${lastDiff}`;
+  const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
+  const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff.toFixed(1)}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ 0.0`;
   const lastDiffColor = lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
 
-  const sixMonthsAgo = new Date();
+  // Calculate 6-month change relative to latest weight record's date for run-date independence
+  const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
+  const sixMonthsAgo = new Date(latestWeightDate);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  
   let sixMonthWeight = currentWeightRecord;
   for (let i = petWeights.length - 1; i >= 0; i--) {
     if (new Date(petWeights[i].date) <= sixMonthsAgo) {
@@ -2484,12 +3563,21 @@ function Weights({ weights, create, activePet, clients, go }) {
   }
   if (!sixMonthWeight && petWeights.length > 0) sixMonthWeight = petWeights[0];
   
-  const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value).toFixed(1) : '0.0';
-  const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff}` : sixMonthDiff;
-  const sixMonthDiffColor = sixMonthDiff > 0 ? 'var(--amber)' : sixMonthDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+  const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
+  const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
+  
+  // Calculate percentage-based clinical significance (species-aware!)
+  const initialWeight = currentWeight - sixMonthDiff;
+  const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
+  const isSignificant = Math.abs(pctChange) > 5; // 5% threshold
 
-  const idealMin = 29;
-  const idealMax = 34;
+  let sixMonthTrendStr = 'Stable weight trend';
+  let sixMonthDiffColor = 'var(--green)';
+  if (isSignificant) {
+    sixMonthTrendStr = '⚠ Dietary review recommended';
+    sixMonthDiffColor = 'var(--amber)';
+  }
+
   const isWithinRange = currentWeight >= idealMin && currentWeight <= idealMax;
   const rangeColor = isWithinRange ? 'var(--green)' : 'var(--amber)';
   const rangeStr = isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
@@ -2497,6 +3585,17 @@ function Weights({ weights, create, activePet, clients, go }) {
   const logList = [...petWeights].reverse();
   const chartData = petWeights.slice(-6); 
   
+  // Dynamic Weight Graph Scaling
+  const weightValues = chartData.map(w => w.value);
+  let minWeight = Math.min(...weightValues, idealMin);
+  let maxWeight = Math.max(...weightValues, idealMax);
+  
+  const weightRangeDiff = maxWeight - minWeight;
+  const paddingVal = weightRangeDiff > 0 ? weightRangeDiff * 0.15 : 2;
+  minWeight = Math.max(0, minWeight - paddingVal);
+  maxWeight = maxWeight + paddingVal;
+
+  const yRange = 108;
   const points = chartData.map((w, index) => {
     let x = 90;
     if (chartData.length > 1) {
@@ -2504,11 +3603,39 @@ function Weights({ weights, create, activePet, clients, go }) {
     } else {
        x = 265;
     }
-    let y = 124 - (w.value - 28) * 15;
+    let y = 124;
+    const diff = maxWeight - minWeight;
+    if (diff > 0) {
+      y = 124 - ((w.value - minWeight) / diff) * yRange;
+    } else {
+      y = 70;
+    }
     if (y < 16) y = 16;
     if (y > 124) y = 124;
-    return { x, y, value: w.value, date: new Date(w.date) };
+    return { x, y, value: w.value, dateStr: w.date };
   });
+
+  const getWeightAtY = (yCoord) => {
+    const diff = maxWeight - minWeight;
+    if (diff > 0) {
+      return (minWeight + ((124 - yCoord) / yRange) * diff).toFixed(1);
+    }
+    return minWeight.toFixed(1);
+  };
+
+  let idealYMax = 124;
+  let idealYMin = 16;
+  const diff = maxWeight - minWeight;
+  if (diff > 0) {
+    idealYMin = 124 - ((idealMax - minWeight) / diff) * yRange;
+    idealYMax = 124 - ((idealMin - minWeight) / diff) * yRange;
+  }
+  if (idealYMin < 16) idealYMin = 16;
+  if (idealYMin > 124) idealYMin = 124;
+  if (idealYMax < 16) idealYMax = 16;
+  if (idealYMax > 124) idealYMax = 124;
+  
+  const idealHeight = idealYMax - idealYMin;
 
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
 
@@ -2520,8 +3647,10 @@ function Weights({ weights, create, activePet, clients, go }) {
         ownerName: ownerName, 
         value: Number(val), 
         unit: currentUnit, 
-        date: new Date().toISOString().slice(0, 10), 
+        date: getLocalDateString(), 
         note: 'Manual entry' 
+      }).then(() => {
+        window.showToast?.('Weight logged successfully!');
       });
     }
   };
@@ -2538,22 +3667,22 @@ function Weights({ weights, create, activePet, clients, go }) {
               Weight Tracker — <span style={{ color: 'var(--brand)' }}>{pet.emoji || '🐕'} {pet.name}</span>
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
-              {pet.breed || 'Golden Retriever'} · {pet.age || '4 yrs'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
+              {petBreed} · {pet.age || '4 yrs'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
             </div>
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleLogWeight}>+ Log Weight</button>
         </div>
-
+        
         <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '18px' }}>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
-            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
             <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr} {currentUnit} from last visit</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>6-MONTH CHANGE</div>
             <div style={{ fontSize: '30px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-            <div style={{ fontSize: '11px', color: sixMonthDiffColor, marginTop: '3px', fontWeight: '500' }}>{sixMonthDiff > 1 ? '⚠ Dietary review recommended' : 'Stable weight trend'}</div>
+            <div style={{ fontSize: '11px', color: sixMonthDiffColor, marginTop: '3px', fontWeight: '500' }}>{sixMonthTrendStr}</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>IDEAL RANGE</div>
@@ -2587,18 +3716,18 @@ function Weights({ weights, create, activePet, clients, go }) {
               <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
               <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
               
-              <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">34</text>
-              <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">32</text>
-              <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">30</text>
-              <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">28</text>
+              <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(16)}</text>
+              <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(52)}</text>
+              <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(88)}</text>
+              <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(124)}</text>
               
               {points.map(p => (
                 <text key={p.x} x={p.x} y="142" fontSize="9" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">
-                  {p.date.toLocaleString('default', { month: 'short' })}
+                  {formatMonthSafe(p.dateStr)}
                 </text>
               ))}
 
-              <rect x="44" y="16" width="446" height="108" fill="#16A34A" fillOpacity="0.04" rx="2"/>
+              <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2"/>
               
               {points.length > 0 && (
                 <>
@@ -2616,15 +3745,15 @@ function Weights({ weights, create, activePet, clients, go }) {
             <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>Visit Log</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {logList.map((row, i) => {
-                let diffStr = '→ —';
+                let diffStr = '—';
                 let diffColor = 'var(--text-3)';
                 if (i < logList.length - 1) {
-                  const diff = (row.value - logList[i+1].value).toFixed(1);
+                  const diff = row.value - logList[i+1].value;
                   if (diff > 0) {
-                    diffStr = `↑ +${diff}`;
+                    diffStr = `↑ +${diff.toFixed(1)}`;
                     diffColor = 'var(--amber)';
                   } else if (diff < 0) {
-                    diffStr = `↓ ${Math.abs(diff).toFixed(1)}`;
+                    diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
                     diffColor = 'var(--green)';
                   }
                 }
@@ -2632,12 +3761,12 @@ function Weights({ weights, create, activePet, clients, go }) {
                 return (
                   <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-3)', width: '70px' }}>
-                      {new Date(row.date).toLocaleString('default', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatDateSafe(row.date)}
                     </div>
                     <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
                       {row.value} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit}</span>
                     </div>
-                    <div style={{ fontSize: '11px', color: diffColor, fontWeight: '500', width: '40px', textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: diffColor, fontWeight: '500', width: '45px', textAlign: 'right' }}>
                       {diffStr}
                     </div>
                   </div>
@@ -2902,14 +4031,44 @@ function VetModal({ vet, onClose, onSave }) {
   );
 }
 
-function ClientModal({ onClose, onSave }) {
-  const [ownerName, setOwnerName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+function ClientModal({ onClose, onSave, client }) {
+  const [ownerName, setOwnerName] = useState(client ? client.name : '');
+  const [email, setEmail] = useState(client ? client.email : '');
+  const [phone, setPhone] = useState(client ? client.phone : '');
   
-  const [pets, setPets] = useState([
-    { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes' }
-  ]);
+  const [pets, setPets] = useState(() => {
+    if (client && client.pets && client.pets.length > 0) {
+      return client.pets.map(p => ({
+        _id: p._id,
+        name: p.name || '',
+        species: p.species || 'Dog',
+        breed: p.breed || '',
+        dob: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
+        sex: p.sex || 'Male',
+        microchip: p.microchip || '',
+        spayedNeutered: p.spayedNeutered || 'Yes',
+        petId: p.petId,
+        alerts: p.alerts
+      }));
+    }
+    return [
+      { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes' }
+    ];
+  });
+
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (wrapRef.current) {
+        wrapRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      const modalEl = document.querySelector('.client-modal-card');
+      if (modalEl) {
+        modalEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }, []);
 
   const addAnotherPet = () => {
     setPets([
@@ -2957,6 +4116,7 @@ function ClientModal({ onClose, onSave }) {
     }
 
     const savedPets = pets.map(p => ({
+      _id: p._id || undefined,
       name: p.name,
       species: p.species,
       breed: p.breed || undefined,
@@ -2964,8 +4124,8 @@ function ClientModal({ onClose, onSave }) {
       sex: p.sex,
       microchip: p.microchip || undefined,
       spayedNeutered: p.spayedNeutered,
-      petId: `PET-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      alerts: []
+      petId: p.petId || `PET-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      alerts: p.alerts || []
     }));
 
     onSave({
@@ -2989,193 +4149,256 @@ function ClientModal({ onClose, onSave }) {
   };
 
   return (
-    <Modal title="Register New Client & Pets" onClose={onClose}>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px', maxHeight: '520px', overflowY: 'auto', paddingRight: '6px' }}>
-          
-          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
-            Step 1 — Owner details
-          </div>
-          
-          <label className="field-label">
-            Owner Full Name *
-            <input 
-              className="input" 
-              required 
-              placeholder="e.g. James Martinez" 
-              value={ownerName} 
-              onChange={e => setOwnerName(e.target.value)} 
-            />
-          </label>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <label className="field-label">
-              Email *
-              <input 
-                className="input" 
-                required 
-                type="email" 
-                placeholder="e.g. james.m@email.com"
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-              />
-            </label>
-            <label className="field-label">
-              Phone *
-              <input 
-                className="input" 
-                required 
-                placeholder="10 digits" 
-                pattern="\d{10}" 
-                title="Phone number must be exactly 10 digits (numeric only)"
-                value={phone} 
-                onChange={e => setPhone(e.target.value)} 
-              />
-            </label>
-          </div>
-
-          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginTop: '8px' }}>
-            Step 2 — Pet details (can register multiple pets)
-          </div>
-
-          {pets.map((pet, index) => (
-            <div key={index} style={{
-              border: '1px dashed #cbd5e1',
-              borderRadius: '8px',
-              padding: '14px',
-              marginBottom: '10px',
-              background: '#f8fafc',
-              position: 'relative'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <strong style={{ fontSize: '12px', color: 'var(--brand)' }}>Pet #{index + 1}</strong>
-                {pets.length > 1 && (
-                  <button 
-                    type="button" 
-                    style={{
-                      border: 0,
-                      background: 'transparent',
-                      color: 'var(--red)',
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => removePetForm(index)}
-                  >
-                    ✕ Remove Pet
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <label className="field-label">
-                    Pet Name *
-                    <input 
-                      className="input" 
-                      required 
-                      placeholder="e.g. Buddy" 
-                      value={pet.name} 
-                      onChange={e => handleUpdatePetField(index, 'name', e.target.value)} 
-                    />
-                  </label>
-                  <label className="field-label">
-                    Species *
-                    <select 
-                      className="input" 
-                      value={pet.species} 
-                      onChange={e => handleUpdatePetField(index, 'species', e.target.value)}
-                    >
-                      {speciesOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
-                  <label className="field-label">
-                    Breed
-                    <select 
-                      className="input" 
-                      value={pet.breed} 
-                      onChange={e => handleUpdatePetField(index, 'breed', e.target.value)}
-                    >
-                      <option value="">Select breed</option>
-                      {(breedOptions[pet.species] || ['Other']).map(b => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-label">
-                    Date of Birth
-                    <input 
-                      className="input" 
-                      type="date" 
-                      value={pet.dob} 
-                      onChange={e => handleUpdatePetField(index, 'dob', e.target.value)} 
-                    />
-                  </label>
-                  <label className="field-label">
-                    Sex
-                    <select 
-                      className="input" 
-                      value={pet.sex} 
-                      onChange={e => handleUpdatePetField(index, 'sex', e.target.value)}
-                    >
-                      {sexOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <label className="field-label">
-                    Microchip #
-                    <input 
-                      className="input" 
-                      placeholder="Optional" 
-                      value={pet.microchip} 
-                      onChange={e => handleUpdatePetField(index, 'microchip', e.target.value)} 
-                    />
-                  </label>
-                  <label className="field-label">
-                    Spayed / Neutered
-                    <select 
-                      className="input" 
-                      value={pet.spayedNeutered} 
-                      onChange={e => handleUpdatePetField(index, 'spayedNeutered', e.target.value)}
-                    >
-                      {spayedOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
-                </div>
-              </div>
+    <div 
+      ref={wrapRef}
+      className="modal-wrap"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        overflowY: 'auto',
+        padding: '24px 16px'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section 
+        className="modal client-modal-card"
+        style={{
+          width: 'min(560px, calc(100% - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
+          background: 'white',
+          borderRadius: '12px',
+          padding: '22px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 'auto'
+        }}
+      >
+        <div className="modal-hd" style={{ flexShrink: 0 }}>
+          <h3>{client ? "Edit Client & Pets Details" : "Register New Client & Pets"}</h3>
+          <button type="button" className="modal-x" onClick={onClose}>×</button>
+        </div>
+        
+        <form 
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1
+          }}
+        >
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            marginBottom: '18px', 
+            maxHeight: 'calc(100vh - 220px)', 
+            overflowY: 'auto', 
+            paddingRight: '6px',
+            minHeight: 0,
+            flex: 1
+          }}>
+            
+            <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
+              Step 1 — Owner details
             </div>
-          ))}
+            
+            <label className="field-label">
+              Owner Full Name *
+              <input 
+                className="input" 
+                required 
+                placeholder="e.g. James Martinez" 
+                value={ownerName} 
+                onChange={e => setOwnerName(e.target.value)} 
+              />
+            </label>
 
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{
-              border: '1px dashed var(--brand)',
-              color: 'var(--brand)',
-              background: '#f0f9ff',
-              width: '100%',
-              padding: '10px',
-              justifyContent: 'center',
-              fontWeight: '700'
-            }}
-            onClick={addAnotherPet}
-          >
-            ➕ Add Another Pet
-          </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <label className="field-label">
+                Email *
+                <input 
+                  className="input" 
+                  required 
+                  type="email" 
+                  placeholder="e.g. james.m@email.com"
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                />
+              </label>
+              <label className="field-label">
+                Phone *
+                <input 
+                  className="input" 
+                  required 
+                  placeholder="10 digits" 
+                  pattern="\d{10}" 
+                  title="Phone number must be exactly 10 digits (numeric only)"
+                  value={phone} 
+                  onChange={e => setPhone(e.target.value)} 
+                />
+              </label>
+            </div>
 
-        </div>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginTop: '8px' }}>
+              Step 2 — Pet details (can register multiple pets)
+            </div>
 
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-          <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">Create & Continue</button>
-        </div>
-      </form>
-    </Modal>
+            {pets.map((pet, index) => (
+              <div key={index} style={{
+                border: '1px dashed #cbd5e1',
+                borderRadius: '8px',
+                padding: '14px',
+                marginBottom: '10px',
+                background: '#f8fafc',
+                position: 'relative'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <strong style={{ fontSize: '12px', color: 'var(--brand)' }}>Pet #{index + 1}</strong>
+                  {pets.length > 1 && (
+                    <button 
+                      type="button" 
+                      style={{
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--red)',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => removePetForm(index)}
+                    >
+                      ✕ Remove Pet
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <label className="field-label">
+                      Pet Name *
+                      <input 
+                        className="input" 
+                        required 
+                        placeholder="e.g. Buddy" 
+                        value={pet.name} 
+                        onChange={e => handleUpdatePetField(index, 'name', e.target.value)} 
+                      />
+                    </label>
+                    <label className="field-label">
+                      Species *
+                      <select 
+                        className="input" 
+                        value={pet.species} 
+                        onChange={e => handleUpdatePetField(index, 'species', e.target.value)}
+                      >
+                        {speciesOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
+                    <label className="field-label">
+                      Breed
+                      <select 
+                        className="input" 
+                        value={pet.breed} 
+                        onChange={e => handleUpdatePetField(index, 'breed', e.target.value)}
+                      >
+                        <option value="">Select breed</option>
+                        {(breedOptions[pet.species] || ['Other']).map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field-label">
+                      Date of Birth
+                      <input 
+                        className="input" 
+                        type="date" 
+                        value={pet.dob} 
+                        onChange={e => handleUpdatePetField(index, 'dob', e.target.value)} 
+                      />
+                    </label>
+                    <label className="field-label">
+                      Sex
+                      <select 
+                        className="input" 
+                        value={pet.sex} 
+                        onChange={e => handleUpdatePetField(index, 'sex', e.target.value)}
+                      >
+                        {sexOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <label className="field-label">
+                      Microchip #
+                      <input 
+                        className="input" 
+                        placeholder="Optional" 
+                        value={pet.microchip} 
+                        onChange={e => handleUpdatePetField(index, 'microchip', e.target.value)} 
+                      />
+                    </label>
+                    <label className="field-label">
+                      Spayed / Neutered
+                      <select 
+                        className="input" 
+                        value={pet.spayedNeutered} 
+                        onChange={e => handleUpdatePetField(index, 'spayedNeutered', e.target.value)}
+                      >
+                        {spayedOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button 
+              type="button" 
+              className="btn btn-outline" 
+              style={{
+                border: '1px dashed var(--brand)',
+                color: 'var(--brand)',
+                background: '#f0f9ff',
+                width: '100%',
+                padding: '10px',
+                justifyContent: 'center',
+                fontWeight: '700'
+              }}
+              onClick={addAnotherPet}
+            >
+              ➕ Add Another Pet
+            </button>
+
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            justifyContent: 'flex-end', 
+            borderTop: '1px solid var(--border)', 
+            paddingTop: '14px',
+            flexShrink: 0,
+            flexWrap: 'wrap'
+          }}>
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
