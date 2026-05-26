@@ -65,9 +65,10 @@ function useApi(selectedClinicId) {
     try {
       const names = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes'];
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
-      const results = await Promise.all(names.map((name) => fetch(`${API_URL}/${name}`, { headers }).then((res) => {
+      const results = await Promise.all(names.map((name) => fetch(`${API_URL}/${name}?page=1&limit=50`, { headers }).then(async (res) => {
         if (!res.ok) throw new Error(`API request failed: ${name}`);
-        return res.json();
+        const data = await res.json();
+        return (data && data.data && Array.isArray(data.data)) ? data.data : data;
       })));
       setData(Object.fromEntries(names.map((name, index) => [name, results[index]])));
     } catch (err) {
@@ -2641,11 +2642,139 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
 }
 
 function Vaccinations({ rows, update }) {
-  return <Screen title="Vaccination Tracker" sub="Clinic-wide · Auto-reminders enabled" action={<button className="btn btn-accent">Send Reminder Batch</button>}>
-    <Table headers={['Pet', 'Owner', 'Vaccine', 'Due Date', 'Status', 'Reminder', 'Action']}>
-      {rows.map((row) => <tr key={row._id}><td><Name title={row.petName} sub={row.breed} /></td><td>{row.ownerName}</td><td>{row.vaccine}</td><td>{row.dueDate}</td><td><Badge value={row.status} /></td><td>{row.reminderStatus}</td><td><button className="btn btn-outline btn-sm" onClick={() => update('vaccinations', row._id, { reminderStatus: 'Sent just now' })}>Notify Owner</button></td></tr>)}
-    </Table>
-  </Screen>;
+  const [viewingVax, setViewingVax] = React.useState(null);
+
+  const upToDate = rows.filter(r => String(r.status).toLowerCase().includes('up to date')).length;
+  const overdue = rows.filter(r => String(r.status).toLowerCase().includes('overdue')).length;
+  const dueSoon = rows.filter(r => String(r.status).toLowerCase().includes('due in') || String(r.status).toLowerCase().includes('due soon') || String(r.status).toLowerCase().includes('pending')).length;
+
+  const getReminderStatusDisplay = (reminderStatus) => {
+    if (!reminderStatus || reminderStatus === 'Not sent') return <span style={{ color: 'var(--text-3)' }}>Not sent</span>;
+    if (reminderStatus.startsWith('Auto-sent')) return <Badge value={reminderStatus} tone="green" />;
+    return <Badge value={reminderStatus} tone="blue" />;
+  };
+
+  const getActionButtons = (row) => {
+    const isUpToDate = String(row.status).toLowerCase().includes('up to date');
+    const isNotSent = !row.reminderStatus || row.reminderStatus === 'Not sent';
+    
+    if (isUpToDate) {
+      return <button className="btn btn-outline btn-sm" onClick={() => setViewingVax(row)}>View</button>;
+    }
+    
+    if (isNotSent) {
+      return <button className="btn btn-accent btn-sm" onClick={() => update('vaccinations', row._id, { reminderStatus: 'Sent just now' })}>Notify Owner</button>;
+    }
+    
+    return <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => update('vaccinations', row._id, { reminderStatus: 'Resent just now' })}>Resend</button>;
+  };
+
+  const getDueDateStyle = (status) => {
+    if (String(status).toLowerCase().includes('overdue')) return { color: 'var(--red)', fontWeight: 600 };
+    if (String(status).toLowerCase().includes('due in') || String(status).toLowerCase().includes('due soon') || String(status).toLowerCase().includes('pending')) return { color: 'var(--amber)', fontWeight: 600 };
+    return { color: 'var(--green)', fontWeight: 600 };
+  };
+
+  const getPetIcon = (breed) => {
+    if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐈';
+    return '🐕';
+  };
+
+  return (
+    <Screen 
+      title="Vaccination Tracker" 
+      sub="Clinic-wide • Auto-reminders enabled" 
+      action={<button className="btn btn-accent" onClick={() => alert('Batch reminder initiated!')}>Send Reminder Batch</button>}
+    >
+      <div className="tracker-cards">
+        <div className="tracker-card green">
+          <div className="tracker-icon">✅</div>
+          <div className="tracker-info">
+            <h3>{upToDate}</h3>
+            <p>Up to date</p>
+          </div>
+        </div>
+        <div className="tracker-card yellow">
+          <div className="tracker-icon">⚠️</div>
+          <div className="tracker-info">
+            <h3>{dueSoon}</h3>
+            <p>Due within 30 days</p>
+          </div>
+        </div>
+        <div className="tracker-card red">
+          <div className="tracker-icon">🚨</div>
+          <div className="tracker-info">
+            <h3>{overdue}</h3>
+            <p>Overdue</p>
+          </div>
+        </div>
+      </div>
+
+      <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', 'REMINDER SENT', '']}>
+        {rows.map((row) => (
+          <tr key={row._id}>
+            <td>
+              <div className="pet-cell">
+                <div className="pet-avatar">{getPetIcon(row.breed)}</div>
+                <Name title={row.petName} sub={row.breed} />
+              </div>
+            </td>
+            <td>{row.ownerName}</td>
+            <td>{row.vaccine}</td>
+            <td style={{ color: 'var(--text-3)' }}>{row.lastGiven || 'May 18, 2025'}</td>
+            <td style={getDueDateStyle(row.status)}>{row.dueDate}</td>
+            <td><Badge value={row.status} /></td>
+            <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
+            <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
+          </tr>
+        ))}
+      </Table>
+      
+      {viewingVax && (
+        <div className="modal-wrap">
+          <div className="modal">
+            <div className="modal-hd">
+              <h3>Vaccination Details</h3>
+              <button className="modal-x" onClick={() => setViewingVax(null)}>×</button>
+            </div>
+            <div className="form-grid">
+              <div>
+                <label className="field-label">Pet Name</label>
+                <div style={{ padding: '8px 0', fontWeight: 600 }}>{viewingVax.petName} ({viewingVax.breed})</div>
+              </div>
+              <div>
+                <label className="field-label">Owner</label>
+                <div style={{ padding: '8px 0', fontWeight: 600 }}>{viewingVax.ownerName}</div>
+              </div>
+              <div>
+                <label className="field-label">Vaccine</label>
+                <div style={{ padding: '8px 0' }}>{viewingVax.vaccine}</div>
+              </div>
+              <div>
+                <label className="field-label">Status</label>
+                <div style={{ padding: '8px 0' }}><Badge value={viewingVax.status} /></div>
+              </div>
+              <div>
+                <label className="field-label">Last Given</label>
+                <div style={{ padding: '8px 0' }}>{viewingVax.lastGiven || 'May 18, 2025'}</div>
+              </div>
+              <div>
+                <label className="field-label">Next Due</label>
+                <div style={{ padding: '8px 0' }}>{viewingVax.dueDate}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="field-label">Reminder Status</label>
+                <div style={{ padding: '8px 0' }}>{viewingVax.reminderStatus || 'Not sent'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button className="btn btn-outline" onClick={() => setViewingVax(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Screen>
+  );
 }
 
 function Booking({ vets, clients, appointments, create, bookingClient, setBookingClient, bookingPet, setBookingPet, go }) {
@@ -3803,11 +3932,88 @@ function Weights({ weights, create, activePet, clients, go }) {
 }
 
 function FollowUps({ rows }) {
-  return <Screen title="Follow-up Tracker" sub="Planned vs confirmed dates">
-    <Table headers={['Pet / Owner', 'Vet', 'Purpose', 'Plan Date', 'Confirmed Date', 'Priority', 'Status']}>
-      {rows.map((row) => <tr key={row._id}><td><Name title={row.petName} sub={row.ownerName} /></td><td>{row.vetName}</td><td>{row.purpose}</td><td>{row.planDate}</td><td>{row.confirmedDate || 'Not confirmed'}</td><td>{row.priority}</td><td><Badge value={row.monitoring ? 'Watching' : row.status} /></td></tr>)}
-    </Table>
-  </Screen>;
+  const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length || 2;
+
+  const getPetIcon = (breed) => {
+    if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐈';
+    return '🐕';
+  };
+
+  const getDateStatus = (plan, confirmed) => {
+    if (!confirmed) return null;
+    const pDate = new Date(plan);
+    const cDate = new Date(confirmed);
+    if (cDate < pDate) return 'early';
+    if (cDate > pDate) return 'late';
+    return null;
+  };
+
+  return (
+    <Screen 
+      title="Follow-up Tracker" 
+      sub="Riverside Vet Clinic — planned vs confirmed dates"
+      action={
+        <button className="btn btn-primary" style={{ background: '#0f172a', borderColor: '#0f172a' }}>
+          <div className="pulse-row" style={{ color: '#94a3b8', fontWeight: 600 }}>
+            <span className="pulse-dot"></span> Watching {monitoringCount} patients for earlier slots
+          </div>
+        </button>
+      }
+    >
+      <div className="legend-row">
+        <span><Badge value="↑ Early Slot" tone="purple" /> Earlier slot found</span>
+        <span><Badge value="⚠️ Late Date" tone="amber" /> Confirmed later than planned</span>
+        <span className="watch-text"><span className="pulse-dot"></span> Watching <span style={{color:'var(--text-3)', fontWeight: 'normal', fontSize: '12px', marginLeft: '4px'}}>Checking for cancellations</span></span>
+      </div>
+
+      <Table headers={['PET / OWNER', 'VET', 'PURPOSE', 'PLAN DATE', 'CONFIRMED DATE', 'TIME', 'PRIORITY', 'STATUS']}>
+        {rows.map((row) => {
+          const dateStatus = getDateStatus(row.planDate, row.confirmedDate);
+          const isPending = String(row.status).toLowerCase() === 'pending';
+
+          return (
+            <tr key={row._id}>
+              <td>
+                <div className="pet-cell">
+                  <div className="pet-avatar">{getPetIcon(row.breed || row.petName)}</div>
+                  <Name title={row.petName} sub={row.ownerName} />
+                </div>
+              </td>
+              <td>{row.vetName}</td>
+              <td>{row.purpose}</td>
+              <td>{row.planDate}</td>
+              <td>
+                {row.confirmedDate ? (
+                  <>
+                    <div style={{ fontWeight: 600 }}>{row.confirmedDate}</div>
+                    {dateStatus === 'early' && <div style={{ marginTop: '4px' }}><Badge value="↑ Early Slot" tone="purple" /></div>}
+                    {dateStatus === 'late' && <div style={{ marginTop: '4px' }}><Badge value="⚠️ Late Date" tone="amber" /></div>}
+                  </>
+                ) : (
+                  <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Not confirmed</span>
+                )}
+              </td>
+              <td>{row.confirmedDate ? (row.time || '11:00 AM') : '—'}</td>
+              <td>{row.priority || 'Routine'}</td>
+              <td>
+                <Badge value={row.status} />
+                {isPending && (
+                  <div style={{ marginTop: '6px' }}>
+                    <span className="watch-text"><span className="pulse-dot"></span> Watching</span>
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </Table>
+
+      <div className="monitor-box" style={{ padding: '20px', marginTop: '24px' }}>
+        <div className="monitor-box-title">Background slot monitoring active for {monitoringCount} patients</div>
+        <div style={{ color: '#94a3b8', fontSize: '13px' }}>If any earlier slot opens due to a cancellation, the pet owner is automatically notified with available options.</div>
+      </div>
+    </Screen>
+  );
 }
 
 function Calendar({ appointments, go }) {

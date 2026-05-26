@@ -9,7 +9,13 @@ import authRouter from './routes/auth.js';
 import clinicsRouter from './routes/clinics.js';
 import aiRouter from './routes/ai.js';
 import dashboardRouter from './routes/dashboard.js';
-import crudRouter from './routes/crud.js';
+import clientsRouter from './routes/clients.js';
+import appointmentsRouter from './routes/appointments.js';
+import vetsRouter from './routes/vets.js';
+import vaccinationsRouter from './routes/vaccinations.js';
+import followupsRouter from './routes/followups.js';
+import weightsRouter from './routes/weights.js';
+import soapnotesRouter from './routes/soapnotes.js';
 import { initReminderScheduler } from './services/reminderService.js';
 
 const app = express();
@@ -205,7 +211,13 @@ app.use('/api/ai', aiRouter);
  */
 
 app.use('/api/dashboard', dashboardRouter);
-app.use('/api', crudRouter);
+app.use('/api/clients', clientsRouter);
+app.use('/api/appointments', appointmentsRouter);
+app.use('/api/vets', vetsRouter);
+app.use('/api/vaccinations', vaccinationsRouter);
+app.use('/api/followups', followupsRouter);
+app.use('/api/weights', weightsRouter);
+app.use('/api/soapnotes', soapnotesRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'pawchart-api' });
