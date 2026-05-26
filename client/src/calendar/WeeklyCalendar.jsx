@@ -1,18 +1,31 @@
 import React from 'react';
-import { getWeekDates, isSameDay, formatMonthHeader } from '../utils/dateUtils.js';
+import { getWeekDates, isSameDay, formatMonthHeader, format12h } from '../utils/dateUtils.js';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
 
 // Bounding slots mapping
-const HOUR_SLOTS = [
-  { label: '9 AM', hours: 9 },
-  { label: '10 AM', hours: 10 },
-  { label: '11 AM', hours: 11 },
-  { label: '12 PM', hours: 12 },
-  { label: '1 PM', hours: 13 },
-  { label: '2 PM', hours: 14 },
-  { label: '3 PM', hours: 15 },
-  { label: '4 PM', hours: 16 }
-];
+const HALF_HOUR_SLOTS = [];
+for (let sh = 9; sh < 18; sh++) {
+  for (let sm = 0; sm < 60; sm += 30) {
+    let nextHour = sh;
+    let nextMin = sm + 30;
+    if (nextMin >= 60) {
+      nextMin = 0;
+      nextHour++;
+    }
+    const ampm1 = sh >= 12 ? 'PM' : 'AM';
+    const h12_1 = sh % 12 || 12;
+    const m_1 = sm === 0 ? '00' : '30';
+    const ampm2 = nextHour >= 12 ? 'PM' : 'AM';
+    const h12_2 = nextHour % 12 || 12;
+    const m_2 = nextMin === 0 ? '00' : '30';
+    HALF_HOUR_SLOTS.push({
+      label: `${h12_1}:${m_1} ${ampm1} - ${h12_2}:${m_2} ${ampm2}`,
+      startMins: sh * 60 + sm,
+      endMins: nextHour * 60 + nextMin,
+      dbFormat: `${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')}-${String(nextHour).padStart(2,'0')}:${String(nextMin).padStart(2,'0')}`
+    });
+  }
+}
 
 export function WeeklyCalendar({ 
   appointments = [], 
@@ -36,18 +49,22 @@ export function WeeklyCalendar({
     };
   };
 
-  // Check if appointment falls into a specific date and slot hour
-  const getAppointmentsForSlot = (date, slotHour) => {
+  // Check if appointment falls into a specific date and half-hour slot
+  const getAppointmentsForSlot = (date, slot) => {
     return appointments.filter(appt => {
-      // Compare calendar date
       const matchesDate = isSameDay(appt.date, date);
       if (!matchesDate) return false;
       
-      // Parse time (e.g. "10:30" -> hours: 10)
-      const parts = appt.time.split(':');
-      const apptHour = parseInt(parts[0], 10);
+      if (appt.time === slot.dbFormat) return true;
       
-      return apptHour === slotHour;
+      const parts = appt.time.split(/-|:/);
+      if (parts.length < 2) return false;
+      
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1].replace(/[^0-9]/g, ''), 10);
+      const appTimeMins = h * 60 + m;
+      
+      return appTimeMins >= slot.startMins && appTimeMins < slot.endMins;
     });
   };
 
@@ -254,7 +271,7 @@ export function WeeklyCalendar({
           </thead>
           
           <tbody>
-            {HOUR_SLOTS.map(slot => (
+            {HALF_HOUR_SLOTS.map(slot => (
               <tr key={slot.label} style={{ minHeight: '80px' }}>
                 {/* Hour label */}
                 <td style={{
@@ -276,7 +293,7 @@ export function WeeklyCalendar({
                 
                 {/* Day Slot Cells */}
                 {visibleDates.map(date => {
-                  const cellAppts = getAppointmentsForSlot(date, slot.hours);
+                  const cellAppts = getAppointmentsForSlot(date, slot);
                   return (
                     <td 
                       key={date.toISOString() + slot.label} 
@@ -333,7 +350,7 @@ export function WeeklyCalendar({
                                 </strong>
                               </div>
                               <span style={{ fontSize: '10px', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {appt.reason} {appt.status === 'Now' && '· NOW'}
+                                {format12h(appt.time)} · {appt.reason} {appt.status === 'Now' && '· NOW'}
                               </span>
                             </div>
                           );

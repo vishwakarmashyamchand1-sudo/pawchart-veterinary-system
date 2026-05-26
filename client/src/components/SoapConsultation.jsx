@@ -91,6 +91,7 @@ export function Soap({
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorInfo, setErrorInfo] = useState('');
   const [rawGeminiOutput, setRawGeminiOutput] = useState(null);
+  const [isApproved, setIsApproved] = useState(false);
 
   // Web Speech API Reference
   const recognitionRef = useRef(null);
@@ -204,6 +205,7 @@ export function Soap({
     setRawTranscriptText('');
     setErrorInfo('');
     setRawGeminiOutput(null);
+    setIsApproved(false);
     setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
 
     // Set up timer ticker
@@ -281,7 +283,7 @@ export function Soap({
   };
 
   // Stop Consultation Recording
-  const stopRecording = async () => {
+  const stopRecording = () => {
     // Clear timer
     if (recordingIntervalId) {
       clearInterval(recordingIntervalId);
@@ -293,10 +295,17 @@ export function Soap({
     // Stop Speech Recognition if active
     if (recognitionRef.current) {
       try {
+        recognitionRef.current.onend = null;
         recognitionRef.current.stop();
       } catch (err) {
         console.warn("Failed to stop recognition:", err.message);
       }
+    }
+  };
+
+  const sendToAI = async () => {
+    if (isRecording) {
+      stopRecording();
     }
 
     // Determine final transcript content
@@ -542,24 +551,11 @@ export function Soap({
                   </p>
                 </div>
 
-                {/* Multilingual Voice Mode Selector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                  <label className="sb-field-label" style={{ color: 'var(--text-2)', fontSize: '11px' }}>AI Microphone Dictation Language</label>
-                  <select 
-                    className="sb-select" 
-                    value={speechLanguage} 
-                    onChange={(e) => setSpeechLanguage(e.target.value)}
-                    style={{ background: '#fff', border: '1px solid #cbd5e1', color: 'var(--text)', height: '36px', borderRadius: '6px' }}
-                  >
-                    <option value="en-US">English (US Accent)</option>
-                    <option value="en-IN">English & Hinglish (Indian Accent - Recommended)</option>
-                    <option value="hi-IN">Hindi (हिन्दी)</option>
-                  </select>
-                </div>
+
 
                 <button 
                   className="btn btn-primary"
-                  onClick={startRecording}
+                  onClick={() => setIsConsultationStarted(true)}
                   style={{
                     padding: '16px 20px',
                     borderRadius: '8px',
@@ -577,24 +573,7 @@ export function Soap({
                 </button>
               </div>
 
-              {/* DEMO / PRESET SCENARIO SELECTOR */}
-              <div className="panel" style={{ padding: '16px 20px', borderRadius: '12px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  Or Select Scenario Preset (For testing without Mic)
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {Object.entries(presets).map(([k, p]) => (
-                    <button
-                      key={k}
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handlePresetSelect(k)}
-                      style={{ justifyContent: 'flex-start', padding: '10px', fontSize: '12px', borderColor: 'var(--border)' }}
-                    >
-                      📖 {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
             </div>
 
             {/* RIGHT COLUMN: HISTORICAL VISITS */}
@@ -748,7 +727,7 @@ export function Soap({
   }
 
   // Stage 2: ACTIVE RECORDING SCREEN
-  if (isConsultationStarted && isRecording) {
+  if (isConsultationStarted && !draft.subjective && !isGenerating) {
     return (
       <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
         <div className="main-pad" style={{ padding: '24px' }}>
@@ -768,10 +747,21 @@ export function Soap({
               color: '#94a3b8'
             }} 
             onClick={() => {
+              if (recordingIntervalId) {
+                clearInterval(recordingIntervalId);
+                setRecordingIntervalId(null);
+              }
+              setIsRecording(false);
+              isRecordingRef.current = false;
+              if (recognitionRef.current) {
+                try {
+                  recognitionRef.current.onend = null;
+                  recognitionRef.current.stop();
+                } catch (e) {}
+              }
               setIsConsultationStarted(false);
               setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
               setLiveTranscript([]);
-              stopRecording();
             }}
           >
             ← Back
@@ -829,25 +819,34 @@ export function Soap({
                 {formatTimer(recordTimer)}
               </div>
               <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '32px' }}>
-                Ready to record
+                {isRecording ? "Recording in progress..." : recordTimer > 0 ? "Recording stopped. Review transcript below." : "Click the mic to start recording"}
               </div>
 
               <div 
+                onClick={() => {
+                  if (isRecording) {
+                    stopRecording();
+                  } else {
+                    startRecording();
+                  }
+                }}
                 style={{ 
                   width: '80px', 
                   height: '80px', 
                   borderRadius: '50%', 
-                  background: '#ef4444', 
+                  background: isRecording ? '#ef4444' : '#3b82f6', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
                   fontSize: '32px',
-                  boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
-                  animation: 'pulse 1.5s infinite',
-                  marginBottom: '40px'
+                  boxShadow: isRecording ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none',
+                  animation: isRecording ? 'pulse 1.5s infinite' : 'none',
+                  marginBottom: '40px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
                 }}
               >
-                🎙️
+                {isRecording ? '🎙️' : '▶️'}
               </div>
 
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
@@ -875,10 +874,22 @@ export function Soap({
                 <button 
                   className="btn btn-outline"
                   onClick={() => {
+                    if (recordingIntervalId) {
+                      clearInterval(recordingIntervalId);
+                      setRecordingIntervalId(null);
+                    }
+                    setIsRecording(false);
+                    isRecordingRef.current = false;
+                    if (recognitionRef.current) {
+                      try {
+                        // override onend to avoid restarts
+                        recognitionRef.current.onend = null;
+                        recognitionRef.current.stop();
+                      } catch (e) {}
+                    }
                     setIsConsultationStarted(false);
                     setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
                     setLiveTranscript([]);
-                    stopRecording();
                   }}
                   style={{ flex: 1, borderColor: '#374151', color: '#94a3b8', padding: '12px', borderRadius: '8px' }}
                 >
@@ -886,10 +897,21 @@ export function Soap({
                 </button>
                 <button 
                   className="btn btn-primary"
-                  onClick={stopRecording}
-                  style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: '800' }}
+                  onClick={sendToAI}
+                  disabled={!isRecording && recordTimer === 0}
+                  style={{ 
+                    flex: 1, 
+                    padding: '12px', 
+                    borderRadius: '8px', 
+                    fontWeight: '800',
+                    background: (!isRecording && recordTimer === 0) ? '#374151' : '#10b981',
+                    borderColor: (!isRecording && recordTimer === 0) ? '#374151' : '#10b981',
+                    color: (!isRecording && recordTimer === 0) ? '#9ca3af' : '#fff',
+                    cursor: (!isRecording && recordTimer === 0) ? 'not-allowed' : 'pointer',
+                    opacity: (!isRecording && recordTimer === 0) ? 0.5 : 1
+                  }}
                 >
-                  Send to AI
+                  ✉️ Send to AI
                 </button>
               </div>
 
@@ -1007,16 +1029,17 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '80px',
-                  background: '#1f2937',
+                  background: isApproved ? '#374151' : '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#e2e8f0',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
                   outline: 'none'
                 }}
+                disabled={isApproved}
               />
             </div>
 
@@ -1034,16 +1057,17 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '100px',
-                  background: '#1f2937',
+                  background: isApproved ? '#374151' : '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#e2e8f0',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
                   outline: 'none'
                 }}
+                disabled={isApproved}
               />
             </div>
 
@@ -1082,16 +1106,17 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '60px',
-                  background: '#1f2937',
+                  background: isApproved ? '#374151' : '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#e2e8f0',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
                   outline: 'none'
                 }}
+                disabled={isApproved}
               />
             </div>
 
@@ -1111,7 +1136,8 @@ export function Soap({
                       }));
                     }
                   }}
-                  style={{ color: '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  disabled={isApproved}
+                  style={{ color: isApproved ? '#64748b' : '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: isApproved ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <span>+</span> Add
                 </button>
@@ -1119,12 +1145,12 @@ export function Soap({
               {(draft.prescription && draft.prescription.length > 0 ? draft.prescription : [{ medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]).map((rx, idx) => (
                 <div key={idx} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
-                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
-                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
-                    <input type="text" placeholder="Duration" value={rx.duration || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Duration" value={rx.duration || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
                   </div>
-                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', cursor: isApproved ? 'not-allowed' : 'text' }} />
                 </div>
               ))}
             </div>
@@ -1136,18 +1162,21 @@ export function Soap({
               </label>
               <input 
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 value={draft.follow_up_date || ''}
                 onChange={e => setDraft({...draft, follow_up_date: e.target.value})}
                 style={{
-                  background: '#1f2937',
+                  background: isApproved ? '#374151' : '#1f2937',
                   border: '1px solid #374151',
                   borderRadius: '8px',
                   padding: '10px 12px',
-                  color: '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#e2e8f0',
                   fontSize: '14px',
                   outline: 'none',
-                  width: '200px'
+                  width: '200px',
+                  cursor: isApproved ? 'not-allowed' : 'text'
                 }}
+                disabled={isApproved}
               />
             </div>
             
@@ -1167,7 +1196,10 @@ export function Soap({
             <button 
               className="btn btn-outline"
               onClick={() => {
-                setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+                setIsConsultationStarted(false);
+                setDraft({ subjective: '', objective: '', assessment: '', plan: '', prescription: [], follow_up_date: '' });
+                setLiveTranscript([]);
+                setRawTranscriptText('');
               }}
               style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontWeight: '600' }}
             >
@@ -1175,16 +1207,38 @@ export function Soap({
             </button>
             <button 
               className="btn btn-outline"
-              onClick={() => window.showToast?.("Approved!", "success")}
-              style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6', padding: '12px', borderRadius: '8px', fontWeight: '600' }}
+              onClick={() => {
+                setIsApproved(!isApproved);
+                if (!isApproved) window.showToast?.("Approved!", "success");
+              }}
+              style={{ 
+                flex: 1, 
+                borderColor: isApproved ? '#10b981' : '#3b82f6', 
+                color: isApproved ? '#fff' : '#3b82f6', 
+                backgroundColor: isApproved ? '#10b981' : 'transparent',
+                padding: '12px', 
+                borderRadius: '8px', 
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
             >
-              Approve
+              {isApproved ? '✓ Approved' : 'Approve'}
             </button>
             <button 
               className="btn btn-primary"
               onClick={handleApprove}
-              disabled={isGenerating}
-              style={{ flex: 1, background: '#10b981', borderColor: '#10b981', color: '#fff', padding: '12px', borderRadius: '8px', fontWeight: '800' }}
+              disabled={isGenerating || !isApproved}
+              style={{ 
+                flex: 1, 
+                background: (isGenerating || !isApproved) ? '#374151' : '#10b981', 
+                borderColor: (isGenerating || !isApproved) ? '#374151' : '#10b981', 
+                color: (isGenerating || !isApproved) ? '#9ca3af' : '#fff', 
+                padding: '12px', 
+                borderRadius: '8px', 
+                fontWeight: '800',
+                cursor: (isGenerating || !isApproved) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
             >
               ✉️ Send to Patient
             </button>

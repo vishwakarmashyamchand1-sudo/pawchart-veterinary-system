@@ -28,7 +28,7 @@ Use this exact JSON structure (Output valid JSON only, no markdown code fences, 
       "instructions": "Specific administration instructions (e.g. give with a bland meal of chicken and rice, apply to left ear after cleaning debris, give on empty stomach)"
     }
   ],
-  "follow_up_date": "YYYY-MM-DD representing the calculated recheck date (typically 7 to 14 days from today based on symptoms, or null if none mentioned or needed)"
+  "follow_up_date": "YYYY-MM-DD representing the exact recheck date ONLY if explicitly spoken by the doctor in the transcript. If the doctor does NOT explicitly mention a follow-up or recheck date, you MUST return null."
 }
 
 VETERINARY REASONING RULES:

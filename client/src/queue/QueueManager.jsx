@@ -1,4 +1,5 @@
 import React from 'react';
+import { format12h } from '../utils/dateUtils.js';
 
 export function getSpeciesEmoji(species = '', breed = '') {
   const s = species.toLowerCase();
@@ -215,7 +216,7 @@ export function QueueManager({
                   borderRadius: '4px',
                   border: '1px solid var(--border)'
                 }}>
-                  {appt.time}
+                  {format12h(appt.time)}
                 </div>
               </div>
             ))

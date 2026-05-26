@@ -70,3 +70,26 @@ export function getTodayDate() {
   today.setHours(0, 0, 0, 0);
   return today;
 }
+
+
+export function format12h(t) {
+  if (!t) return '';
+  if (t.includes('-')) {
+    const parts = t.split('-');
+    const formatSingle = (singleT) => {
+      const [h, m] = singleT.split(':');
+      if (!h || !m) return singleT;
+      const hr = parseInt(h);
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      const hr12 = hr % 12 || 12;
+      return `${hr12}:${m} ${ampm}`;
+    };
+    return `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
+  }
+  const [h, m] = t.split(':');
+  if (!h || !m) return t;
+  const hr = parseInt(h);
+  const ampm = hr >= 12 ? 'PM' : 'AM';
+  const hr12 = hr % 12 || 12;
+  return `${hr12}:${m} ${ampm}`;
+}

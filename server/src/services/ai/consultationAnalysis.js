@@ -102,9 +102,18 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
     }
   });
 
-  // Calculate dynamic follow-up date
-  const followUpIntervalMs = profile.timelineDays * 24 * 60 * 60 * 1000;
-  const followUpDate = new Date(Date.now() + followUpIntervalMs).toISOString().split('T')[0];
+  // Calculate dynamic follow-up date ONLY if explicitly mentioned
+  let followUpDate = null;
+  const followUpMatch = t.match(/(?:follow\s*up|recheck).*(?:in|after)\s*(\d+)\s*(day|week|month)s?/i);
+  if (followUpMatch) {
+    const amount = parseInt(followUpMatch[1], 10);
+    const unit = followUpMatch[2].toLowerCase();
+    let days = amount;
+    if (unit === 'week') days *= 7;
+    if (unit === 'month') days *= 30;
+    const followUpIntervalMs = days * 24 * 60 * 60 * 1000;
+    followUpDate = new Date(Date.now() + followUpIntervalMs).toISOString().split('T')[0];
+  }
 
   // 6. Formulate Conversation-Aware Context Summary paragraphs (SOAP)
   const subjectiveLines = [

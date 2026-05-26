@@ -26,7 +26,6 @@ const navByRole = {
   ],
   doctor: [
     ['Appointments', 'calendar', 'cal'],
-    ['AI SOAP Note', 'soap', 'note'],
     ['Weight Records', 'weight', 'scale'],
     ['Follow-ups', 'followup', 'loop']
   ],

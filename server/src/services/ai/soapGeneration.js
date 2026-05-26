@@ -22,6 +22,28 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
     console.log(`💾 ACTIVE CONSULTATION MEMORY: ${pastNotes.length} past SOAP records loaded for history context.`);
   }
 
+  // Intercept empty or meaningless transcripts early
+  const trimmed = transcript.trim();
+  const wordCount = trimmed.split(/\s+/).length;
+  // If it's empty, or very short and lacks any common medical/symptom keywords
+  const hasMedicalKeywords = /(khujli|ulti|ear|kaan|skin|pain|fever|bukhar|dast|diarrhea|cough|khansi|sneeze|chheenk|itch|rash|allergy|vomit|temperature)/i.test(trimmed);
+  
+  if (!trimmed || (wordCount < 10 && !hasMedicalKeywords)) {
+    console.log("⚠️ Transcript is empty or lacks meaningful medical data. Returning structured fallback.");
+    return {
+      subjective: "The transcript provided does not contain any meaningful patient communication. The input appears to be fragmented, incoherent, or incomplete text with no discernible symptoms, complaints, medical history, or concerns expressed by a patient.",
+      objective: "The transcript provided does not contain any meaningful doctor communication. No clinical assessment, diagnosis, treatment advice, prescriptions, or medical instructions could be identified from the given input.",
+      assessment: "Unable to determine - insufficient transcript data",
+      plan: "Unable to determine - insufficient transcript data",
+      chiefComplaint: "Unable to determine - insufficient transcript data",
+      diagnosis: "Unable to determine - insufficient transcript data",
+      summary: "Insufficient data to generate a complete SOAP note.",
+      prescription: [],
+      followUpDate: null,
+      rawJson: null
+    };
+  }
+
   // Log environment variable status safely (Masked to protect secrets)
   if (anthropicKey) {
     const masked = anthropicKey.length > 10 

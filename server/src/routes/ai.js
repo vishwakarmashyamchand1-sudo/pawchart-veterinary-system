@@ -144,19 +144,25 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
           ownerName = appointment.ownerName;
           vetName = appointment.vetName || vetName;
           
-          // Look up client details for pet species/breed
+          // Initialize petContext with appointment data first!
+          petContext = {
+            petName: appointment.petName,
+            species: appointment.species || 'Unknown',
+            breed: appointment.breed || 'Unknown',
+            reason: appointment.reason || 'General Checkup'
+          };
+
+          // Look up client details to enrich pet species/breed/age/weight
           const client = await Client.findOne({ name: appointment.ownerName, "pets.name": appointment.petName });
           if (client) {
             const pet = client.pets.find(p => p.name === appointment.petName);
             if (pet) {
-              petContext = {
-                species: pet.species,
-                breed: pet.breed,
-                age: pet.age,
-                sex: pet.sex,
-                weightRange: pet.weightRange,
-                alerts: pet.alerts
-              };
+              petContext.age = pet.age;
+              petContext.sex = pet.sex;
+              petContext.weightRange = pet.weightRange;
+              petContext.alerts = pet.alerts;
+              if (pet.species) petContext.species = pet.species;
+              if (pet.breed) petContext.breed = pet.breed;
             }
           }
         }
@@ -229,7 +235,9 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
       subjective: aiData.subjective || `Chief Complaint: ${aiData.chiefComplaint}. Owner reports symptoms: ${transcript}`,
       objective: aiData.objective || `General observations. Weight stable. Vitals normal.`,
       assessment: aiData.assessment || `Primary diagnosis: ${aiData.diagnosis}.`,
-      plan: aiData.plan || `Prescription: ${aiData.prescription.map(p => `${p.medicine_name} ${p.dosage} ${p.frequency}`).join(', ') || 'None'}. Follow-up: ${aiData.followUpDate || 'None'}.`
+      plan: aiData.plan || `Prescription: ${aiData.prescription.map(p => `${p.medicine_name} ${p.dosage} ${p.frequency}`).join(', ') || 'None'}. Follow-up: ${aiData.followUpDate || 'None'}.`,
+      prescription: aiData.prescription || [],
+      follow_up_date: aiData.followUpDate || ''
     };
 
     console.log(`\n📤 SOAP OBJECT PERSISTED & SENT TO FRONTEND PREVIEW:`);
