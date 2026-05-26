@@ -62,6 +62,7 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
           system: VETERINARY_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userContent }],
         }),
+
       });
 
       const data = await response.json();

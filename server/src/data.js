@@ -43,10 +43,24 @@ export const seedData = {
     { petName: 'Mochi', ownerName: 'Sarah Kim', vetName: 'Dr. Patel', purpose: 'Vaccine follow-up', planDate: '2026-04-29', confirmedDate: '2026-04-28', time: '2:00 PM', priority: 'Routine', status: 'Scheduled', monitoring: false }
   ],
   weights: [
-    { petName: 'Buddy', ownerName: 'James Martinez', value: 32.2, unit: 'lbs', date: '2026-05-22', note: 'Wellness visit' },
-    { petName: 'Buddy', ownerName: 'James Martinez', value: 31.5, unit: 'lbs', date: '2026-03-14', note: 'Routine check' },
-    { petName: 'Buddy', ownerName: 'James Martinez', value: 30.9, unit: 'lbs', date: '2026-01-08', note: 'Diet review' },
-    { petName: 'Mochi', ownerName: 'Sarah Kim', value: 9.4, unit: 'lbs', date: '2026-05-22', note: 'Vaccine visit' }
+    // Buddy (Golden Retriever) - Exact reference history
+    { petName: 'Buddy', ownerName: 'James Martinez', value: 30.0, unit: 'lbs', date: '2025-06-08', note: 'Initial checkup' },
+    { petName: 'Buddy', ownerName: 'James Martinez', value: 30.4, unit: 'lbs', date: '2025-11-12', note: 'Routine review' },
+    { petName: 'Buddy', ownerName: 'James Martinez', value: 31.0, unit: 'lbs', date: '2026-01-05', note: 'Diet adjustment' },
+    { petName: 'Buddy', ownerName: 'James Martinez', value: 31.6, unit: 'lbs', date: '2026-03-12', note: 'Routine check' },
+    { petName: 'Buddy', ownerName: 'James Martinez', value: 32.4, unit: 'lbs', date: '2026-05-21', note: 'Wellness visit' },
+    
+    // Mochi (Siamese Cat)
+    { petName: 'Mochi', ownerName: 'Sarah Kim', value: 8.2, unit: 'lbs', date: '2025-08-15', note: 'Initial check' },
+    { petName: 'Mochi', ownerName: 'Sarah Kim', value: 8.8, unit: 'lbs', date: '2025-11-10', note: 'Weight review' },
+    { petName: 'Mochi', ownerName: 'Sarah Kim', value: 9.1, unit: 'lbs', date: '2026-02-14', note: 'Routine check' },
+    { petName: 'Mochi', ownerName: 'Sarah Kim', value: 9.4, unit: 'lbs', date: '2026-05-22', note: 'Vaccine visit' },
+    
+    // Luna (French Bulldog)
+    { petName: 'Luna', ownerName: 'Maria Garcia', value: 20.1, unit: 'lbs', date: '2025-07-20', note: 'Initial check' },
+    { petName: 'Luna', ownerName: 'Maria Garcia', value: 21.3, unit: 'lbs', date: '2025-10-15', note: 'Post-op baseline' },
+    { petName: 'Luna', ownerName: 'Maria Garcia', value: 22.5, unit: 'lbs', date: '2026-01-12', note: 'Routine check' },
+    { petName: 'Luna', ownerName: 'Maria Garcia', value: 24.0, unit: 'lbs', date: '2026-05-22', note: 'Post-op review' }
   ],
   soapNotes: [
     {
