@@ -4,6 +4,7 @@ const clinicSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Clinic name is required'],
+    unique: true,
     trim: true
   },
   registration_number: {
@@ -22,11 +23,13 @@ const clinicSchema = new mongoose.Schema({
   contact: {
     phone: {
       type: String,
-      required: [true, 'Phone number is required']
+      required: [true, 'Phone number is required'],
+      unique: true
     },
     email: {
       type: String,
       required: [true, 'Email is required'],
+      unique: true,
       lowercase: true,
       trim: true
     }

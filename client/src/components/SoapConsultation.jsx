@@ -83,7 +83,9 @@ export function Soap({
     subjective: '',
     objective: '',
     assessment: '',
-    plan: ''
+    plan: '',
+    prescription: [],
+    follow_up_date: ''
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -333,7 +335,9 @@ export function Soap({
             subjective: result.preview.subjective || draft.subjective,
             objective: result.preview.objective || draft.objective,
             assessment: result.preview.assessment || draft.assessment,
-            plan: result.preview.plan || draft.plan
+            plan: result.preview.plan || draft.plan,
+            prescription: result.preview.prescription || [],
+            follow_up_date: result.preview.follow_up_date || ''
           });
           setRawGeminiOutput(result.rawGeminiOutput || null);
           window.showToast?.("AI SOAP note polished successfully!", "success");
@@ -743,399 +747,452 @@ export function Soap({
     );
   }
 
-  // Stage 2: ACTIVE RECORDING / SOAP GENERATION SCREEN
-  return (
-    <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
-      <div className="main-pad" style={{ padding: '20px 24px' }}>
-        
-        {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-          <div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ 
-                fontSize: '28px', 
-                background: 'rgba(255, 255, 255, 0.08)', 
-                borderRadius: '8px', 
-                width: '44px', 
-                height: '44px', 
-                display: 'grid', 
-                placeItems: 'center' 
-              }}>
-                {getSpeciesEmoji(activePet.species, activePet.breed)}
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff' }}>
-                  {activeAppointment.petName}
-                </h2>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                  {activePet.breed} · {activePet.weightRange || '32.4 lbs'} · {activeAppointment.ownerName}
-                </div>
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-              {activeAppointment.date} - {activeAppointment.time} · {activeAppointment.reason}
-            </div>
-          </div>
-
-          {!isRecording && (
-            <button 
-              className="btn btn-outline btn-sm" 
-              style={{ borderColor: '#334155', color: '#94a3b8', background: '#1e293b' }}
-              onClick={() => {
-                setIsConsultationStarted(false);
-                setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
-                setLiveTranscript([]);
-              }}
-            >
-              ← Restart Consultation
-            </button>
-          )}
-        </div>
-
-        {errorInfo && (
-          <div className="badge b-amber" style={{ padding: '10px 14px', marginBottom: '16px', fontSize: '12px', display: 'block', borderRadius: '8px', border: '1px solid #d97706' }}>
-            ⚠️ <strong>Microphone Status:</strong> {errorInfo}
-          </div>
-        )}
-
-        <div className="grid-two" style={{ gridTemplateColumns: '290px 1fr', gap: '20px' }}>
+  // Stage 2: ACTIVE RECORDING SCREEN
+  if (isConsultationStarted && isRecording) {
+    return (
+      <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
+        <div className="main-pad" style={{ padding: '24px' }}>
           
-          {/* LEFT SIDEBAR: ACTIVE RECORDER & CHECKS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-            {/* RECORDING STATE PANEL */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '16px', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <span className="badge" style={{ 
-                  background: 'rgba(239,68,68,0.15)', 
-                  color: '#ef4444', 
-                  fontSize: '11px', 
-                  fontWeight: '700',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  animation: isRecording ? 'pulse 1.2s infinite' : 'none'
-                }}>
-                  ● {isRecording ? 'RECORDING' : 'RECORDED'} · {formatTimer(recordTimer)}
-                </span>
-                
-                {isRecording ? (
-                  <button 
-                    className="btn btn-sm btn-accent" 
-                    onClick={stopRecording}
-                    style={{ background: '#ef4444', color: 'white', padding: '4px 8px', fontSize: '11px', height: '24px' }}
-                  >
-                    ⏹ Stop
-                  </button>
-                ) : (
-                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>✓ Complete</span>
-                )}
-              </div>
+          {/* Back Navigation bar */}
+          <button 
+            className="btn btn-outline" 
+            style={{ 
+              marginBottom: '20px', 
+              padding: '6px 12px', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              fontSize: '13px', 
+              fontWeight: '700',
+              borderColor: '#374151',
+              color: '#94a3b8'
+            }} 
+            onClick={() => {
+              setIsConsultationStarted(false);
+              setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+              setLiveTranscript([]);
+              stopRecording();
+            }}
+          >
+            ← Back
+          </button>
 
-              {/* Fluctuating Audio Waveform Visualizer */}
-              {isRecording ? (
-                <div className="waveform-container">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(idx => {
-                    const durations = ['0.7s', '0.9s', '1.1s', '0.5s', '0.8s', '1s'];
-                    const delays = ['0.1s', '0.4s', '0.2s', '0s', '0.3s', '0.5s'];
-                    return (
-                      <div 
-                        key={idx} 
-                        className="waveform-bar" 
-                        style={{ 
-                          animationDuration: durations[idx % 6],
-                          animationDelay: delays[idx % 6]
-                        }} 
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ height: '3px', background: '#10b981', margin: '20px 0', borderRadius: '2px' }} />
-              )}
+          {/* Dynamic Patient Card Header */}
+          <div className="panel" style={{
+            display: 'flex',
+            gap: '18px',
+            alignItems: 'center',
+            marginBottom: '22px',
+            padding: '16px 20px',
+            background: '#111827',
+            border: '1px solid #1f2937',
+            borderRadius: '12px'
+          }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: 'rgba(37,99,235,0.1)',
+              color: '#3b82f6',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: '22px',
+              flexShrink: 0
+            }}>
+              👤
             </div>
-
-            {/* WORKFLOW TIMELINE */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', borderRadius: '12px' }}>
-              {[
-                { step: 1, text: "Vet records consultation — no typing needed", done: isConsultationStarted },
-                { step: 2, text: "Speech-to-text transcribes in real time", done: isConsultationStarted, active: isRecording },
-                { step: 3, text: "AI generates SOAP note automatically", done: !isRecording, active: isRecording },
-                { step: 4, text: "Vet approves — summary emailed to owner", done: !isRecording && !isRecording }
-              ].map(s => {
-                const isStepDone = s.done && (!s.active);
-                return (
-                  <div key={s.step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: isStepDone ? '#10b981' : s.active ? 'var(--brand)' : '#1f2937',
-                      color: isStepDone ? 'white' : '#fff',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      display: 'grid',
-                      placeItems: 'center',
-                      flexShrink: 0,
-                      marginTop: '2px'
-                    }}>
-                      {isStepDone ? '✓' : s.step}
-                    </div>
-                    <span style={{ 
-                      fontSize: '12px', 
-                      color: isStepDone ? '#e2e8f0' : s.active ? '#fff' : '#64748b', 
-                      fontWeight: s.active ? '700' : '400'
-                    }}>
-                      {s.text}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* WEIGHT-BASED DOSING CARD */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '16px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
-                ⚖️ Weight-Based Dosing
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
-                {activeAppointment.petName}: {petWeightLbs} lbs = {petWeightKg} kg
-              </div>
-              <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 12px 0' }}>
-                AI auto-calculates all drug doses by weight
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #1f2937', paddingTop: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: '#94a3b8' }}>Carprofen (Rimadyl)</span>
-                  <strong style={{ color: '#fff' }}>{(4.4 * petWeightKg).toFixed(1)} mg/day</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: '#94a3b8' }}>Amoxicillin (10mg/kg)</span>
-                  <strong style={{ color: '#fff' }}>{(10 * petWeightKg).toFixed(0)} mg</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: '#94a3b8' }}>Gabapentin (5mg/kg)</span>
-                  <strong style={{ color: '#fff' }}>{(5 * petWeightKg).toFixed(0)} mg</strong>
-                </div>
+            <div>
+              <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
+                {activeOwner.name}
+              </strong>
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
+                <span>{activePet.sex || 'Female'}</span>
+                <span>•</span>
+                <span>{activePet.bloodType || 'A+'}</span>
+                <span>•</span>
+                <span>{activeOwner.phone}</span>
+                <span>•</span>
+                <span>{activeOwner.email}</span>
               </div>
             </div>
-
           </div>
 
-          {/* RIGHT PANEL: LIVE TRANSCRIPTION & SOAP REVIEW */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="grid-two" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '22px' }}>
             
-            {/* LIVE TRANSCRIPTION DIALOG BOX */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '16px', maxHeight: '160px', overflowY: 'auto', borderRadius: '12px' }}>
-              <div style={{ fontSize: '10px', fontWeight: '800', color: isRecording ? '#ef4444' : '#10b981', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="pulse-dot" style={{ background: isRecording ? '#ef4444' : '#10b981' }} />
-                Real-Time Dialogue Transcript (Speak into Microphone now)
-              </div>
+            {/* LEFT COLUMN: ACTIVE RECORDER */}
+            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', fontWeight: '800', color: '#fff', alignSelf: 'flex-start' }}>
+                Consultation Recording
+              </h3>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', fontStyle: 'italic', color: '#94a3b8' }}>
-                {rawTranscriptText ? (
-                  <div style={{ borderLeft: '2px solid var(--brand)', paddingLeft: '8px', color: '#fff' }}>
-                    {rawTranscriptText}
-                  </div>
-                ) : (
-                  <span>
-                    {isRecording ? "🎤 Microphone active. Start speaking in Hindi, Hinglish, or English. Transcription will appear here progressively..." : "No speech transcript recorded yet."}
-                  </span>
-                )}
+              <div style={{ fontSize: '48px', fontWeight: '800', color: '#fff', fontFamily: 'monospace', marginBottom: '8px' }}>
+                {formatTimer(recordTimer)}
               </div>
-            </div>
-
-            {/* SOAP NOTE PANEL */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#fff' }}>
-                  {isGenerating ? "⚡ AI Polishing SOAP Note..." : "Review AI-Generated SOAP Note"}
-                </h3>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
-                  Review and edit before saving · {activeAppointment.reason}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                  <span className="badge b-green" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#10b981', color: '#fff', fontWeight: '800', border: 'none', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🤖 ACTIVE PROVIDER: Gemini
-                  </span>
-                  <span className="badge b-blue" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#2563eb', color: '#fff', fontWeight: '800', border: 'none', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    ⚡ SOAP GENERATED VIA GEMINI
-                  </span>
-                </div>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '32px' }}>
+                Ready to record
               </div>
 
-              {/* SOAP Medical Notes section inputs */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[
-                  { field: 'subjective', label: 'S · SUBJECTIVE — WHAT THE OWNER REPORTED' },
-                  { field: 'objective', label: 'O · OBJECTIVE — PHYSICAL EXAM FINDINGS' },
-                  { field: 'assessment', label: 'A · ASSESSMENT — DIAGNOSIS' },
-                  { field: 'plan', label: 'P · PLAN — TREATMENT & FOLLOW-UP' }
-                ].map(f => (
-                  <div key={f.field} style={{
+              <div 
+                style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  background: '#ef4444', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '32px',
+                  boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
+                  animation: 'pulse 1.5s infinite',
+                  marginBottom: '40px'
+                }}
+              >
+                🎙️
+              </div>
+
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+                <label style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Transcript</label>
+                <textarea 
+                  readOnly
+                  value={rawTranscriptText}
+                  placeholder="Speak to see transcript appear here..."
+                  style={{
+                    width: '100%',
+                    height: '120px',
                     background: '#1f2937',
                     border: '1px solid #374151',
                     borderRadius: '8px',
-                    padding: '12px'
-                  }}>
-                    <label style={{ 
-                      display: 'block',
-                      fontSize: '10px', 
-                      fontWeight: '800', 
-                      color: 'var(--brand)', 
-                      textTransform: 'uppercase',
-                      marginBottom: '6px'
-                    }}>
-                      {f.label}
-                    </label>
-                    <textarea
-                      value={draft[f.field]}
-                      onChange={(e) => setDraft({ ...draft, [f.field]: e.target.value })}
-                      placeholder={isRecording ? "🎤 progressive dictation active... type or speak to begin..." : `Enter ${f.field}...`}
-                      style={{
-                        width: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#cbd5e1',
-                        fontSize: '13px',
-                        fontFamily: 'inherit',
-                        lineHeight: '1.5',
-                        resize: 'vertical',
-                        minHeight: '60px',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-                ))}
+                    padding: '12px',
+                    color: '#e2e8f0',
+                    fontSize: '13px',
+                    resize: 'none',
+                    outline: 'none'
+                  }}
+                />
               </div>
 
-              {/* Dynamic Badges Indicator */}
-              {(showOtomaxBadge || showRabiesBadge || showFollowupBadge) && (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                  {showOtomaxBadge && <span className="badge b-blue" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px' }}>Otomax 4 drops - 7 days</span>}
-                  {showRabiesBadge && <span className="badge b-amber" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px' }}>Rabies booster due</span>}
-                  {showFollowupBadge && <span className="badge b-purple" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px' }}>Follow-up in 14 days</span>}
-                </div>
-              )}
-
-              {/* Bottom Buttons Container */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '12px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
-                <button
+              <div style={{ display: 'flex', gap: '16px', width: '100%', marginBottom: '20px' }}>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setIsConsultationStarted(false);
+                    setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+                    setLiveTranscript([]);
+                    stopRecording();
+                  }}
+                  style={{ flex: 1, borderColor: '#374151', color: '#94a3b8', padding: '12px', borderRadius: '8px' }}
+                >
+                  Cancel
+                </button>
+                <button 
                   className="btn btn-primary"
-                  onClick={handleApprove}
-                  disabled={isRecording || isGenerating}
-                  style={{
-                    flex: 1.5,
-                    padding: '12px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '800',
-                    justifyContent: 'center',
-                    background: (isRecording || isGenerating) ? '#374151' : 'var(--brand)',
-                    color: (isRecording || isGenerating) ? '#64748b' : '#fff',
-                    cursor: (isRecording || isGenerating) ? 'not-allowed' : 'pointer',
-                    boxShadow: (isRecording || isGenerating) ? 'none' : '0 4px 12px rgba(37,99,235,0.18)',
-                    border: 'none'
-                  }}
+                  onClick={stopRecording}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', fontWeight: '800' }}
                 >
-                  {isGenerating ? "⚡ Processing AI Polishing..." : "Approve & Send to Owner"}
+                  Send to AI
                 </button>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => alert("Note editor active! Modify any textarea section above directly.")}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    justifyContent: 'center',
-                    borderColor: '#374151',
-                    color: '#94a3b8',
-                    background: 'transparent'
-                  }}
-                >
-                  Edit note
-                </button>
-                <button
-                  className="btn btn-outline"
+              </div>
+
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '12px', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '14px' }}>🎤</span>
+                <p style={{ margin: 0, fontSize: '12px', color: '#60a5fa', lineHeight: '1.5' }}>
+                  <strong>Auto-detects language</strong> - Speak in English, Hindi, or Hinglish. Claude AI will understand and respond in the same language.
+                </p>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: HISTORICAL VISITS */}
+            <div className="panel" style={{ padding: '22px 20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#fff' }}>
+                  Visit History
+                </h3>
+              </div>
+              <div style={{ padding: '48px 16px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                {petHistory && petHistory.length > 0 ? "Past visits available." : "No previous visits found. This is a first-time patient."}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Stage 3: AI REVIEW SCREEN
+  return (
+    <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
+      <div className="main-pad" style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+        
+        {/* Back Navigation bar */}
+        <button 
+          className="btn btn-outline" 
+          style={{ 
+            marginBottom: '20px', 
+            padding: '6px 12px', 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '6px', 
+            fontSize: '13px', 
+            fontWeight: '700',
+            borderColor: '#374151',
+            color: '#94a3b8'
+          }} 
+          onClick={() => {
+            setIsConsultationStarted(false);
+          }}
+        >
+          ← Back
+        </button>
+
+        {/* Dynamic Patient Card Header */}
+        <div className="panel" style={{
+          display: 'flex',
+          gap: '18px',
+          alignItems: 'center',
+          marginBottom: '24px',
+          padding: '16px 20px',
+          background: '#111827',
+          border: '1px solid #1f2937',
+          borderRadius: '12px'
+        }}>
+          <div style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            background: 'rgba(37,99,235,0.1)',
+            color: '#3b82f6',
+            display: 'grid',
+            placeItems: 'center',
+            fontSize: '22px',
+            flexShrink: 0
+          }}>
+            👤
+          </div>
+          <div>
+            <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
+              {activeOwner.name}
+            </strong>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
+              <span>{activePet.sex || 'Female'}</span>
+              <span>•</span>
+              <span>{activePet.bloodType || 'A+'}</span>
+              <span>•</span>
+              <span>{activeOwner.phone}</span>
+              <span>•</span>
+              <span>{activeOwner.email}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Review Form */}
+        <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px' }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
+            {isGenerating ? "⚡ Processing AI Polishing..." : "Review AI-Generated Consultation"}
+          </h2>
+          <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#64748b' }}>
+            Review and edit the AI-generated data below before saving.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Patient Summary (Subjective) */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Patient Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the patient said)</span>
+              </label>
+              <textarea
+                value={draft.subjective || ''}
+                onChange={(e) => setDraft({ ...draft, subjective: e.target.value })}
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Doctor Summary (Objective & Plan) */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Doctor Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the doctor said)</span>
+              </label>
+              <textarea
+                value={(draft.objective || '') + '\n\n' + (draft.plan || '')}
+                onChange={(e) => {
+                  const parts = e.target.value.split('\n\n');
+                  setDraft({ ...draft, objective: parts[0] || '', plan: parts.slice(1).join('\n\n') || '' });
+                }}
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Chief Complaint */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Chief Complaint
+              </label>
+              <textarea
+                value={activeAppointment.reason || ''}
+                readOnly
+                style={{
+                  width: '100%',
+                  minHeight: '60px',
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Diagnosis */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Diagnosis
+              </label>
+              <textarea
+                value={draft.assessment || ''}
+                onChange={(e) => setDraft({ ...draft, assessment: e.target.value })}
+                style={{
+                  width: '100%',
+                  minHeight: '60px',
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Prescriptions */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff' }}>
+                  Prescriptions
+                </label>
+                <button 
                   onClick={() => {
                     const drugName = prompt("Enter drug name to prescribe:", "Carprofen 50mg");
                     if (drugName) {
                       setDraft(prev => ({
                         ...prev,
-                        plan: `${prev.plan}\nPrescribed medication: ${drugName}.`
+                        plan: (prev.plan || '') + '\nPrescribed medication: ' + drugName + '.'
                       }));
-                      window.showToast?.(`Prescription "${drugName}" appended successfully!`, "success");
                     }
                   }}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    justifyContent: 'center',
-                    borderColor: '#374151',
-                    color: '#94a3b8',
-                    background: 'transparent'
-                  }}
+                  style={{ color: '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  Add prescription
+                  <span>+</span> Add
                 </button>
+              </div>
+              {(draft.prescription && draft.prescription.length > 0 ? draft.prescription : [{ medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]).map((rx, idx) => (
+                <div key={idx} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                    <input type="text" placeholder="Duration" value={rx.duration || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                  </div>
+                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: '#fff', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              ))}
             </div>
 
-            {/* COLLAPSIBLE DEVELOPER DEBUG CONSOLE */}
-            <details style={{ 
-              marginTop: '16px', 
-              background: '#0f172a', 
-              border: '1px solid #334155', 
-              borderRadius: '8px',
-              padding: '12px',
-              color: '#94a3b8'
-            }}>
-              <summary style={{ fontSize: '12px', fontWeight: '700', color: '#fff', cursor: 'pointer', outline: 'none' }}>
-                ⚙️ Developer AI Pipeline Debug Console (Click to expand)
-              </summary>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px', fontSize: '11px', fontFamily: 'monospace' }}>
-                <div>
-                  <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>📤 Transcript Sent to Backend:</strong>
-                  <div style={{ background: '#1e293b', padding: '8px', borderRadius: '4px', maxHeight: '80px', overflowY: 'auto' }}>
-                    {rawTranscriptText || "[Waiting for recording transcript...]"}
-                  </div>
-                </div>
-                <div>
-                  <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>📥 Parsed SOAP Draft State (Live):</strong>
-                  <pre style={{ background: '#1e293b', padding: '8px', borderRadius: '4px', overflowX: 'auto', margin: 0 }}>
-                    {JSON.stringify(draft, null, 2)}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>📥 Raw Gemini JSON Response (Backend-Forwarded):</strong>
-                  <pre style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '8px', borderRadius: '4px', overflowX: 'auto', margin: 0, color: '#34d399', maxHeight: '180px', overflowY: 'auto' }}>
-                    {rawGeminiOutput ? JSON.stringify(rawGeminiOutput, null, 2) : "[No raw Gemini response received yet. Complete recording to invoke Gemini.]"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>📡 AI API Configuration Status:</strong>
-                  <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li>Endpoint Target: <code style={{ color: '#38bdf8' }}>{API_URL}/ai/process-transcript</code></li>
-                    <li>Vite Client Environment: <code style={{ color: '#38bdf8' }}>{import.meta.env.MODE}</code></li>
-                    <li>Hardware Mic Input: <code style={{ color: isRecognitionSupported ? '#4ade80' : '#f87171' }}>{isRecognitionSupported ? "Supported & Active" : "Not Supported"}</code></li>
-                  </ul>
-                </div>
-              </div>
-            </details>
-
+            {/* Follow-up Date */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Follow-up Date
+              </label>
+              <input 
+                type="date"
+                value={draft.follow_up_date || ''}
+                onChange={e => setDraft({...draft, follow_up_date: e.target.value})}
+                style={{
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  outline: 'none',
+                  width: '200px'
+                }}
+              />
+            </div>
+            
+          </div>
+          
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', marginTop: '32px', borderTop: '1px solid #1f2937', paddingTop: '24px' }}>
+            <button 
+              className="btn btn-outline"
+              onClick={() => {
+                setIsConsultationStarted(false);
+              }}
+              style={{ flex: 1, borderColor: '#374151', color: '#94a3b8', padding: '12px', borderRadius: '8px', fontWeight: '600' }}
+            >
+              Back
+            </button>
+            <button 
+              className="btn btn-outline"
+              onClick={() => {
+                setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+              }}
+              style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontWeight: '600' }}
+            >
+              Reset
+            </button>
+            <button 
+              className="btn btn-outline"
+              onClick={() => window.showToast?.("Approved!", "success")}
+              style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6', padding: '12px', borderRadius: '8px', fontWeight: '600' }}
+            >
+              Approve
+            </button>
+            <button 
+              className="btn btn-primary"
+              onClick={handleApprove}
+              disabled={isGenerating}
+              style={{ flex: 1, background: '#10b981', borderColor: '#10b981', color: '#fff', padding: '12px', borderRadius: '8px', fontWeight: '800' }}
+            >
+              ✉️ Send to Patient
+            </button>
           </div>
 
         </div>
 
       </div>
-    </div>
 
       {showSendModal && (
         <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999 }}>
@@ -1167,116 +1224,7 @@ export function Soap({
                 ×
               </button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* Email Delivery Card */}
-              <div style={{ 
-                background: '#1f2937', 
-                border: '1px solid #374151', 
-                padding: '16px', 
-                borderRadius: '10px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>📧 Email Owner Summary</strong>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
-                    Send medical summary PDF to {activeOwner.email}
-                  </span>
-                </div>
-                <span className="badge b-green" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px' }}>
-                  ✓ Sent Successfully
-                </span>
-              </div>
-
-              {/* WhatsApp Share Card */}
-              <div style={{ 
-                background: '#1f2937', 
-                border: '1px solid #374151', 
-                padding: '16px', 
-                borderRadius: '10px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>💬 WhatsApp Export Package</strong>
-                    <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
-                      Ready to copy clinical notes for WhatsApp
-                    </span>
-                  </div>
-                  <button 
-                    className="btn btn-primary btn-sm"
-                    style={{ background: '#25d366', borderColor: '#25d366', color: '#fff', fontSize: '11px', fontWeight: '800' }}
-                    onClick={() => {
-                      const waText = `🐾 PawChart Treatment Summary for ${activePet.name} 🐾\n\n` +
-                        `Hello ${activeOwner.name},\n` +
-                        `Here is the treatment plan from today's visit:\n\n` +
-                        `• Diagnosis: ${draft.assessment}\n` +
-                        `• Care Plan: ${draft.plan}\n\n` +
-                        `Please call us if you have any questions. Get well soon, ${activePet.name}!`;
-                      navigator.clipboard.writeText(waText);
-                      window.showToast?.("WhatsApp summary copied to clipboard!", "success");
-                    }}
-                  >
-                    Copy Text
-                  </button>
-                </div>
-                <textarea 
-                  readOnly
-                  value={`🐾 PawChart Treatment Summary for ${activePet.name} 🐾\n\nHello ${activeOwner.name},\nHere is the treatment plan from today's visit:\n• Diagnosis: ${draft.assessment}\n• Care Plan: ${draft.plan}\n\nPlease call us if you have any questions. Get well soon, ${activePet.name}!`}
-                  style={{
-                    width: '100%',
-                    background: '#111827',
-                    border: '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    fontSize: '11px',
-                    color: '#94a3b8',
-                    fontFamily: 'monospace',
-                    height: '110px',
-                    resize: 'none'
-                  }}
-                />
-              </div>
-
-              {/* Schedule Follow-up Card */}
-              <div style={{ 
-                background: '#1f2937', 
-                border: '1px solid #374151', 
-                padding: '16px', 
-                borderRadius: '10px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>📅 Schedule Recheck Appointment</strong>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
-                    Open slot booking with prefilled pet context
-                  </span>
-                </div>
-                <button 
-                  className="btn btn-outline btn-sm"
-                  style={{ borderColor: 'var(--brand)', color: 'var(--brand)', fontWeight: '700' }}
-                  onClick={() => {
-                    if (setBookingClient && setBookingPet) {
-                      setBookingClient(activeOwner);
-                      setBookingPet(activePet);
-                    }
-                    setShowSendModal(false);
-                    go('booking');
-                  }}
-                >
-                  Book Follow-up
-                </button>
-              </div>
-
-            </div>
-
+            
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
               <button 
                 className="btn btn-primary"

@@ -146,12 +146,16 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (name.trim().length < 3) {
+      window.showToast('"name" length must be at least 3 characters long', 'error');
+      return;
+    }
     if (!/^\d{10}$/.test(phone)) {
-      alert("Phone number must be exactly 10 digits (numeric only)!");
+      window.showToast("Phone number must be exactly 10 digits (numeric only)!", 'error');
       return;
     }
     if (!/^\d{6}$/.test(zip)) {
-      alert("Postal code must be exactly 6 digits (numeric only)!");
+      window.showToast("Postal code must be exactly 6 digits (numeric only)!", 'error');
       return;
     }
     onCreate({
@@ -171,6 +175,8 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
       setEmail('');
       setSpecialties('');
       setOpenForm(false);
+    }).catch(err => {
+      window.showToast(err.message, 'error');
     });
   };
 
@@ -295,12 +301,16 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (name.trim().length < 3) {
+      window.showToast('"name" length must be at least 3 characters long', 'error');
+      return;
+    }
     if (!/^\d{10}$/.test(phone)) {
-      alert("Phone number must be exactly 10 digits (numeric only)!");
+      window.showToast("Phone number must be exactly 10 digits (numeric only)!", 'error');
       return;
     }
     if (!/^\d{6}$/.test(zip)) {
-      alert("Postal code must be exactly 6 digits (numeric only)!");
+      window.showToast("Postal code must be exactly 6 digits (numeric only)!", 'error');
       return;
     }
     onSave({
@@ -309,6 +319,9 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
       address: { street, city, state, postal_code: zip },
       contact: { phone, email },
       specialties
+    }).catch(err => {
+      // Error is caught in handleUpdateClinic but we want to avoid closing if we handled it in the parent?
+      // Wait, onSave is an async promise. 
     });
   };
 

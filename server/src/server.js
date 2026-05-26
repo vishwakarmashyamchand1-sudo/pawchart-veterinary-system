@@ -213,6 +213,20 @@ app.get('/api/health', (_req, res) => {
 
 app.use((error, _req, res, _next) => {
   console.error(error);
+
+  // Handle Mongoose duplicate key error specifically
+  if (error.code === 11000) {
+    const field = Object.keys(error.keyValue)[0];
+    let fieldName = field;
+    if (field === 'contact.email') fieldName = 'email';
+    if (field === 'contact.phone') fieldName = 'phone';
+    if (field === 'registration_number') fieldName = 'registration number';
+    
+    return res.status(400).json({ 
+      message: `The ${fieldName} '${error.keyValue[field]}' is already registered. Please use a unique value.` 
+    });
+  }
+
   res.status(error.status || 500).json({ message: error.message || 'Unexpected server error' });
 });
 
