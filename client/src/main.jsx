@@ -1250,19 +1250,6 @@ function Vets({ vets, create, update, onDelete }) {
         </table>
       </section>
 
-      <div style={{
-        marginTop: '16px',
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        padding: '12px 16px',
-        color: '#1e40af',
-        fontSize: '12.5px',
-        lineHeight: '1.5'
-      }}>
-        💡 <strong>Note:</strong> Most US vet clinics have 2–8 vets. This screen works the same as CareFlow's Doctors screen — same onboard modal, same table. Only label changes: "Doctor" → "Veterinarian", specializations are vet-specific.
-      </div>
-
       {openOnboard && (
         <VetModal 
           onClose={() => setOpenOnboard(false)} 
@@ -1388,24 +1375,6 @@ function Clients({ clients, create, update, appointments, vaccinations, go, onSe
       sub={`${clients.reduce((sum, c) => sum + (c.pets || []).length, 0)} pets across ${clients.length} client accounts · Owner is the account, each pet is a separate patient`} 
       action={<button className="btn btn-primary" onClick={() => setOpen(true)}>+ Register New Client</button>}
     >
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-        marginBottom: '16px',
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        padding: '12px'
-      }}>
-        <div style={{ fontSize: '12px', color: '#1e40af', lineHeight: '1.4' }}>
-          💡 <strong>"Register New Client"</strong> → Creates a new owner account + registers their pets for the first time
-        </div>
-        <div style={{ fontSize: '12px', color: '#1e40af', lineHeight: '1.4' }}>
-          📅 <strong>"New Appointment"</strong> (on dashboard) → Books a slot for an existing client's pet
-        </div>
-      </div>
-
       <div className="search-row">
         <input 
           className="search-box" 
@@ -1630,7 +1599,9 @@ const getIdealRange = (species = '', breed = '') => {
 function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create }) {
   const [currentPet, setCurrentPet] = useState(pet);
   const [activeTab, setActiveTab] = useState('visits');
-  const [weightVal, setWeightVal] = useState('32.4');
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+  const [weightLogVal, setWeightLogVal] = useState('');
+  const [weightLogNote, setWeightLogNote] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
@@ -1680,18 +1651,22 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return '🐾';
   };
 
-  // Latest weight check
-  const getWeightDisplay = (weightRangeVal) => {
-    if (!weightRangeVal) return 'Not Provided';
-    const trimmed = String(weightRangeVal).trim();
-    if (trimmed.toLowerCase().endsWith('lbs') || trimmed.toLowerCase().endsWith('kg')) {
-      return trimmed;
-    }
-    return `${trimmed} lbs`;
-  };
-  const petWeights = weights.filter(w => w.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const petWeights = weights.filter(w => 
+    w.petName.toLowerCase() === currentPet.name.toLowerCase() &&
+    w.ownerName.toLowerCase() === ownerName.toLowerCase()
+  );
   const latestWeightLog = [...petWeights].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-  const currentWeight = latestWeightLog ? `${latestWeightLog.value} ${latestWeightLog.unit || 'lbs'}` : getWeightDisplay(currentPet.weightRange);
+  const currentWeight = (() => {
+    if (petWeights.length === 0) return 'No Weight Logged';
+    const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const latest = sorted[sorted.length - 1];
+    const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+    if (prev) {
+      const diff = latest.value - prev.value;
+      return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'} (${diff >= 0 ? '+' : ''}${diff.toFixed(1)} lbs)`;
+    }
+    return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
+  })();
 
   // dynamic timeline records (visits) from SoapNotes
   const petVisits = soapnotes.filter(s => s.petName.toLowerCase() === currentPet.name.toLowerCase());
@@ -2128,6 +2103,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               {/* WEIGHT CHART TABS */}
               {activeTab === 'weight' && (() => {
                 const sortedPetWeights = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const hasWeights = sortedPetWeights.length > 0;
+                
                 const petSpecies = currentPet.species || 'Dog';
                 const petBreed = currentPet.breed || 'Golden Retriever';
                 
@@ -2136,19 +2113,14 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const idealMin = idealRange.min;
                 const idealMax = idealRange.max;
                 
-                const currentWeightRecord = sortedPetWeights[sortedPetWeights.length - 1];
-                let currentWeight = 32.4;
-                if (currentWeightRecord) {
-                  currentWeight = currentWeightRecord.value;
-                } else if (currentPet.weightRange && !isNaN(parseFloat(currentPet.weightRange))) {
-                  currentWeight = parseFloat(currentPet.weightRange);
-                }
+                const currentWeightRecord = hasWeights ? sortedPetWeights[sortedPetWeights.length - 1] : null;
+                const currentWeight = currentWeightRecord ? currentWeightRecord.value : 0;
                 const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
                 
                 const previousWeightRecord = sortedPetWeights.length > 1 ? sortedPetWeights[sortedPetWeights.length - 2] : null;
                 const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
-                const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff.toFixed(1)}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ 0.0`;
-                const lastDiffColor = lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+                const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `(${lastDiff >= 0 ? '+' : ''}${lastDiff.toFixed(1)} lbs from previous visit)` : 'Initial weight visit';
+                const lastDiffColor = !hasWeights ? 'var(--text-3)' : lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
 
                 const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
                 const sixMonthsAgo = new Date(latestWeightDate);
@@ -2164,22 +2136,22 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 if (!sixMonthWeight && sortedPetWeights.length > 0) sixMonthWeight = sortedPetWeights[0];
                 
                 const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
-                const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
+                const sixMonthDiffStr = !hasWeights ? '—' : sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
                 
                 const initialWeight = currentWeight - sixMonthDiff;
                 const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
-                const isSignificant = Math.abs(pctChange) > 5;
+                const isSignificant = hasWeights && Math.abs(pctChange) > 5;
                 
-                let sixMonthTrendStr = 'Stable weight trend';
+                let sixMonthTrendStr = !hasWeights ? 'No weight history' : 'Stable weight trend';
                 let sixMonthDiffColor = 'var(--green)';
                 if (isSignificant) {
                   sixMonthTrendStr = '⚠ Dietary review recommended';
                   sixMonthDiffColor = 'var(--amber)';
                 }
                 
-                const isWithinRange = currentWeight >= idealMin && currentWeight <= idealMax;
-                const rangeColor = isWithinRange ? 'var(--green)' : 'var(--amber)';
-                const rangeStr = isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
+                const isWithinRange = hasWeights && currentWeight >= idealMin && currentWeight <= idealMax;
+                const rangeColor = !hasWeights ? 'var(--text-3)' : isWithinRange ? 'var(--green)' : 'var(--amber)';
+                const rangeStr = !hasWeights ? 'Awaiting weight log' : isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
 
                 const logList = [...sortedPetWeights].reverse();
                 const chartData = sortedPetWeights.slice(-6);
@@ -2238,19 +2210,31 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
 
                 const handleLogWeightInTab = () => {
-                  const val = prompt(`Enter new weight in ${currentUnit} for ${currentPet.name}:`, currentWeight);
-                  if (val && !isNaN(val)) {
-                    create('weights', {
-                      petName: currentPet.name,
-                      ownerName: ownerName,
-                      value: Number(val),
-                      unit: currentUnit,
-                      date: getLocalDateString(),
-                      note: 'Manual entry via profile'
-                    }).then(() => {
-                      window.showToast?.('Weight logged successfully!');
-                    });
+                  setWeightLogVal('');
+                  setWeightLogNote('');
+                  setIsWeightModalOpen(true);
+                };
+
+                const handleSaveNewWeight = () => {
+                  if (!weightLogVal || isNaN(weightLogVal)) {
+                    alert("Please enter a valid numeric weight.");
+                    return;
                   }
+                  create('weights', {
+                    petName: currentPet.name,
+                    ownerName: ownerName,
+                    value: Number(weightLogVal),
+                    unit: currentUnit,
+                    date: getLocalDateString(),
+                    note: weightLogNote || 'Manual entry via profile'
+                  }).then(() => {
+                    setIsWeightModalOpen(false);
+                    setWeightLogVal('');
+                    setWeightLogNote('');
+                    window.showToast?.('Weight logged successfully!');
+                  }).catch(err => {
+                    alert("Failed to save weight: " + err.message);
+                  });
                 };
 
                 return (
@@ -2267,18 +2251,20 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                     <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
                       <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>CURRENT WEIGHT</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-                        <div style={{ fontSize: '10px', color: lastDiffColor, marginTop: '2px', fontWeight: '500' }}>{lastDiffStr} lbs from last visit</div>
+                        <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text)' }}>
+                          {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
+                        </div>
+                        <div style={{ fontSize: '9.5px', color: lastDiffColor, marginTop: '2px', fontWeight: '500' }}>{lastDiffStr}</div>
                       </div>
                       <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>6-MONTH CHANGE</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-                        <div style={{ fontSize: '10px', color: sixMonthDiffColor, marginTop: '2px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sixMonthTrendStr}</div>
+                        <div style={{ fontSize: '18px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span></div>
+                        <div style={{ fontSize: '9.5px', color: sixMonthDiffColor, marginTop: '2px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sixMonthTrendStr}</div>
                       </div>
                       <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>IDEAL RANGE</div>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: rangeColor }}>{idealMin}–{idealMax} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-                        <div style={{ fontSize: '10px', color: rangeColor, marginTop: '2px', fontWeight: '500' }}>{rangeStr}</div>
+                        <div style={{ fontSize: '9.5px', color: rangeColor, marginTop: '2px', fontWeight: '500' }}>{rangeStr}</div>
                       </div>
                     </div>
 
@@ -2325,43 +2311,181 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                               ))}
                             </>
                           )}
+
+                          {!hasWeights && (
+                            <text x="267" y="75" fontSize="12" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">No weight history logged yet</text>
+                          )}
                         </svg>
                       </div>
 
                       <div className="card" style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '144px', overflowY: 'auto' }}>
                         <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: '8px' }}>Visit Log</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {logList.map((row, i) => {
-                            let diffStr = '—';
-                            let diffColor = 'var(--text-3)';
-                            if (i < logList.length - 1) {
-                              const diff = row.value - logList[i+1].value;
-                              if (diff > 0) {
-                                diffStr = `↑ +${diff.toFixed(1)}`;
-                                diffColor = 'var(--amber)';
-                              } else if (diff < 0) {
-                                diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
-                                diffColor = 'var(--green)';
+                          {logList.length > 0 ? (
+                            logList.map((row, i) => {
+                              let diffStr = '—';
+                              let diffColor = 'var(--text-3)';
+                              if (i < logList.length - 1) {
+                                const diff = row.value - logList[i+1].value;
+                                if (diff > 0) {
+                                  diffStr = `+${diff.toFixed(1)} ${row.unit || 'lbs'} gained`;
+                                  diffColor = 'var(--amber)';
+                                } else if (diff < 0) {
+                                  diffStr = `-${Math.abs(diff).toFixed(1)} ${row.unit || 'lbs'} decreased`;
+                                  diffColor = 'var(--green)';
+                                } else {
+                                  diffStr = `0.0 ${row.unit || 'lbs'} stable`;
+                                  diffColor = 'var(--text-3)';
+                                }
                               }
-                            }
-                            
-                            return (
-                              <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '11px' }}>
-                                <div style={{ color: 'var(--text-3)', width: '65px' }}>
-                                  {formatDateSafe(row.date)}
+                              const timeStr = row.createdAt ? new Date(row.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '12:00 PM';
+                              
+                              return (
+                                <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '11px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', width: '75px' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-3)' }}>{timeStr}</span>
+                                  </div>
+                                  <div style={{ fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                                    {row.value.toFixed(1)} <span style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit || 'lbs'}</span>
+                                  </div>
+                                  <div style={{ color: diffColor, fontWeight: '600', fontSize: '9.5px', width: '90px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                    {diffStr}
+                                  </div>
                                 </div>
-                                <div style={{ fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
-                                  {row.value} <span style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit}</span>
-                                </div>
-                                <div style={{ color: diffColor, fontWeight: '500', width: '40px', textAlign: 'right' }}>
-                                  {diffStr}
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          ) : (
+                            <div style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', padding: '16px 0' }}>No logs yet</div>
+                          )}
                         </div>
                       </div>
                     </div>
+
+                    {isWeightModalOpen && (
+                      <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        backdropFilter: 'blur(6px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        animation: 'modalBackdropFade 0.25s ease-out forwards'
+                      }}>
+                        <style>{`
+                          @keyframes modalBackdropFade {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                          }
+                          @keyframes modalContentSlideUp {
+                            from { transform: translateY(30px); opacity: 0; }
+                            to { transform: translateY(0); opacity: 1; }
+                          }
+                        `}</style>
+                        <div style={{
+                          background: '#fff',
+                          borderRadius: '16px',
+                          width: '100%',
+                          maxWidth: '400px',
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                          border: '1px solid var(--border)',
+                          padding: '24px',
+                          animation: 'modalContentSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '16px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
+                              ⚖️ Log New Weight
+                            </h3>
+                            <button 
+                              onClick={() => setIsWeightModalOpen(false)}
+                              style={{
+                                background: 'transparent',
+                                border: 0,
+                                fontSize: '20px',
+                                color: 'var(--text-3)',
+                                cursor: 'pointer',
+                                padding: '4px'
+                              }}
+                            >
+                              &times;
+                            </button>
+                          </div>
+
+                          <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            ⚖️ <strong>Auto-Capturing Current Date & Time:</strong>
+                            <div style={{ marginTop: '4px', fontWeight: '600', color: 'var(--brand)' }}>
+                              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
+                              Weight ({currentUnit}) <span style={{ color: 'red' }}>*</span>
+                            </label>
+                            <input 
+                              type="number"
+                              step="0.1"
+                              placeholder={`Enter weight in ${currentUnit} (e.g. 32.4)`}
+                              value={weightLogVal}
+                              onChange={(e) => setWeightLogVal(e.target.value)}
+                              autoFocus
+                              style={{
+                                padding: '10px 12px',
+                                fontSize: '14px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)',
+                                outline: 'none',
+                                transition: 'border-color 0.2s'
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
+                              Notes (Optional)
+                            </label>
+                            <input 
+                              type="text"
+                              placeholder="e.g. Routine checkup or post-diet review"
+                              value={weightLogNote}
+                              onChange={(e) => setWeightLogNote(e.target.value)}
+                              style={{
+                                padding: '10px 12px',
+                                fontSize: '14px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)',
+                                outline: 'none'
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                            <button 
+                              className="btn btn-outline" 
+                              onClick={() => setIsWeightModalOpen(false)}
+                              style={{ padding: '8px 16px', fontSize: '13px' }}
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              className="btn btn-primary" 
+                              onClick={handleSaveNewWeight}
+                              style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '600' }}
+                            >
+                              Save Log
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -3021,7 +3145,6 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                 <th>DATE</th>
                 <th>TIME</th>
                 <th>STATUS</th>
-                <th style={{ textAlign: 'right', paddingRight: '24px' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -3047,20 +3170,11 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                     <td>
                       <Badge value={appt.status || 'Scheduled'} />
                     </td>
-                    <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                      <button 
-                        className="btn btn-outline btn-sm" 
-                        style={{ padding: '6px 10px', fontSize: '12px' }}
-                        onClick={() => go('soap')}
-                      >
-                        Start Consultation
-                      </button>
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>
                     No appointments scheduled under this filter.
                   </td>
                 </tr>
@@ -3087,6 +3201,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }
 
   if (!bookingClient) {
+    const isSearching = searchQuery.trim() !== '';
+    const showRegister = isSearching && clientsFiltered.length === 0;
+
     return (
       <Screen 
         title="Book Appointment — Step 1 of 3" 
@@ -3098,62 +3215,100 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         }
       >
         <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="search-row">
+          <div style={{ position: 'relative', width: '100%' }}>
+            <span style={{
+              position: 'absolute',
+              left: '14px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: '16px',
+              color: 'var(--text-3)',
+              userSelect: 'none',
+              pointerEvents: 'none'
+            }}>
+              🔍
+            </span>
             <input 
-              className="search-box" 
+              type="text"
               placeholder="Search client by owner name, email, or phone..." 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '14px 16px 14px 40px',
+                fontSize: '15px',
+                borderRadius: '12px',
+                border: '2px solid var(--border)',
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                background: '#fff',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--brand)';
+                e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--border)';
+                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.02)';
+              }}
             />
           </div>
-          <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px', maxHeight: '420px', overflowY: 'auto' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th style={{ paddingLeft: '18px' }}>Owner</th>
-                  <th>Contact</th>
-                  <th style={{ textAlign: 'right', paddingRight: '18px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientsFiltered.length > 0 ? (
-                  clientsFiltered.map(c => (
-                    <tr key={c._id}>
-                      <td style={{ paddingLeft: '18px', fontWeight: '700', color: 'var(--text)' }}>{c.name}</td>
-                      <td>{c.email} · {c.phone}</td>
-                      <td style={{ textAlign: 'right', paddingRight: '18px' }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => setBookingClient(c)}>Select</button>
+
+          {isSearching && (
+            <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px', maxHeight: '420px', overflowY: 'auto', border: '1px solid var(--border)' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ paddingLeft: '18px' }}>Owner</th>
+                    <th>Contact</th>
+                    <th style={{ textAlign: 'right', paddingRight: '18px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientsFiltered.length > 0 ? (
+                    clientsFiltered.map(c => (
+                      <tr key={c._id}>
+                        <td style={{ paddingLeft: '18px', fontWeight: '700', color: 'var(--text)' }}>{c.name}</td>
+                        <td>{c.email} · {c.phone}</td>
+                        <td style={{ textAlign: 'right', paddingRight: '18px' }}>
+                          <button className="btn btn-primary btn-sm" onClick={() => setBookingClient(c)}>Select</button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--text-3)' }}>
+                        <span style={{ fontSize: '24px', display: 'block', marginBottom: '6px' }}>📭</span>
+                        <strong>No clients found matching "{searchQuery}"</strong>
+                        <div style={{ fontSize: '11px', marginTop: '4px' }}>Please check the spelling or register them as a new client below.</div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-3)' }}>
-                      No clients found matching your query.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </section>
+                  )}
+                </tbody>
+              </table>
+            </section>
+          )}
           
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{
-              border: '1px dashed var(--brand)',
-              color: 'var(--brand)',
-              background: '#f0f9ff',
-              width: '100%',
-              padding: '12px',
-              justifyContent: 'center',
-              fontWeight: '700',
-              marginTop: '8px'
-            }}
-            onClick={() => setOpenRegisterModal(true)}
-          >
-            ➕ Register New Client
-          </button>
+          {showRegister && (
+            <button 
+              type="button" 
+              className="btn btn-outline" 
+              style={{
+                border: '1px dashed var(--brand)',
+                color: 'var(--brand)',
+                background: '#f0f9ff',
+                width: '100%',
+                padding: '12px',
+                justifyContent: 'center',
+                fontWeight: '700',
+                marginTop: '4px'
+              }}
+              onClick={() => setOpenRegisterModal(true)}
+            >
+              ➕ Register New Client
+            </button>
+          )}
         </div>
 
         {openRegisterModal && (
@@ -3662,6 +3817,10 @@ function LegacySoap({ note, create }) {
 function Weights({ weights, create, activePet, clients, go }) {
   const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐕', age: '4 yrs' };
   
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+  const [weightLogVal, setWeightLogVal] = useState('');
+  const [weightLogNote, setWeightLogNote] = useState('');
+
   let ownerName = 'James Martinez';
   if (clients) {
     const owner = clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase()));
@@ -3670,8 +3829,10 @@ function Weights({ weights, create, activePet, clients, go }) {
 
   // Resilient case-insensitive name mapping
   const petWeights = [...weights]
-    .filter(w => w.petName.toLowerCase() === pet.name.toLowerCase())
+    .filter(w => w.petName.toLowerCase() === pet.name.toLowerCase() && w.ownerName.toLowerCase() === ownerName.toLowerCase())
     .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const hasWeights = petWeights.length > 0;
 
   // Determine species & breed from DB dynamically
   const clientOwner = clients ? clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase())) : null;
@@ -3685,20 +3846,14 @@ function Weights({ weights, create, activePet, clients, go }) {
   const idealMin = idealRange.min;
   const idealMax = idealRange.max;
 
-  const currentWeightRecord = petWeights[petWeights.length - 1];
-  
-  let currentWeight = 32.4;
-  if (currentWeightRecord) {
-    currentWeight = currentWeightRecord.value;
-  } else if (pet.weightRange && !isNaN(parseFloat(pet.weightRange))) {
-    currentWeight = parseFloat(pet.weightRange);
-  }
+  const currentWeightRecord = hasWeights ? petWeights[petWeights.length - 1] : null;
+  const currentWeight = currentWeightRecord ? currentWeightRecord.value : 0;
   const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
   
   const previousWeightRecord = petWeights.length > 1 ? petWeights[petWeights.length - 2] : null;
   const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
-  const lastDiffStr = lastDiff > 0 ? `↑ ${lastDiff.toFixed(1)}` : lastDiff < 0 ? `↓ ${Math.abs(lastDiff).toFixed(1)}` : `→ 0.0`;
-  const lastDiffColor = lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
+  const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `(${lastDiff >= 0 ? '+' : ''}${lastDiff.toFixed(1)} lbs from previous visit)` : 'Initial weight visit';
+  const lastDiffColor = !hasWeights ? 'var(--text-3)' : lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
 
   // Calculate 6-month change relative to latest weight record's date for run-date independence
   const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
@@ -3715,23 +3870,23 @@ function Weights({ weights, create, activePet, clients, go }) {
   if (!sixMonthWeight && petWeights.length > 0) sixMonthWeight = petWeights[0];
   
   const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
-  const sixMonthDiffStr = sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
+  const sixMonthDiffStr = !hasWeights ? '—' : sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
   
   // Calculate percentage-based clinical significance (species-aware!)
   const initialWeight = currentWeight - sixMonthDiff;
   const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
-  const isSignificant = Math.abs(pctChange) > 5; // 5% threshold
+  const isSignificant = hasWeights && Math.abs(pctChange) > 5; // 5% threshold
 
-  let sixMonthTrendStr = 'Stable weight trend';
+  let sixMonthTrendStr = !hasWeights ? 'No weight history' : 'Stable weight trend';
   let sixMonthDiffColor = 'var(--green)';
   if (isSignificant) {
     sixMonthTrendStr = '⚠ Dietary review recommended';
     sixMonthDiffColor = 'var(--amber)';
   }
 
-  const isWithinRange = currentWeight >= idealMin && currentWeight <= idealMax;
-  const rangeColor = isWithinRange ? 'var(--green)' : 'var(--amber)';
-  const rangeStr = isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
+  const isWithinRange = hasWeights && currentWeight >= idealMin && currentWeight <= idealMax;
+  const rangeColor = !hasWeights ? 'var(--text-3)' : isWithinRange ? 'var(--green)' : 'var(--amber)';
+  const rangeStr = !hasWeights ? 'Awaiting weight log' : isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
 
   const logList = [...petWeights].reverse();
   const chartData = petWeights.slice(-6); 
@@ -3787,23 +3942,34 @@ function Weights({ weights, create, activePet, clients, go }) {
   if (idealYMax > 124) idealYMax = 124;
   
   const idealHeight = idealYMax - idealYMin;
-
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
 
   const handleLogWeight = () => {
-    const val = prompt(`Enter new weight in ${currentUnit} for ${pet.name}:`, currentWeight);
-    if (val && !isNaN(val)) {
-      create('weights', { 
-        petName: pet.name, 
-        ownerName: ownerName, 
-        value: Number(val), 
-        unit: currentUnit, 
-        date: getLocalDateString(), 
-        note: 'Manual entry' 
-      }).then(() => {
-        window.showToast?.('Weight logged successfully!');
-      });
+    setWeightLogVal('');
+    setWeightLogNote('');
+    setIsWeightModalOpen(true);
+  };
+
+  const handleSaveNewWeight = () => {
+    if (!weightLogVal || isNaN(weightLogVal)) {
+      alert("Please enter a valid numeric weight.");
+      return;
     }
+    create('weights', { 
+      petName: pet.name, 
+      ownerName: ownerName, 
+      value: Number(weightLogVal), 
+      unit: currentUnit, 
+      date: getLocalDateString(), 
+      note: weightLogNote || 'Manual entry' 
+    }).then(() => {
+      setIsWeightModalOpen(false);
+      setWeightLogVal('');
+      setWeightLogNote('');
+      window.showToast?.('Weight logged successfully!');
+    }).catch(err => {
+      alert("Failed to save weight: " + err.message);
+    });
   };
 
   return (
@@ -3827,12 +3993,14 @@ function Weights({ weights, create, activePet, clients, go }) {
         <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '18px' }}>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
-            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-            <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr} {currentUnit} from last visit</div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>
+              {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
+            </div>
+            <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr}</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>6-MONTH CHANGE</div>
-            <div style={{ fontSize: '30px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span></div>
             <div style={{ fontSize: '11px', color: sixMonthDiffColor, marginTop: '3px', fontWeight: '500' }}>{sixMonthTrendStr}</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
@@ -3889,44 +4057,182 @@ function Weights({ weights, create, activePet, clients, go }) {
                   ))}
                 </>
               )}
+
+              {!hasWeights && (
+                <text x="267" y="75" fontSize="12" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">No weight history logged yet</text>
+              )}
             </svg>
           </div>
           
           <div className="card" style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>Visit Log</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {logList.map((row, i) => {
-                let diffStr = '—';
-                let diffColor = 'var(--text-3)';
-                if (i < logList.length - 1) {
-                  const diff = row.value - logList[i+1].value;
-                  if (diff > 0) {
-                    diffStr = `↑ +${diff.toFixed(1)}`;
-                    diffColor = 'var(--amber)';
-                  } else if (diff < 0) {
-                    diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
-                    diffColor = 'var(--green)';
+              {logList.length > 0 ? (
+                logList.map((row, i) => {
+                  let diffStr = '—';
+                  let diffColor = 'var(--text-3)';
+                  if (i < logList.length - 1) {
+                    const diff = row.value - logList[i+1].value;
+                    if (diff > 0) {
+                      diffStr = `+${diff.toFixed(1)} ${row.unit || 'lbs'} gained`;
+                      diffColor = 'var(--amber)';
+                    } else if (diff < 0) {
+                      diffStr = `-${Math.abs(diff).toFixed(1)} ${row.unit || 'lbs'} decreased`;
+                      diffColor = 'var(--green)';
+                    } else {
+                      diffStr = `0.0 ${row.unit || 'lbs'} stable`;
+                      diffColor = 'var(--text-3)';
+                    }
                   }
-                }
-                
-                return (
-                  <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-3)', width: '70px' }}>
-                      {formatDateSafe(row.date)}
+                  const timeStr = row.createdAt ? new Date(row.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '12:00 PM';
+                  
+                  return (
+                    <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', width: '80px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-3)', marginTop: '2px' }}>{timeStr}</span>
+                      </div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                        {row.value.toFixed(1)} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit || 'lbs'}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: diffColor, fontWeight: '600', width: '100px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {diffStr}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
-                      {row.value} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit}</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: diffColor, fontWeight: '500', width: '45px', textAlign: 'right' }}>
-                      {diffStr}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div style={{ fontSize: '12px', color: 'var(--text-3)', textAlign: 'center', padding: '24px 0' }}>No logs yet</div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {isWeightModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'modalBackdropFade 0.25s ease-out forwards'
+        }}>
+          <style>{`
+            @keyframes modalBackdropFade {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes modalContentSlideUp {
+              from { transform: translateY(30px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+          `}</style>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid var(--border)',
+            padding: '24px',
+            animation: 'modalContentSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
+                ⚖️ Log New Weight
+              </h3>
+              <button 
+                onClick={() => setIsWeightModalOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  fontSize: '20px',
+                  color: 'var(--text-3)',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              ⚖️ <strong>Auto-Capturing Current Date & Time:</strong>
+              <div style={{ marginTop: '4px', fontWeight: '600', color: 'var(--brand)' }}>
+                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
+                Weight ({currentUnit}) <span style={{ color: 'red' }}>*</span>
+              </label>
+              <input 
+                type="number"
+                step="0.1"
+                placeholder={`Enter weight in ${currentUnit} (e.g. 32.4)`}
+                value={weightLogVal}
+                onChange={(e) => setWeightLogVal(e.target.value)}
+                autoFocus
+                style={{
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
+                Notes (Optional)
+              </label>
+              <input 
+                type="text"
+                placeholder="e.g. Routine checkup or post-diet review"
+                value={weightLogNote}
+                onChange={(e) => setWeightLogNote(e.target.value)}
+                style={{
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setIsWeightModalOpen(false)}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSaveNewWeight}
+                style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '600' }}
+              >
+                Save Log
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
