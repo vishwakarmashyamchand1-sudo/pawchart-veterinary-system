@@ -85,9 +85,42 @@ router.post('/', optionalVerify, async (req, res, next) => {
       return res.status(400).json({ message: 'Postal code must be exactly 6 digits (numeric only)' });
     }
 
-    const existing = await Clinic.findOne({ registration_number });
-    if (existing) {
+    const existingByNumber = await Clinic.findOne({ registration_number });
+    if (existingByNumber) {
       return res.status(400).json({ message: 'Clinic already registered with this number' });
+    }
+
+    const { default: mongoose } = await import('mongoose');
+    const Vet = mongoose.models.Vet;
+    const Client = mongoose.models.Client;
+
+    if (contact && contact.email) {
+      const emailLower = contact.email.toLowerCase();
+      const existingByEmail = await Clinic.findOne({ 'contact.email': emailLower });
+      if (existingByEmail) return res.status(400).json({ message: 'A clinic is already registered with this email address' });
+      
+      if (Vet) {
+        const vetConflict = await Vet.findOne({ email: emailLower });
+        if (vetConflict) return res.status(400).json({ message: 'A Vet is already registered with this email address.' });
+      }
+      if (Client) {
+        const clientConflict = await Client.findOne({ email: emailLower });
+        if (clientConflict) return res.status(400).json({ message: 'A Client is already registered with this email address.' });
+      }
+    }
+
+    if (contact && contact.phone) {
+      const existingByPhone = await Clinic.findOne({ 'contact.phone': contact.phone });
+      if (existingByPhone) return res.status(400).json({ message: 'A clinic is already registered with this phone number' });
+      
+      if (Vet) {
+        const vetPhoneConflict = await Vet.findOne({ phone: contact.phone });
+        if (vetPhoneConflict) return res.status(400).json({ message: 'A Vet is already registered with this phone number.' });
+      }
+      if (Client) {
+        const clientPhoneConflict = await Client.findOne({ phone: contact.phone });
+        if (clientPhoneConflict) return res.status(400).json({ message: 'A Client is already registered with this phone number.' });
+      }
     }
 
     const created = await Clinic.create(req.body);
@@ -156,6 +189,39 @@ router.patch('/:id', optionalVerify, async (req, res, next) => {
     if (address && address.postal_code !== undefined) {
       if (!/^\d{6}$/.test(address.postal_code)) {
         return res.status(400).json({ message: 'Postal code must be exactly 6 digits (numeric only)' });
+      }
+    }
+
+    const { default: mongoose } = await import('mongoose');
+    const Vet = mongoose.models.Vet;
+    const Client = mongoose.models.Client;
+
+    if (contact && contact.email) {
+      const emailLower = contact.email.toLowerCase();
+      const existingByEmail = await Clinic.findOne({ 'contact.email': emailLower, _id: { $ne: req.params.id } });
+      if (existingByEmail) return res.status(400).json({ message: 'A clinic is already registered with this email address' });
+      
+      if (Vet) {
+        const vetConflict = await Vet.findOne({ email: emailLower });
+        if (vetConflict) return res.status(400).json({ message: 'A Vet is already registered with this email address.' });
+      }
+      if (Client) {
+        const clientConflict = await Client.findOne({ email: emailLower });
+        if (clientConflict) return res.status(400).json({ message: 'A Client is already registered with this email address.' });
+      }
+    }
+
+    if (contact && contact.phone) {
+      const existingByPhone = await Clinic.findOne({ 'contact.phone': contact.phone, _id: { $ne: req.params.id } });
+      if (existingByPhone) return res.status(400).json({ message: 'A clinic is already registered with this phone number' });
+      
+      if (Vet) {
+        const vetPhoneConflict = await Vet.findOne({ phone: contact.phone });
+        if (vetPhoneConflict) return res.status(400).json({ message: 'A Vet is already registered with this phone number.' });
+      }
+      if (Client) {
+        const clientPhoneConflict = await Client.findOne({ phone: contact.phone });
+        if (clientPhoneConflict) return res.status(400).json({ message: 'A Client is already registered with this phone number.' });
       }
     }
 

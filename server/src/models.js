@@ -27,8 +27,8 @@ const petSchema = new Schema(
 const clientSchema = new Schema(
   {
     name: { type: String, required: true },
-    email: String,
-    phone: String,
+    email: { type: String, unique: true, sparse: true },
+    phone: { type: String, unique: true, sparse: true },
     address: String,
     pets: [petSchema],
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }
@@ -39,8 +39,8 @@ const clientSchema = new Schema(
 const vetSchema = new Schema(
   {
     name: { type: String, required: true },
-    email: String,
-    phone: String,
+    email: { type: String, unique: true, sparse: true },
+    phone: { type: String, unique: true, sparse: true },
     specialization: String,
     license: String,
     experienceYears: Number,

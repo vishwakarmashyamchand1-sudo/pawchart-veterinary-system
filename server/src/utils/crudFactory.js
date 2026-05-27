@@ -40,6 +40,46 @@ export const createCrudHandlers = (Model, resourceName) => {
         const body = { ...req.body };
         const clinicId = req.header('x-clinic-id') || req.query.clinic_id || (req.user && req.user.clinicId);
         if (clinicId) { body.clinic_id = clinicId; }
+
+        if (body.email) {
+          const existing = await Model.findOne({ email: body.email });
+          if (existing) return res.status(400).json({ message: `The email '${body.email}' is already registered. Please use a unique value.` });
+          
+          if (resourceName === 'Vet' || resourceName === 'Client') {
+             const { default: mongoose } = await import('mongoose');
+                const Clinic = mongoose.models.Clinic;
+                if (Clinic) {
+                   const clinicConflict = await Clinic.findOne({ 'contact.email': body.email.toLowerCase() });
+                   if (clinicConflict) throw new Error(`The email '${body.email}' is already registered as a Clinic.`);
+                }
+                const OtherModel = mongoose.models[resourceName === 'Vet' ? 'Client' : 'Vet'];
+                if (OtherModel) {
+                   const otherConflict = await OtherModel.findOne({ email: body.email });
+                   if (otherConflict) throw new Error(`The email '${body.email}' is already registered.`);
+                }
+
+          }
+        }
+        if (body.phone) {
+          const existing = await Model.findOne({ phone: body.phone });
+          if (existing) return res.status(400).json({ message: `The phone '${body.phone}' is already registered. Please use a unique value.` });
+          
+          if (resourceName === 'Vet' || resourceName === 'Client') {
+             const { default: mongoose } = await import('mongoose');
+                const Clinic = mongoose.models.Clinic;
+                if (Clinic) {
+                   const clinicConflict = await Clinic.findOne({ 'contact.phone': body.phone });
+                   if (clinicConflict) throw new Error(`The phone '${body.phone}' is already registered as a Clinic.`);
+                }
+                const OtherModel = mongoose.models[resourceName === 'Vet' ? 'Client' : 'Vet'];
+                if (OtherModel) {
+                   const otherConflict = await OtherModel.findOne({ phone: body.phone });
+                   if (otherConflict) throw new Error(`The phone '${body.phone}' is already registered.`);
+                }
+
+          }
+        }
+
         const created = await Model.create(body);
         res.status(201).json(created);
       } catch (error) { next(error); }
@@ -47,6 +87,44 @@ export const createCrudHandlers = (Model, resourceName) => {
     update: async (req, res, next) => {
       try {
         const filter = { _id: req.params.id, ...getQueryFilter(req) };
+
+        if (req.body.email) {
+          const existing = await Model.findOne({ email: req.body.email, _id: { $ne: req.params.id } });
+          if (existing) return res.status(400).json({ message: `The email '${req.body.email}' is already registered. Please use a unique value.` });
+          
+          if (resourceName === 'Vet' || resourceName === 'Client') {
+             const { default: mongoose } = await import('mongoose');
+             const Clinic = mongoose.models.Clinic;
+             if (Clinic) {
+                const clinicConflict = await Clinic.findOne({ 'contact.email': req.body.email.toLowerCase() });
+                if (clinicConflict) throw new Error(`The email '${req.body.email}' is already registered as a Clinic.`);
+             }
+             const OtherModel = mongoose.models[resourceName === 'Vet' ? 'Client' : 'Vet'];
+             if (OtherModel) {
+                const otherConflict = await OtherModel.findOne({ email: req.body.email });
+                if (otherConflict) throw new Error(`The email '${req.body.email}' is already registered.`);
+             }
+          }
+        }
+        if (req.body.phone) {
+          const existing = await Model.findOne({ phone: req.body.phone, _id: { $ne: req.params.id } });
+          if (existing) return res.status(400).json({ message: `The phone '${req.body.phone}' is already registered. Please use a unique value.` });
+          
+          if (resourceName === 'Vet' || resourceName === 'Client') {
+             const { default: mongoose } = await import('mongoose');
+             const Clinic = mongoose.models.Clinic;
+             if (Clinic) {
+                const clinicConflict = await Clinic.findOne({ 'contact.phone': req.body.phone });
+                if (clinicConflict) throw new Error(`The phone '${req.body.phone}' is already registered as a Clinic.`);
+             }
+             const OtherModel = mongoose.models[resourceName === 'Vet' ? 'Client' : 'Vet'];
+             if (OtherModel) {
+                const otherConflict = await OtherModel.findOne({ phone: req.body.phone });
+                if (otherConflict) throw new Error(`The phone '${req.body.phone}' is already registered.`);
+             }
+          }
+        }
+
         const updated = await Model.findOneAndUpdate(filter, req.body, { new: true, runValidators: true });
         if (!updated) return res.status(404).json({ message: `${resourceName} not found` });
         res.json(updated);
@@ -62,3 +140,4 @@ export const createCrudHandlers = (Model, resourceName) => {
     }
   };
 };
+

@@ -48,9 +48,9 @@ const clinicSchema = new mongoose.Schema({
 });
 
 // Indexes for query speed
-clinicSchema.index({ name: 1 });
-clinicSchema.index({ status: 1 });
+// `name` already has `unique: true` on the field definition.
 // `registration_number` already has `unique: true` on the field definition.
-// Removing the explicit schema index to avoid duplicate index warnings.
+// Only add indexes for fields without unique constraints
+clinicSchema.index({ status: 1 });
 const Clinic = mongoose.model('Clinic', clinicSchema);
 export default Clinic;

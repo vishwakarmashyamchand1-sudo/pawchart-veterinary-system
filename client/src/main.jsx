@@ -88,7 +88,10 @@ function useApi(selectedClinicId) {
       headers,
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`Could not create ${resource}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || `Could not create ${resource}`);
+    }
     const createdObj = await res.json();
     await load();
     return createdObj;
@@ -104,7 +107,10 @@ function useApi(selectedClinicId) {
       headers,
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(`Could not update ${resource}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || `Could not update ${resource}`);
+    }
     await load();
   }
 
@@ -190,12 +196,10 @@ function ClinicCreateModal({ onClose, onSave }) {
       setZip('');
       setPhone('');
       setEmail('');
-      setSpecialties('');
-      setOpenForm(false);
+      setSelectedSpecs([]);
+      onClose();
     }).catch(err => {
       window.showToast(err.message, 'error');
-
-      specialties: selectedSpecs.join(', ') || 'Veterinary Medicine'
     });
   };
 
@@ -327,7 +331,6 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
         <div className="topbar">
           <div>
             <h2>Clinics</h2>
-            <div className="sub">Enterprise administration and database switcher panel</div>
           </div>
           <button className="btn btn-primary" onClick={() => setOpenForm(true)}>+ Create Clinic</button>
         </div>
@@ -670,7 +673,7 @@ function App() {
         throw new Error(errData.message || 'Failed to onboard clinic');
       }
     } catch (err) {
-      alert(err.message);
+      throw err;
     }
   }
 
@@ -851,8 +854,8 @@ function App() {
             ) : (
               <>
                 {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} go={setScreen} />}
-                {screen === 'vets' && <Vets vets={data.vets} create={create} update={update} onDelete={remove} />}
-                {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
+                {screen === 'vets' && <Vets vets={data.vets} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
+                {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} />}
                 {screen === 'booking' && <Booking vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
@@ -919,8 +922,9 @@ function App() {
               <button 
                 className="btn btn-primary" 
                 style={{ background: 'var(--red)', color: 'white' }} 
-                onClick={() => {
-                  confirmState.onConfirm();
+                onClick={async () => {
+                  await confirmState.onConfirm();
+                  setConfirmState(null);
                 }}
               >
                 Confirm
@@ -1179,14 +1183,14 @@ function Stat({ label, value, hint, primary, danger }) {
   </div>;
 }
 
-function Vets({ vets, create, update, onDelete }) {
+function Vets({ vets, create, update, onDelete, selectedClinic }) {
   const [openOnboard, setOpenOnboard] = useState(false);
   const [editingVet, setEditingVet] = useState(null);
 
   return (
     <Screen 
       title="Veterinarians" 
-      sub={`Riverside Veterinary Clinic · ${vets.length} vets on staff`} 
+      sub={`${selectedClinic?.name || 'Clinic'} · ${vets.length} vets on staff`} 
       action={<button className="btn btn-primary" onClick={() => setOpenOnboard(true)}>+ Onboard Vet</button>}
     >
       <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
@@ -1253,7 +1257,13 @@ function Vets({ vets, create, update, onDelete }) {
       {openOnboard && (
         <VetModal 
           onClose={() => setOpenOnboard(false)} 
-          onSave={(body) => create('vets', body).then(() => setOpenOnboard(false))} 
+          onSave={(body) => create('vets', body)
+            .then(() => {
+              window.showToast('Veterinarian onboarded successfully!', 'success');
+              setOpenOnboard(false);
+            })
+            .catch(err => window.showToast(err.message, 'error'))
+          } 
         />
       )}
 
@@ -1261,14 +1271,20 @@ function Vets({ vets, create, update, onDelete }) {
         <VetModal 
           vet={editingVet} 
           onClose={() => setEditingVet(null)} 
-          onSave={(body) => update('vets', editingVet._id, body).then(() => setEditingVet(null))} 
+          onSave={(body) => update('vets', editingVet._id, body)
+            .then(() => {
+              window.showToast('Veterinarian updated successfully!', 'success');
+              setEditingVet(null);
+            })
+            .catch(err => window.showToast(err.message, 'error'))
+          } 
         />
       )}
     </Screen>
   );
 }
 
-function Clients({ clients, create, update, appointments, vaccinations, go, onSelectPet }) {
+function Clients({ clients, create, update, onDelete, appointments, vaccinations, go, onSelectPet }) {
   const [open, setOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [search, setSearch] = useState('');
@@ -1451,6 +1467,18 @@ function Clients({ clients, create, update, appointments, vaccinations, go, onSe
                       >
                         Edit
                       </button>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
+                        onClick={() => {
+                          window.showConfirm(`Are you sure you want to delete ${client.owner_name} and all their pets?`, () => {
+                            onDelete('clients', client._id);
+                          });
+                        }}
+                        title="Delete Client & Pets"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1469,7 +1497,13 @@ function Clients({ clients, create, update, appointments, vaccinations, go, onSe
       {open && (
         <ClientModal 
           onClose={() => setOpen(false)} 
-          onSave={(body) => create('clients', body).then(() => setOpen(false))} 
+          onSave={(body) => create('clients', body)
+            .then(() => {
+              window.showToast('Client added successfully!', 'success');
+              setOpen(false);
+            })
+            .catch(err => window.showToast(err.message, 'error'))
+          } 
         />
       )}
 
@@ -1477,7 +1511,13 @@ function Clients({ clients, create, update, appointments, vaccinations, go, onSe
         <ClientModal 
           client={editingClient}
           onClose={() => setEditingClient(null)} 
-          onSave={(body) => update('clients', editingClient._id, body).then(() => setEditingClient(null))} 
+          onSave={(body) => update('clients', editingClient._id, body)
+            .then(() => {
+              window.showToast('Client updated successfully!', 'success');
+              setEditingClient(null);
+            })
+            .catch(err => window.showToast(err.message, 'error'))
+          } 
         />
       )}
     </Screen>
@@ -4617,8 +4657,8 @@ function ClientModal({ onClose, onSave, client }) {
   };
 
   const handleUpdatePetField = (index, field, value) => {
-    setPets(
-      pets.map((p, idx) => {
+    setPets(prev =>
+      prev.map((p, idx) => {
         if (idx === index) {
           const updated = { ...p, [field]: value };
           if (field === 'species') {
@@ -4831,11 +4871,33 @@ function ClientModal({ onClose, onSave, client }) {
                       Species *
                       <select 
                         className="input" 
-                        value={pet.species} 
-                        onChange={e => handleUpdatePetField(index, 'species', e.target.value)}
+                        value={(pet.isCustomSpecies || (pet.species && !speciesOptions.includes(pet.species))) ? 'Other' : pet.species} 
+                        onChange={e => {
+                          if (e.target.value === 'Other') {
+                            handleUpdatePetField(index, 'isCustomSpecies', true);
+                            if (!pet.species || speciesOptions.includes(pet.species)) {
+                              handleUpdatePetField(index, 'species', '');
+                            }
+                          } else {
+                            handleUpdatePetField(index, 'isCustomSpecies', false);
+                            handleUpdatePetField(index, 'species', e.target.value);
+                          }
+                        }}
                       >
                         {speciesOptions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
+                      {(pet.isCustomSpecies || (pet.species && !speciesOptions.includes(pet.species))) && (
+                        <input 
+                          className="input" 
+                          style={{ marginTop: '8px' }}
+                          placeholder="Specify species"
+                          value={pet.species === 'Other' ? '' : pet.species}
+                          onChange={e => {
+                            handleUpdatePetField(index, 'isCustomSpecies', true);
+                            handleUpdatePetField(index, 'species', e.target.value);
+                          }}
+                        />
+                      )}
                     </label>
                   </div>
 
@@ -4844,20 +4906,43 @@ function ClientModal({ onClose, onSave, client }) {
                       Breed
                       <select 
                         className="input" 
-                        value={pet.breed} 
-                        onChange={e => handleUpdatePetField(index, 'breed', e.target.value)}
+                        value={(pet.isCustomBreed || (pet.breed && !(breedOptions[pet.species] || ['Other']).includes(pet.breed))) ? 'Other' : pet.breed} 
+                        onChange={e => {
+                          if (e.target.value === 'Other') {
+                            handleUpdatePetField(index, 'isCustomBreed', true);
+                            if (!pet.breed || (breedOptions[pet.species] || []).includes(pet.breed)) {
+                              handleUpdatePetField(index, 'breed', '');
+                            }
+                          } else {
+                            handleUpdatePetField(index, 'isCustomBreed', false);
+                            handleUpdatePetField(index, 'breed', e.target.value);
+                          }
+                        }}
                       >
                         <option value="">Select breed</option>
                         {(breedOptions[pet.species] || ['Other']).map(b => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
+                      {(pet.isCustomBreed || (pet.breed && !(breedOptions[pet.species] || ['Other']).includes(pet.breed))) && (
+                        <input 
+                          className="input" 
+                          style={{ marginTop: '8px' }}
+                          placeholder="Specify breed"
+                          value={pet.breed === 'Other' ? '' : pet.breed}
+                          onChange={e => {
+                            handleUpdatePetField(index, 'isCustomBreed', true);
+                            handleUpdatePetField(index, 'breed', e.target.value);
+                          }}
+                        />
+                      )}
                     </label>
                     <label className="field-label">
                       Date of Birth
                       <input 
                         className="input" 
                         type="date" 
+                        max={new Date().toISOString().split('T')[0]}
                         value={pet.dob} 
                         onChange={e => handleUpdatePetField(index, 'dob', e.target.value)} 
                       />
