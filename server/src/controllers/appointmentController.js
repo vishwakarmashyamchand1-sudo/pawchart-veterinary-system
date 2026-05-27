@@ -183,10 +183,6 @@ export const bookFollowUpRoute = async (req, res, next) => {
     const client = await Client.findOne({ name: ownerName });
     const vet = await Vet.findOne({ name: vetName || 'Dr. Sarah Chen' });
     const clinic = clinicId ? await Clinic.findById(clinicId) : null;
-
-    if (client) {
-      await sendClientAppointmentConfirmationMail(client, newAppt, vet, clinic);
-    }
     if (vet) {
       await sendDoctorAppointmentMail(vet, newAppt, client, clinic);
     }

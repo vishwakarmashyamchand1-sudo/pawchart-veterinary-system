@@ -4,7 +4,8 @@ import './styles.css';
 import { API_BASE_URL as API_URL } from './services/api.js';
 import { DoctorDashboard } from './components/DoctorDashboard.jsx';
 import { Soap } from './components/SoapConsultation.jsx';
-
+import { WeeklyCalendar } from './calendar/WeeklyCalendar.jsx';
+import { getTodayDate } from './utils/dateUtils.js';
 const CLINIC_SPECIALTIES = [
   'Surgery',
   'Grooming and Spa Services',
@@ -1288,7 +1289,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   const [open, setOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [search, setSearch] = useState('');
-
+  const [expandedClients, setExpandedClients] = useState({});
   const filtered = useMemo(() => {
     if (!search.trim()) return clients;
     const q = search.toLowerCase();
@@ -1380,9 +1381,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       pastAppts.sort((a, b) => new Date(b.date) - new Date(a.date));
       return new Date(pastAppts[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-    const date = clientCreatedAt ? new Date(clientCreatedAt) : new Date();
-    date.setDate(date.getDate() - 4);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return '-';
   };
 
   return (
@@ -1415,74 +1414,101 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
           </thead>
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((client) => (
-                <tr key={client._id}>
-                  <td style={{ paddingLeft: '18px' }}>
-                    <div className="td-name">{client.name}</div>
-                    <div className="td-sub">{client.email} · {client.phone}</div>
-                  </td>
-                  <td>
-                    <div className="chips">
-                      {(client.pets || []).map((pet) => (
-                        <span 
-                          className="pet-chip" 
-                          key={pet._id || pet.name}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => {
-                            onSelectPet(pet);
-                            go('petprofile');
-                          }}
-                        >
-                          {petEmoji(pet.species)} {pet.name}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>{getLastVisitDate(client.pets, appointments, client.createdAt)}</td>
-                  <td>{getNextAppointmentBadge(client.pets, appointments)}</td>
-                  <td>{getVaccinesBadgeForClient(client.pets, vaccinations)}</td>
-                  <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                    <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '6px 8px', color: 'var(--text-2)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        onClick={() => {
-                          if (client.pets && client.pets.length > 0) {
-                            onSelectPet(client.pets[0]);
-                          }
-                          go('petprofile');
-                        }}
-                        title="View Pet Profile"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ display: 'block' }}>
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                          <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                      </button>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
-                        onClick={() => setEditingClient(client)}
-                        title="Edit Client & Pets"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
-                        onClick={() => {
-                          window.showConfirm(`Are you sure you want to delete ${client.owner_name} and all their pets?`, () => {
-                            onDelete('clients', client._id);
-                          });
-                        }}
-                        title="Delete Client & Pets"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              filtered.flatMap((client) => {
+                const pets = client.pets && client.pets.length > 0 ? client.pets : [null];
+                const isExpanded = expandedClients[client._id];
+                const visiblePets = isExpanded ? pets : [pets[0]];
+
+                return visiblePets.map((pet, idx) => (
+                  <tr key={`${client._id}-${pet ? pet._id || pet.name : 'nopet'}-${idx}`} style={idx > 0 ? { backgroundColor: '#fafafa' } : {}}>
+                    <td style={{ paddingLeft: '18px', borderTop: idx > 0 ? 'none' : undefined }}>
+                      {idx === 0 && (
+                        <>
+                          <div className="td-name">{client.name}</div>
+                          <div className="td-sub">{client.email} · {client.phone}</div>
+                        </>
+                      )}
+                    </td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        {pet ? (
+                          <span 
+                            className="pet-chip" 
+                            style={{ cursor: 'pointer', marginBottom: 0 }}
+                            onClick={() => {
+                              onSelectPet(pet);
+                              go('petprofile');
+                            }}
+                          >
+                            {petEmoji(pet.species)} {pet.name}
+                          </span>
+                        ) : (
+                          <span className="td-sub">No pets</span>
+                        )}
+                        {idx === 0 && pets.length > 1 && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedClients(prev => ({ ...prev, [client._id]: !prev[client._id] }));
+                            }}
+                            className="btn btn-outline"
+                            style={{ padding: '2px 8px', fontSize: '11px', borderRadius: '12px', height: '24px' }}
+                          >
+                            {isExpanded ? 'Collapse' : `+${pets.length - 1} More`}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getLastVisitDate([pet], appointments, client.createdAt) : '-'}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getNextAppointmentBadge([pet], appointments) : <span className="td-sub">-</span>}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getVaccinesBadgeForClient([pet], vaccinations) : <span className="td-sub">-</span>}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
+                      <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {pet && (
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '6px 8px', color: 'var(--text-2)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => {
+                              onSelectPet(pet);
+                              go('petprofile');
+                            }}
+                            title={`View ${pet.name}'s Profile`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ display: 'block' }}>
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                          </button>
+                        )}
+                        {idx === 0 && (
+                          <>
+                            <button 
+                              className="btn btn-outline" 
+                              style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
+                              onClick={() => setEditingClient(client)}
+                              title="Edit Client & Pets"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              className="btn btn-outline" 
+                              style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
+                              onClick={() => {
+                                window.showConfirm(`Are you sure you want to delete ${client.name} and all their pets?`, () => {
+                                  onDelete('clients', client._id);
+                                });
+                              }}
+                              title="Delete Client & Pets"
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ));
+              })
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>
@@ -1570,6 +1596,44 @@ const formatMonthSafe = (dateStr) => {
   if (isNaN(d.getTime())) return '';
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return months[d.getUTCMonth()] || '';
+};
+
+const getAgeStr = (dobStr) => {
+  if (!dobStr) return '';
+  try {
+    const birth = new Date(dobStr);
+    if (isNaN(birth.getTime())) return dobStr;
+    const today = new Date();
+    
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
+    
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    if (years > 0) {
+      if (months > 0) {
+        return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
+      }
+      return `${years} yr${years > 1 ? 's' : ''}`;
+    } else {
+      if (months > 0) {
+        return `${months} mo${months > 1 ? 's' : ''}`;
+      }
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    }
+  } catch (e) {
+    return dobStr;
+  }
 };
 
 const getLocalDateString = () => {
@@ -1735,46 +1799,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       return dobStr;
     }
   };
-
-  const getAgeStr = (dobStr) => {
-    if (!dobStr) return '';
-    try {
-      const birth = new Date(dobStr);
-      if (isNaN(birth.getTime())) return dobStr;
-      const today = new Date();
-      
-      let years = today.getFullYear() - birth.getFullYear();
-      let months = today.getMonth() - birth.getMonth();
-      let days = today.getDate() - birth.getDate();
-      
-      if (days < 0) {
-        months--;
-        const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        days += prevMonth.getDate();
-      }
-      
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      
-      if (years > 0) {
-        if (months > 0) {
-          return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
-        }
-        return `${years} yr${years > 1 ? 's' : ''}`;
-      } else {
-        if (months > 0) {
-          return `${months} mo${months > 1 ? 's' : ''}`;
-        }
-        return `${days} day${days !== 1 ? 's' : ''}`;
-      }
-    } catch (e) {
-      return dobStr;
-    }
-  };
-
-  const calculatedAge = getAgeStr(currentPet.dateOfBirth) || currentPet.age || 'Not Provided';
+  const calculatedAge = getAgeStr(currentPet.dateOfBirth || currentPet.dob) || currentPet.age || 'Not Provided';
 
   const petDetailsList = [];
   
@@ -1808,7 +1833,6 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const actionButtons = (
     <div style={{ display: 'flex', gap: '8px' }}>
       <button className="btn btn-outline" style={{ background: '#fff' }} onClick={handleBookAppointment}>+ Book Appointment</button>
-      <button className="btn btn-primary" onClick={() => go('soap')}>Start Consultation</button>
     </div>
   );
 
@@ -2135,7 +2159,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                       );
                     })
                   ) : (
-                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-3)' }}>No visit history found. Click Start Consultation to log one.</div>
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-3)' }}>No visit history found.</div>
                   )}
                 </div>
               )}
@@ -2947,6 +2971,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   });
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState('today');
+  const [currentDate, setCurrentDate] = useState(getTodayDate());
+  const [viewMode, onViewModeChange] = useState('Week');
 
   const [selectedDate, setSelectedDate] = useState(() => {
     return getLocalDateString();
@@ -3443,16 +3469,14 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       )}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-                      {pet.breed || 'Golden Retriever'} · {pet.age || '4 yrs'}
+                      {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-3)', marginTop: '12px' }}>
-              💡 If bringing multiple pets, book separate consecutive slots — each pet needs its own SOAP note
-            </div>
+            
           </div>
 
           <div className="panel" style={{ background: '#fff', padding: '16px 18px', borderRadius: '12px' }}>
@@ -3462,6 +3486,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                 <input 
                   className="input" 
                   type="date" 
+                  min={getLocalDateString()}
                   value={selectedDate} 
                   onChange={e => {
                     setSelectedDate(e.target.value);
@@ -4024,7 +4049,7 @@ function Weights({ weights, create, activePet, clients, go }) {
               Weight Tracker — <span style={{ color: 'var(--brand)' }}>{pet.emoji || '🐕'} {pet.name}</span>
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
-              {petBreed} · {pet.age || '4 yrs'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
+              {petBreed} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
             </div>
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleLogWeight}>+ Log Weight</button>

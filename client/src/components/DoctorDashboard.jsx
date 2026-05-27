@@ -34,13 +34,13 @@ export function DoctorDashboard({
     return { ...appt, species, breed };
   };
 
-  // 1. Dynamic Doctor & Clinic Scoping Filtration
   const scopedAppointments = useMemo(() => {
     return appointments.filter(appt => {
       // Scoped to selected clinic
-      const matchesClinic = !selectedClinic || appt.clinic_id === selectedClinic._id;
+      const matchesClinic = !selectedClinic || !appt.clinic_id || String(appt.clinic_id) === String(selectedClinic._id);
       // Scoped to selected doctor
-      const matchesDoctor = !selectedDoctor || appt.vetName === selectedDoctor.name;
+      const matchesDoctor = !selectedDoctor || 
+        (appt.vetName && selectedDoctor.name && appt.vetName.trim().toLowerCase() === selectedDoctor.name.trim().toLowerCase());
       
       return matchesClinic && matchesDoctor;
     }).map(mapPetDetails);

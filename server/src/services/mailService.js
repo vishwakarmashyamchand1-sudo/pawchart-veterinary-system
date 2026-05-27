@@ -737,9 +737,6 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
       if (vet) {
         await sendDoctorAppointmentMail(vet, appt, client, clinic);
       }
-      if (client) {
-        await sendClientAppointmentConfirmationMail(client, appt, vet, clinic);
-      }
     } else if (resource === 'soapnotes') {
       const soapNote = created;
       // Case-insensitive regex match to resolve clients securely

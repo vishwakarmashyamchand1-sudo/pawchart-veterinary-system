@@ -52,7 +52,14 @@ export function WeeklyCalendar({
   // Check if appointment falls into a specific date and half-hour slot
   const getAppointmentsForSlot = (date, slot) => {
     return appointments.filter(appt => {
-      const matchesDate = isSameDay(appt.date, date);
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      const apptDateOnly = appt.date && appt.date.includes('T') ? appt.date.split('T')[0] : appt.date;
+      
+      const matchesDate = (apptDateOnly === dateStr);
       if (!matchesDate) return false;
       
       if (appt.time === slot.dbFormat) return true;
