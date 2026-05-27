@@ -449,6 +449,7 @@ export function Soap({
       objective: draft.objective,
       assessment: draft.assessment,
       plan: draft.plan,
+      follow_up_date: draft.follow_up_date,
       tags: [
         showOtomaxBadge && 'Otomax 4 drops - 7 days',
         showRabiesBadge && 'Rabies booster due',
