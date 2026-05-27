@@ -1,6 +1,7 @@
 import { Vaccination } from '../models.js';
 import { getQueryFilter } from '../middleware/auth.js';
 import { scheduleReminder } from '../services/reminderService.js';
+import { calculateDueDate } from '../utils/dateCalculator.js';
 
 export const getDueVaccinations = async (req, res, next) => {
   try {
@@ -41,6 +42,44 @@ export const triggerManualReminder = async (req, res, next) => {
     await vaccination.save();
     
     res.json(vaccination);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateVaccination = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const filter = { _id: id, ...getQueryFilter(req) };
+    
+    const existing = await Vaccination.findOne(filter);
+    if (!existing) return res.status(404).json({ message: 'Vaccination not found' });
+    
+    // If it's being marked Completed right now
+    if (updateData.status === 'Completed' && existing.status !== 'Completed') {
+      existing.status = 'Completed';
+      existing.lastDate = updateData.lastDate || new Date().toISOString().split('T')[0];
+      
+      // Generate next round (default 1 year)
+      const nextDueDate = calculateDueDate(existing.lastDate, '1 year');
+      if (nextDueDate) {
+        await Vaccination.create({
+          petName: existing.petName,
+          ownerName: existing.ownerName,
+          breed: existing.breed,
+          vaccine: existing.vaccine,
+          dueDate: nextDueDate,
+          status: 'Pending',
+          clinic_id: existing.clinic_id
+        });
+      }
+    } else {
+      Object.assign(existing, updateData);
+    }
+    
+    await existing.save();
+    res.json(existing);
   } catch (error) {
     next(error);
   }

@@ -32,7 +32,8 @@ const navByRole = {
     ['Follow-ups', 'followup', 'loop']
   ],
   superadmin: [
-    ['Clinics', 'dashboard', 'home']
+    ['Clinics', 'dashboard', 'home'],
+    ['Vaccines Config', 'vaccinemaster', 'shot']
   ]
 };
 const icons = {
@@ -56,7 +57,8 @@ function useApi(selectedClinicId) {
     vaccinations: [],
     followups: [],
     weights: [],
-    soapnotes: []
+    soapnotes: [],
+    vaccinemaster: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +67,7 @@ function useApi(selectedClinicId) {
     setLoading(true);
     setError('');
     try {
-      const names = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes'];
+      const names = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
       const results = await Promise.all(names.map((name) => fetch(`${API_URL}/${name}?page=1&limit=50`, { headers }).then(async (res) => {
         if (!res.ok) throw new Error(`API request failed: ${name}`);
@@ -593,6 +595,105 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
   );
 }
 
+function VaccineModal({ onClose, onSave }) {
+  const [name, setName] = useState('');
+  const [species, setSpecies] = useState('Dog');
+  const [recommendedAge, setRecommendedAge] = useState('');
+
+  return (
+    <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal">
+        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>Add Vaccine</h2>
+        <Input label="Vaccine Name" value={name} onChange={setName} />
+        <Select label="Species" value={species} onChange={setSpecies} options={['Dog', 'Cat', 'Rabbit', 'Bird']} />
+        <Input label="Recommended Age" value={recommendedAge} onChange={setRecommendedAge} />
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
+          <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge })}>Save Vaccine</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
+  const [status, setStatus] = useState(vaccination.status);
+  const [lastDate, setLastDate] = useState(vaccination.lastDate || new Date().toISOString().split('T')[0]);
+
+  return (
+    <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal">
+        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>Update Vaccination</h2>
+        <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
+          <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
+          <strong>Due Date:</strong> {vaccination.dueDate}
+        </div>
+        <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
+        {status === 'Completed' && (
+          <Input label="Date Administered" type="date" value={lastDate} onChange={setLastDate} />
+        )}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
+          <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, status, lastDate })}>Save Changes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VaccinesConfig({ vaccines, create }) {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleSave = async (data) => {
+    if (!data.name || !data.recommendedAge) {
+      alert('Please fill in all fields (Vaccine Name and Recommended Age).');
+      return;
+    }
+    try {
+      await create('vaccinemaster', data);
+      setShowModal(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text)' }}>Vaccine Master List</h2>
+          <p style={{ color: 'var(--text-2)', marginTop: '4px' }}>Manage the global list of standard vaccines and their recommended ages.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Vaccine</button>
+      </div>
+
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th style={{ paddingLeft: '18px' }}>Vaccine Name</th>
+            <th>Species</th>
+            <th>Recommended Age</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vaccines.map(v => (
+            <tr key={v._id}>
+              <td style={{ paddingLeft: '18px', fontWeight: '600', color: 'var(--text)' }}>{v.name}</td>
+              <td style={{ color: 'var(--text-2)' }}>{v.species}</td>
+              <td style={{ color: 'var(--text-2)' }}>{v.recommendedAge}</td>
+            </tr>
+          ))}
+          {vaccines.length === 0 && (
+            <tr><td colSpan="3" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-3)' }}>No vaccines found in master list.</td></tr>
+          )}
+        </tbody>
+      </table>
+
+      {showModal && <VaccineModal onClose={() => setShowModal(false)} onSave={handleSave} />}
+    </div>
+  );
+}
+
 function App() {
   const [clinics, setClinics] = useState([]);
   const [selectedClinic, setSelectedClinic] = useState(() => {
@@ -851,11 +952,12 @@ function App() {
           {loading && <Status message="Loading clinic data..." />}
           {error && <Status message={`${error}. Start the API and seed MongoDB.`} tone="error" action={reload} />}
           {!loading && !error && (
-            role === 'superadmin' && !selectedClinic ? (
+            role === 'superadmin' && !selectedClinic && screen !== 'vaccinemaster' ? (
               <ClinicSelector clinics={clinics} onSelect={selectClinic} onCreate={handleCreateClinic} onEdit={setEditingClinic} onDelete={handleDeleteClinic} />
             ) : (
               <>
                 {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} go={setScreen} />}
+                {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} />}
                 {screen === 'vets' && <Vets vets={data.vets} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
@@ -1302,7 +1404,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   }, [clients, search]);
 
   const petEmoji = (species = '') => {
-    const s = species.toLowerCase();
+    const s = (species || '').toLowerCase();
     if (s.includes('dog')) return '🐶';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
@@ -1661,8 +1763,8 @@ const parseWeightRange = (rangeStr) => {
 };
 
 const getIdealRange = (species = '', breed = '') => {
-  const s = species.toLowerCase();
-  const b = breed.toLowerCase();
+  const s = (species || '').toLowerCase();
+  const b = (breed || '').toLowerCase();
   
   // Dogs
   if (s.includes('dog')) {
@@ -1704,6 +1806,7 @@ const getIdealRange = (species = '', breed = '') => {
 function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create }) {
   const [currentPet, setCurrentPet] = useState(pet);
   const [activeTab, setActiveTab] = useState('visits');
+  const [editingVax, setEditingVax] = useState(null);
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [weightLogVal, setWeightLogVal] = useState('');
   const [weightLogNote, setWeightLogNote] = useState('');
@@ -1748,7 +1851,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   };
 
   const petEmoji = (species = '') => {
-    const s = species.toLowerCase();
+    const s = (species || '').toLowerCase();
     if (s.includes('dog')) return '🐶';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
@@ -1777,7 +1880,21 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const petVisits = soapnotes.filter(s => s.petName.toLowerCase() === currentPet.name.toLowerCase());
   
   // dynamic vaccinations
-  const petVax = vaccinations.filter(v => v.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const today = new Date().toISOString().split('T')[0];
+  const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const petVax = vaccinations.filter(v => v.petName.toLowerCase() === currentPet.name.toLowerCase()).map(v => {
+    let displayStatus = v.status;
+    if (displayStatus !== 'Completed' && displayStatus !== 'Up to date') {
+      if (v.dueDate < today) {
+        displayStatus = 'Overdue';
+      } else if (v.dueDate <= next30Days) {
+        displayStatus = 'Due soon';
+      } else {
+        displayStatus = 'Upcoming';
+      }
+    }
+    return { ...v, displayStatus };
+  });
 
   // Find the first assigned vet name from the appointments
   const petAppts = appointments.filter(a => a.petName.toLowerCase() === currentPet.name.toLowerCase());
@@ -2044,7 +2161,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   petVax.map(v => (
                     <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: v.status === 'Overdue' ? 'var(--red)' : v.status === 'Due soon' ? 'var(--amber)' : 'var(--green)', fontSize: '14px' }}>●</span>
+                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : v.displayStatus === 'Upcoming' ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
                         <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
                       </div>
                       <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
@@ -2565,6 +2682,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                         <th>Last Administered</th>
                         <th>Next Due Date</th>
                         <th>Status</th>
+                        <th style={{ textAlign: 'right', paddingRight: '14px' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2574,12 +2692,21 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
                             <td>{v.lastDate || 'N/A'}</td>
                             <td>{v.dueDate}</td>
-                            <td><Badge value={v.status} /></td>
+                            <td><Badge value={v.displayStatus} /></td>
+                            <td style={{ textAlign: 'right', paddingRight: '14px' }}>
+                              <button 
+                                className="btn btn-outline"
+                                style={{ padding: '4px 8px', fontSize: '12px' }}
+                                onClick={() => setEditingVax(v)}
+                              >
+                                Edit
+                              </button>
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
+                          <td colSpan="5" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
                             No vaccination logs available
                           </td>
                         </tr>
@@ -2655,6 +2782,19 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
           owner={owner} 
           onClose={() => setIsEditModalOpen(false)} 
           onSave={handleSavePetDetails} 
+        />
+      )}
+      {editingVax && (
+        <PetVaccinationEditModal
+          vaccination={editingVax}
+          onClose={() => setEditingVax(null)}
+          onSave={(updated) => update('vaccinations', updated._id, updated)
+            .then(() => {
+              window.showToast('Vaccination updated successfully!', 'success');
+              setEditingVax(null);
+            })
+            .catch(err => window.showToast(err.message, 'error'))
+          }
         />
       )}
     </>
@@ -2972,7 +3112,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   });
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState('today');
-  const [currentDate, setCurrentDate] = useState(getTodayDate());
+  const [currentDate, setCurrentDate] = useState(getLocalDateString());
   const [viewMode, onViewModeChange] = useState('Week');
 
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -3112,7 +3252,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   };
 
   const petEmoji = (species = '') => {
-    const s = species.toLowerCase();
+    const s = (species || '').toLowerCase();
     if (s.includes('dog')) return '🐶';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
@@ -4445,8 +4585,8 @@ function Table({ headers, children }) {
 
 function AppointmentList({ rows }) {
   const getPetMeta = (species = '', breed = '') => {
-    const s = species.toLowerCase();
-    const b = breed.toLowerCase();
+    const s = (species || '').toLowerCase();
+    const b = (breed || '').toLowerCase();
     if (s.includes('dog') || b.includes('retriever') || b.includes('bulldog')) return { emoji: '🐶', bg: '#eff6ff', color: '#1d4ed8' };
     if (s.includes('cat') || b.includes('siamese')) return { emoji: '🐱', bg: '#fce7f3', color: '#db2777' };
     if (s.includes('rabbit') || b.includes('lop')) return { emoji: '🐰', bg: '#fef3c7', color: '#d97706' };

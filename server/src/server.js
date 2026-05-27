@@ -16,6 +16,8 @@ import vaccinationsRouter from './routes/vaccinations.js';
 import followupsRouter from './routes/followups.js';
 import weightsRouter from './routes/weights.js';
 import soapnotesRouter from './routes/soapnotes.js';
+import vaccineMasterRouter from './routes/vaccinemaster.js';
+import { VaccineMaster } from './models.js';
 import { initReminderScheduler } from './services/reminderService.js';
 
 const app = express();
@@ -45,8 +47,15 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRouter);
 app.use('/api/clinics', clinicsRouter);
 app.use('/api/ai', aiRouter);
-
-
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/clients', clientsRouter);
+app.use('/api/appointments', appointmentsRouter);
+app.use('/api/vets', vetsRouter);
+app.use('/api/vaccinations', vaccinationsRouter);
+app.use('/api/followups', followupsRouter);
+app.use('/api/weights', weightsRouter);
+app.use('/api/soapnotes', soapnotesRouter);
+app.use('/api/vaccinemaster', vaccineMasterRouter);
 
 /**
  * @openapi
@@ -210,15 +219,6 @@ app.use('/api/ai', aiRouter);
  *         description: Appointment created successfully
  */
 
-app.use('/api/dashboard', dashboardRouter);
-app.use('/api/clients', clientsRouter);
-app.use('/api/appointments', appointmentsRouter);
-app.use('/api/vets', vetsRouter);
-app.use('/api/vaccinations', vaccinationsRouter);
-app.use('/api/followups', followupsRouter);
-app.use('/api/weights', weightsRouter);
-app.use('/api/soapnotes', soapnotesRouter);
-
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'pawchart-api' });
 });
@@ -245,6 +245,21 @@ app.use((error, _req, res, _next) => {
 if (!process.env.VERCEL) {
   try {
     await connectDb();
+    
+    // Seed default vaccines if none exist
+    const count = await VaccineMaster.countDocuments();
+    if (count === 0) {
+      await VaccineMaster.insertMany([
+        { name: 'Rabies', species: 'Dog', recommendedAge: '12-16 weeks' },
+        { name: 'DHPP', species: 'Dog', recommendedAge: '6-8 weeks' },
+        { name: 'Rabies', species: 'Cat', recommendedAge: '12-16 weeks' },
+        { name: 'FVRCP', species: 'Cat', recommendedAge: '6-8 weeks' },
+        { name: 'RHDV2', species: 'Rabbit', recommendedAge: '10 weeks' },
+        { name: 'Polyomavirus', species: 'Bird', recommendedAge: '4-5 weeks' }
+      ]);
+      console.log('✅ Seeded default vaccine master list');
+    }
+
     await initReminderScheduler();
     app.listen(port, () => {
       console.log(`PawChart API listening on http://localhost:${port}`);

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDueVaccinations, triggerManualReminder } from '../controllers/vaccinationController.js';
+import { getDueVaccinations, triggerManualReminder, updateVaccination } from '../controllers/vaccinationController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { Vaccination } from '../models.js';
 import { createCrudHandlers } from '../utils/crudFactory.js';
@@ -13,7 +13,7 @@ const { getAll, getOne, create, update, remove } = createCrudHandlers(Vaccinatio
 router.get('/', optionalAuth, getAll);
 router.get('/:id', optionalAuth, getOne);
 router.post('/', optionalAuth, create);
-router.patch('/:id', optionalAuth, update);
+router.patch('/:id', optionalAuth, updateVaccination);
 router.delete('/:id', optionalAuth, remove);
 
 export default router;

@@ -36,6 +36,17 @@ const clientSchema = new Schema(
   { timestamps: true }
 );
 
+clientSchema.post('findOneAndDelete', async function(doc) {
+  if (doc) {
+    const models = mongoose.models;
+    const cascadeQuery = { ownerName: doc.name, clinic_id: doc.clinic_id };
+    if (models.Appointment) await models.Appointment.deleteMany(cascadeQuery);
+    if (models.Vaccination) await models.Vaccination.deleteMany(cascadeQuery);
+    if (models.FollowUp) await models.FollowUp.deleteMany(cascadeQuery);
+  }
+});
+
+
 const vetSchema = new Schema(
   {
     name: { type: String, required: true },
@@ -139,3 +150,11 @@ export const Vaccination = model('Vaccination', vaccinationSchema);
 export const FollowUp = model('FollowUp', followUpSchema);
 export const WeightLog = model('WeightLog', weightLogSchema);
 export const SoapNote = model('SoapNote', soapNoteSchema);
+
+const vaccineMasterSchema = new Schema({
+  name: { type: String, required: true },
+  species: { type: String, required: true },
+  recommendedAge: { type: String, required: true }
+}, { timestamps: true });
+
+export const VaccineMaster = model('VaccineMaster', vaccineMasterSchema);
