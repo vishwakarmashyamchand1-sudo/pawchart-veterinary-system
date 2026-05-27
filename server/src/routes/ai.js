@@ -9,86 +9,66 @@ import { optionalAuth } from '../middleware/auth.js';
 const router = express.Router();
 
 /**
- * standalone Gemini SDK test route
+ * standalone Anthropic Claude API test route
  */
-router.get('/test-gemini', async (req, res) => {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  console.log("\n=================== 🧪 STANDALONE GEMINI TEST STARTED ===================");
-  if (geminiKey) {
-    const maskedKey = geminiKey.length > 10 
-      ? `${geminiKey.slice(0, 6)}...${geminiKey.slice(-4)}` 
+router.get('/test-anthropic', async (req, res) => {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  console.log("\n=================== 🧪 STANDALONE ANTHROPIC TEST STARTED ===================");
+  if (anthropicKey) {
+    const maskedKey = anthropicKey.length > 10 
+      ? `${anthropicKey.slice(0, 6)}...${anthropicKey.slice(-4)}` 
       : "configured (short key)";
-    console.log(`🔑 GEMINI_API_KEY: FOUND (Length: ${geminiKey.length}, Masked: ${maskedKey}, Start: ${geminiKey.slice(0, 10)}...)`);
+    console.log(`🔑 ANTHROPIC_API_KEY: FOUND (Length: ${anthropicKey.length}, Masked: ${maskedKey})`);
   } else {
-    console.log("🔑 GEMINI_API_KEY: ❌ NOT FOUND in process.env!");
+    console.log("🔑 ANTHROPIC_API_KEY: ❌ NOT FOUND in process.env!");
     return res.status(500).json({
       success: false,
-      message: "GEMINI_API_KEY is missing from process.env!"
+      message: "ANTHROPIC_API_KEY is missing from process.env!"
     });
   }
 
-  // Diagnostics 1: List all permitted models via direct REST call
-  let permittedModels = [];
-  let listError = null;
   try {
-    console.log("🔍 Fetching available models directly from Google Generative Language API...");
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiKey}`);
-    const listData = await listRes.json();
-    if (listData.models) {
-      permittedModels = listData.models.map(m => m.name);
-      console.log("📋 PERMITTED MODELS DETECTED FOR THIS API KEY:", permittedModels);
-    } else {
-      console.warn("⚠️ API Key did not return any models list:", listData);
-      listError = listData;
+    console.log("🤖 Initializing basic prompt test with Anthropic Claude (claude-3-5-sonnet-20241022)...");
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1024,
+        temperature: 0.0,
+        messages: [{ role: "user", content: "Hello from PawChart, are you active?" }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Anthropic API error");
     }
-  } catch (err) {
-    console.error("⚠️ Failed to call models list REST endpoint:", err.message);
-    listError = err.message;
-  }
 
-  try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(geminiKey);
+    const text = data.content?.[0]?.text || "";
     
-    // We will dynamically test whatever models list is returned or default to gemini-1.5-flash
-    const targetModel = permittedModels.length > 0 && permittedModels.some(m => m.includes('gemini-1.5-flash'))
-      ? "gemini-1.5-flash"
-      : permittedModels.length > 0
-        ? permittedModels[0].replace('models/', '') // Use the first available model
-        : "gemini-1.5-flash"; // Fallback to flash
-
-    console.log(`🤖 Initializing model: ${targetModel}`);
-    const model = genAI.getGenerativeModel({ model: targetModel });
-    
-    console.log(`📤 Sending basic prompt to ${targetModel}: 'Hello from PawChart, are you active?'`);
-    const result = await model.generateContent("Hello from PawChart, are you active?");
-    const response = await result.response;
-    const text = response.text();
-    
-    console.log("📥 Received standalone response:", text);
-    console.log("=================== 🧪 STANDALONE GEMINI TEST SUCCESS ===================\n");
+    console.log("📥 Received standalone Anthropic response:", text);
+    console.log("=================== 🧪 STANDALONE ANTHROPIC TEST SUCCESS ===================\n");
     
     return res.json({
       success: true,
-      message: "Gemini API is active and reachable!",
-      modelUsed: targetModel,
-      response: text,
-      permittedModels
+      message: "Anthropic API is active and reachable!",
+      modelUsed: "claude-3-5-sonnet-20241022",
+      response: text
     });
   } catch (err) {
-    console.error("❌ Standalone Gemini Test failed:");
-    console.error("Full Error Object:", err);
+    console.error("❌ Standalone Anthropic Test failed:");
     console.error("Error Message:", err.message);
-    if (err.response) {
-      console.error("Error Response Data:", err.response.data);
-    }
-    console.log("=================== 🧪 STANDALONE GEMINI TEST FAILED ===================\n");
+    console.log("=================== 🧪 STANDALONE ANTHROPIC TEST FAILED ===================\n");
     
     return res.status(500).json({
       success: false,
-      message: `Gemini standalone test failed: ${err.message}`,
-      permittedModels,
-      listError,
+      message: `Anthropic standalone test failed: ${err.message}`,
       error: err.stack || err.message,
       fullError: err
     });
@@ -189,7 +169,7 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
     
     try {
       aiData = await generateConsultationData(transcript, petContext, pastNotes);
-      console.log(`\n📥 RAW DYNAMIC SOAP DATA GENERATED BY GEMINI:`);
+      console.log(`\n📥 RAW DYNAMIC SOAP DATA GENERATED BY ANTHROPIC CLAUDE:`);
       console.log(JSON.stringify(aiData, null, 2));
     } catch (aiErr) {
       console.error("\n❌ CRITICAL: AI Service failed inside backend route:", aiErr);
@@ -197,7 +177,7 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
       // Stop silencing errors. Send full details to frontend.
       return res.status(500).json({
         success: false,
-        message: `Gemini API/SDK Error: ${aiErr.message}`,
+        message: `Anthropic API Error: ${aiErr.message}`,
         error: aiErr.stack || aiErr.message
       });
     }
@@ -248,7 +228,8 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
       success: true,
       consultation: aiConsultation,
       preview: finalPreview,
-      rawGeminiOutput: aiData.rawJson || null
+      rawGeminiOutput: aiData.rawJson || null,
+      rawAnthropicOutput: aiData.rawJson || null
     });
 
   } catch (error) {

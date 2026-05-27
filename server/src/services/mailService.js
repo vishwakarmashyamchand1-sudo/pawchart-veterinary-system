@@ -6,14 +6,24 @@ let transporter = null;
 let etherealAccount = null;
 
 function getServerUrl(host) {
+  // 1. If SERVER_URL is set and is a public external address (not localhost), use it
+  if (process.env.SERVER_URL && !process.env.SERVER_URL.includes('localhost') && !process.env.SERVER_URL.includes('127.0.0.1')) {
+    return process.env.SERVER_URL.replace(/\/$/, '');
+  }
+  
+  // 2. If we have a request host from a public tunnel/domain (ngrok, cloudflare, Railway, Render, etc.), use it dynamically!
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    const protocol = (host.includes('192.168.') || host.includes('10.')) ? 'http' : 'https';
+    return `${protocol}://${host}`;
+  }
+
+  // 3. Fallback to SERVER_URL if set locally
   if (process.env.SERVER_URL) {
     return process.env.SERVER_URL.replace(/\/$/, '');
   }
-  if (host) {
-    const protocol = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.') || host.includes('10.') ? 'http' : 'https';
-    return `${protocol}://${host}`;
-  }
-  return process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.replace(/\/$/, '') : 'http://localhost:5000';
+  
+  // 4. Default fallback
+  return (process.env.CLIENT_URL || process.env.CLIENT_ORIGIN || 'http://localhost:5000').replace(/\/$/, '');
 }
 
 async function getTransporter() {
@@ -542,7 +552,7 @@ export async function sendMissedAppointmentAlertMail(client, appt, vet, clinic) 
             <p style="font-size: 14px;">Would you like to reschedule your visit with Dr. <strong>${vet ? vet.name : appt.vetName}</strong>? Please click the button below to book a new slot:</p>
 
             <div style="margin: 24px 0; text-align: center;">
-              <a href="${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
+              <a href="${process.env.CLIENT_URL || process.env.CLIENT_ORIGIN || 'http://localhost:3000'}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
                 Reschedule Appointment
               </a>
             </div>
