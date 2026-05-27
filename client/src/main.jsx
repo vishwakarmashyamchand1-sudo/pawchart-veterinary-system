@@ -4285,6 +4285,26 @@ function FollowUps({ rows }) {
     return '🐕';
   };
 
+  const format12h = (t) => {
+    if (!t) return '';
+    if (t.includes('-')) {
+      const parts = t.split('-');
+      const formatSingle = (singleT) => {
+        const [h, m] = singleT.split(':');
+        const hr = parseInt(h);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const hr12 = hr % 12 || 12;
+        return `${hr12}:${m} ${ampm}`;
+      };
+      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+    }
+    const [h, m] = t.split(':');
+    const hr = parseInt(h);
+    const ampm = hr >= 12 ? 'PM' : 'AM';
+    const hr12 = hr % 12 || 12;
+    return `${hr12}:${m} ${ampm}`;
+  };
+
   const getDateStatus = (plan, confirmed) => {
     if (!confirmed) return null;
     const pDate = new Date(plan);
@@ -4312,26 +4332,31 @@ function FollowUps({ rows }) {
         <span className="watch-text"><span className="pulse-dot"></span> Watching <span style={{color:'var(--text-3)', fontWeight: 'normal', fontSize: '12px', marginLeft: '4px'}}>Checking for cancellations</span></span>
       </div>
 
-      <Table headers={['PET / OWNER', 'VET', 'PURPOSE', 'PLAN DATE', 'CONFIRMED DATE', 'TIME', 'PRIORITY', 'STATUS']}>
+      <Table headers={['PET / OWNER', 'VET', 'CLINIC', 'PURPOSE', 'PLAN DATE', 'CONFIRMED DATE', 'TIME', 'PRIORITY', 'STATUS']}>
         {rows.map((row) => {
           const dateStatus = getDateStatus(row.planDate, row.confirmedDate);
           const isPending = String(row.status).toLowerCase() === 'pending';
+          const isScheduled = String(row.status).toLowerCase() === 'scheduled';
+          const clinicName = row.clinic_id?.name || row.clinicName || 'Riverside Vet Clinic';
 
           return (
-            <tr key={row._id}>
+            <tr key={row._id} style={isScheduled ? { background: '#f0fdf4' } : undefined}>
               <td>
                 <div className="pet-cell">
                   <div className="pet-avatar">{getPetIcon(row.breed || row.petName)}</div>
                   <Name title={row.petName} sub={row.ownerName} />
                 </div>
               </td>
-              <td>{row.vetName}</td>
+              <td>🩺 {row.vetName}</td>
+              <td style={{ fontWeight: '600', color: 'var(--brand)' }}>🏥 {clinicName}</td>
               <td>{row.purpose}</td>
-              <td>{row.planDate}</td>
+              <td>📅 {row.planDate}</td>
               <td>
                 {row.confirmedDate ? (
                   <>
-                    <div style={{ fontWeight: 600 }}>{row.confirmedDate}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      📅 {row.confirmedDate}
+                    </div>
                     {dateStatus === 'early' && <div style={{ marginTop: '4px' }}><Badge value="↑ Early Slot" tone="purple" /></div>}
                     {dateStatus === 'late' && <div style={{ marginTop: '4px' }}><Badge value="⚠️ Late Date" tone="amber" /></div>}
                   </>
@@ -4339,13 +4364,24 @@ function FollowUps({ rows }) {
                   <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Not confirmed</span>
                 )}
               </td>
-              <td>{row.confirmedDate ? (row.time || '11:00 AM') : '—'}</td>
+              <td style={{ fontWeight: '700', color: 'var(--text)' }}>
+                {row.confirmedDate ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    🕒 {format12h(row.time || '11:00 AM')}
+                  </span>
+                ) : '—'}
+              </td>
               <td>{row.priority || 'Routine'}</td>
               <td>
-                <Badge value={row.status} />
+                <Badge value={row.status} tone={isScheduled ? 'green' : undefined} />
                 {isPending && (
                   <div style={{ marginTop: '6px' }}>
                     <span className="watch-text"><span className="pulse-dot"></span> Watching</span>
+                  </div>
+                )}
+                {isScheduled && (
+                  <div style={{ marginTop: '6px', color: 'var(--green)', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>✓ Confirmed</span>
                   </div>
                 )}
               </td>

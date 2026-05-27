@@ -64,6 +64,7 @@ const appointmentSchema = new Schema(
     time: { type: String, required: true },
     type: { type: String, default: 'Checkup' },
     status: { type: String, default: 'Scheduled' },
+    reminderSent: { type: Boolean, default: false },
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }
   },
   { timestamps: true }
@@ -96,6 +97,7 @@ const followUpSchema = new Schema(
     priority: String,
     status: String,
     monitoring: Boolean,
+    reminderSent: { type: Boolean, default: false },
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }
   },
   { timestamps: true }
@@ -124,6 +126,7 @@ const soapNoteSchema = new Schema(
     assessment: String,
     plan: String,
     tags: [String],
+    follow_up_date: String,
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }
   },
   { timestamps: true }

@@ -1,10 +1,13 @@
 import express from 'express';
-import { getAppointmentsByVet, getAppointmentsByClient, updateAppointmentStatus } from '../controllers/appointmentController.js';
+import { getAppointmentsByVet, getAppointmentsByClient, updateAppointmentStatus, bookFollowUpRoute } from '../controllers/appointmentController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { Appointment } from '../models.js';
 import { createCrudHandlers } from '../utils/crudFactory.js';
 
 const router = express.Router();
+
+// Client follow-up slot confirmation landing endpoint
+router.get('/book-followup', bookFollowUpRoute);
 
 router.get('/vet/:vetName', optionalAuth, getAppointmentsByVet);
 router.get('/client/:clientName', optionalAuth, getAppointmentsByClient);

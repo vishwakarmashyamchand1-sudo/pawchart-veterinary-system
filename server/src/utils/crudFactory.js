@@ -1,4 +1,5 @@
 import { getQueryFilter } from '../middleware/auth.js';
+import { triggerMailFlows } from '../services/mailService.js';
 
 export const createCrudHandlers = (Model, resourceName) => {
   return {
@@ -11,8 +12,13 @@ export const createCrudHandlers = (Model, resourceName) => {
         const limit = parseInt(req.query.limit) || 50;
         const skip = (page - 1) * limit;
 
+        let query = Model.find(filter);
+        if (resourceName === 'FollowUp' || resourceName === 'Appointment' || resourceName === 'SoapNote') {
+          query = query.populate('clinic_id');
+        }
+
         const [data, totalRecords] = await Promise.all([
-          Model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+          query.sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
           Model.countDocuments(filter)
         ]);
 
@@ -81,6 +87,15 @@ export const createCrudHandlers = (Model, resourceName) => {
         }
 
         const created = await Model.create(body);
+
+        // Trigger dynamic mail notification flows based on resourceName
+        if (resourceName === 'Appointment' || resourceName === 'SoapNote') {
+          const resourceLower = resourceName === 'Appointment' ? 'appointments' : 'soapnotes';
+          triggerMailFlows(resourceLower, created, clinicId, req.headers.host).catch(err => {
+            console.error(`❌ Error executing triggerMailFlows for ${resourceName}:`, err.message);
+          });
+        }
+
         res.status(201).json(created);
       } catch (error) { next(error); }
     },
