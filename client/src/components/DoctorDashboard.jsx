@@ -37,8 +37,10 @@ export function DoctorDashboard({
   // 1. Dynamic Doctor & Clinic Scoping Filtration
   const scopedAppointments = useMemo(() => {
     return appointments.filter(appt => {
+      // Safe resolution for populated clinic_id objects
+      const apptClinicId = appt.clinic_id?._id || appt.clinic_id;
       // Scoped to selected clinic
-      const matchesClinic = !selectedClinic || appt.clinic_id === selectedClinic._id;
+      const matchesClinic = !selectedClinic || apptClinicId === selectedClinic._id;
       // Scoped to selected doctor
       const matchesDoctor = !selectedDoctor || appt.vetName === selectedDoctor.name;
       
@@ -49,9 +51,13 @@ export function DoctorDashboard({
   // 2. Queue calculations for TODAY
   const todayAppts = useMemo(() => {
     const doctorName = selectedDoctor?.name || null;
-    const rawToday = getTodayAppointments(appointments, getTodayDate(), doctorName);
+    const clinicFiltered = appointments.filter(appt => {
+      const apptClinicId = appt.clinic_id?._id || appt.clinic_id;
+      return !selectedClinic || apptClinicId === selectedClinic._id;
+    });
+    const rawToday = getTodayAppointments(clinicFiltered, getTodayDate(), doctorName);
     return rawToday.map(mapPetDetails);
-  }, [appointments, selectedDoctor, clients]);
+  }, [appointments, selectedDoctor, selectedClinic, clients]);
 
   const nowInRoom = useMemo(() => getNowInRoom(todayAppts), [todayAppts]);
   const upNext = useMemo(() => getUpNext(todayAppts), [todayAppts]);

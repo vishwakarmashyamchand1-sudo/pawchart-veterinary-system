@@ -4,6 +4,7 @@ import './styles.css';
 import { API_BASE_URL as API_URL } from './services/api.js';
 import { DoctorDashboard } from './components/DoctorDashboard.jsx';
 import { Soap } from './components/SoapConsultation.jsx';
+import { formatDateClean, getCompactPurpose } from './utils/dateUtils.js';
 
 const CLINIC_SPECIALTIES = [
   'Surgery',
@@ -1078,8 +1079,8 @@ function Dashboard({ data, appointments = [], go }) {
         _id: follow._id,
         type: 'purple',
         petName: follow.petName,
-        title: `Follow-up pending (${follow.purpose})`,
-        sub: `Planned for: ${follow.planDate} · Doctor: ${follow.vetName}`
+        title: `Follow-up pending (${getCompactPurpose(follow.purpose)})`,
+        sub: `Planned for: ${formatDateClean(follow.planDate)} · Doctor: ${follow.vetName}`
       });
     });
   }
@@ -4319,68 +4320,66 @@ function FollowUps({ rows }) {
       title="Follow-up Tracker" 
       sub="Riverside Vet Clinic — planned vs confirmed dates"
       action={
-        <button className="btn btn-primary" style={{ background: '#0f172a', borderColor: '#0f172a' }}>
-          <div className="pulse-row" style={{ color: '#94a3b8', fontWeight: 600 }}>
-            <span className="pulse-dot"></span> Watching {monitoringCount} patients for earlier slots
-          </div>
-        </button>
+        <div style={{ padding: '6px 12px', background: '#0f172a', borderRadius: '8px', color: '#94a3b8', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="pulse-dot"></span> Watching {monitoringCount} patients
+        </div>
       }
     >
-      <div className="legend-row">
+      <div className="legend-row" style={{ gap: '16px', marginBottom: '14px', fontSize: '12px' }}>
         <span><Badge value="↑ Early Slot" tone="purple" /> Earlier slot found</span>
         <span><Badge value="⚠️ Late Date" tone="amber" /> Confirmed later than planned</span>
-        <span className="watch-text"><span className="pulse-dot"></span> Watching <span style={{color:'var(--text-3)', fontWeight: 'normal', fontSize: '12px', marginLeft: '4px'}}>Checking for cancellations</span></span>
+        <span className="watch-text" style={{ fontSize: '11px' }}><span className="pulse-dot"></span> Active Scan</span>
       </div>
 
-      <Table headers={['PET / OWNER', 'VET', 'CLINIC', 'PURPOSE', 'PLAN DATE', 'CONFIRMED DATE', 'TIME', 'PRIORITY', 'STATUS']}>
+      <Table headers={['PET / OWNER', 'VET', 'PURPOSE', 'PLAN DATE', 'CONFIRMED DATE', 'TIME', 'PRIORITY', 'STATUS']}>
         {rows.map((row) => {
           const dateStatus = getDateStatus(row.planDate, row.confirmedDate);
           const isPending = String(row.status).toLowerCase() === 'pending';
           const isScheduled = String(row.status).toLowerCase() === 'scheduled';
-          const clinicName = row.clinic_id?.name || row.clinicName || 'Riverside Vet Clinic';
 
           return (
-            <tr key={row._id} style={isScheduled ? { background: '#f0fdf4' } : undefined}>
+            <tr key={row._id} style={isScheduled ? { background: 'rgba(16, 185, 129, 0.04)' } : undefined}>
               <td>
-                <div className="pet-cell">
-                  <div className="pet-avatar">{getPetIcon(row.breed || row.petName)}</div>
+                <div className="pet-cell" style={{ gap: '8px' }}>
+                  <div className="pet-avatar" style={{ fontSize: '16px' }}>{getPetIcon(row.breed || row.petName)}</div>
                   <Name title={row.petName} sub={row.ownerName} />
                 </div>
               </td>
-              <td>🩺 {row.vetName}</td>
-              <td style={{ fontWeight: '600', color: 'var(--brand)' }}>🏥 {clinicName}</td>
-              <td>{row.purpose}</td>
-              <td>📅 {row.planDate}</td>
+              <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text)' }}>{row.vetName}</td>
+              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{getCompactPurpose(row.purpose)}</td>
+              <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateClean(row.planDate)}</td>
               <td>
                 {row.confirmedDate ? (
                   <>
-                    <div style={{ fontWeight: 700, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      📅 {row.confirmedDate}
+                    <div style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                      {formatDateClean(row.confirmedDate)}
                     </div>
-                    {dateStatus === 'early' && <div style={{ marginTop: '4px' }}><Badge value="↑ Early Slot" tone="purple" /></div>}
-                    {dateStatus === 'late' && <div style={{ marginTop: '4px' }}><Badge value="⚠️ Late Date" tone="amber" /></div>}
+                    {dateStatus === 'early' && <div style={{ marginTop: '2px' }}><Badge value="↑ Early Slot" tone="purple" /></div>}
+                    {dateStatus === 'late' && <div style={{ marginTop: '2px' }}><Badge value="⚠️ Late Date" tone="amber" /></div>}
                   </>
                 ) : (
-                  <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Not confirmed</span>
+                  <span style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: '12px' }}>Not confirmed</span>
                 )}
               </td>
-              <td style={{ fontWeight: '700', color: 'var(--text)' }}>
+              <td style={{ fontWeight: '600', color: 'var(--text)', fontSize: '13px' }}>
                 {row.confirmedDate ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    🕒 {format12h(row.time || '11:00 AM')}
+                    {format12h(row.time || '11:00 AM')}
                   </span>
                 ) : '—'}
               </td>
-              <td>{row.priority || 'Routine'}</td>
+              <td>
+                <Badge value={row.priority || 'Routine'} tone={String(row.priority).toLowerCase() === 'high' ? 'red' : undefined} />
+              </td>
               <td>
                 <Badge value={row.status} tone={isScheduled ? 'green' : undefined} />
                 {isPending && (
-                  <div style={{ marginTop: '6px' }}>
+                  <div style={{ marginTop: '4px' }}>
                     <span className="watch-text"><span className="pulse-dot"></span> Watching</span>
                   </div>
                 )}
                 {isScheduled && (
-                  <div style={{ marginTop: '6px', color: 'var(--green)', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ marginTop: '4px', color: 'var(--green)', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>✓ Confirmed</span>
                   </div>
                 )}
@@ -4390,9 +4389,13 @@ function FollowUps({ rows }) {
         })}
       </Table>
 
-      <div className="monitor-box" style={{ padding: '20px', marginTop: '24px' }}>
-        <div className="monitor-box-title">Background slot monitoring active for {monitoringCount} patients</div>
-        <div style={{ color: '#94a3b8', fontSize: '13px' }}>If any earlier slot opens due to a cancellation, the pet owner is automatically notified with available options.</div>
+      <div className="monitor-box" style={{ padding: '14px 18px', marginTop: '18px', background: '#0f172a', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="monitor-box-title" style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="pulse-dot" style={{ background: '#10b981' }}></span> Background slot monitoring active for {monitoringCount} patients
+        </div>
+        <div style={{ color: '#94a3b8', fontSize: '12px', lineHeight: '1.4' }}>
+          Real-time check active. If an earlier slot becomes available due to cancellation, the pet owner is automatically notified with direct one-click booking options.
+        </div>
       </div>
     </Screen>
   );
