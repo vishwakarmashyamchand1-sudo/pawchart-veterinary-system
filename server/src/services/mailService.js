@@ -822,3 +822,64 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
     console.error("❌ Error executing triggerMailFlows:", err.message);
   }
 }
+
+/**
+ * 8. Send Vaccination Reminder Mail
+ */
+export async function sendVaccinationReminderMail(client, petName, vaccine, dueDate, clinic) {
+  try {
+    const transport = await getTransporter();
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
+      to: client.email || 'client@pawchart.com',
+      subject: `💉 Vaccination Due: ${petName}'s ${vaccine} Vaccine`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="background: #10b981; color: #fff; padding: 24px; text-align: center;">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">💉 Vaccination Reminder</h2>
+          </div>
+          <div style="padding: 24px; background: #fff;">
+            <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
+            <p style="font-size: 14px;">This is a friendly reminder that <strong>${petName}</strong> is due for their <strong>${vaccine}</strong> vaccination.</p>
+            
+            <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #047857; font-weight: 600; width: 120px;">Pet:</td>
+                  <td style="padding: 6px 0; color: #1e293b; font-weight: 700;">${petName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #047857; font-weight: 600;">Vaccine:</td>
+                  <td style="padding: 6px 0; color: #1e293b; font-weight: 700;">${vaccine}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #047857; font-weight: 600;">Due Date:</td>
+                  <td style="padding: 6px 0; color: #1e293b; font-weight: 700;">${new Date(dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="font-size: 14px; margin-bottom: 0;">Keeping up with vaccinations is crucial for ${petName}'s health and immunity. Please contact us to schedule an appointment.</p>
+            
+            <div style="margin: 24px 0; text-align: center;">
+              <a href="${process.env.CLIENT_URL || process.env.CLIENT_ORIGIN || 'http://localhost:3000'}" style="display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; border-radius: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">
+                Book Appointment
+              </a>
+            </div>
+          </div>
+          <div style="background: #f1f5f9; text-align: center; padding: 16px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+            Thank you for choosing ${clinic ? clinic.name : 'PawChart'}!
+          </div>
+        </div>
+      `
+    };
+
+    const info = await transport.sendMail(mailOptions);
+    console.log(`✉️ [Vaccination Reminder Mail] Sent to ${client.email} | Message ID: ${info.messageId}`);
+    if (etherealAccount) {
+      console.log(`   🔗 View Ethereal Email Preview: ${nodemailer.getTestMessageUrl(info)}`);
+    }
+  } catch (err) {
+    console.error("❌ Failed to send vaccination reminder email:", err.message);
+  }
+}

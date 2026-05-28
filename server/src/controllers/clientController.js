@@ -4,11 +4,17 @@ import { calculateDueDate } from '../utils/dateCalculator.js';
 
 async function generateVaccinesForPets(pets, clientName, clinicId) {
   const newVaccinations = [];
+  const allMasterVaccines = await VaccineMaster.find({});
+  
   for (const pet of pets) {
     if (pet.dateOfBirth && pet.species) {
-      const masterVaccines = await VaccineMaster.find({ 
-        species: { $regex: new RegExp(`^${pet.species}$`, 'i') } 
+      const petTokens = pet.species.toLowerCase().split(/[\s/]+/);
+      const masterVaccines = allMasterVaccines.filter(mv => {
+        if (!mv.species) return false;
+        const mvTokens = mv.species.toLowerCase().split(/[\s/]+/);
+        return petTokens.some(pt => mvTokens.includes(pt));
       });
+      
       for (const mv of masterVaccines) {
         const dueDate = calculateDueDate(pet.dateOfBirth, mv.recommendedAge);
         if (dueDate) {

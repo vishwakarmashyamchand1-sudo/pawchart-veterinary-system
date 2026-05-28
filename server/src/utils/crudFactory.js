@@ -102,14 +102,16 @@ export const createCrudHandlers = (Model, resourceName) => {
     update: async (req, res, next) => {
       try {
         const filter = { _id: req.params.id, ...getQueryFilter(req) };
+        const currentDoc = await Model.findOne(filter);
+        if (!currentDoc) return res.status(404).json({ message: `${resourceName} not found` });
 
         if (req.body.email) {
           const existing = await Model.findOne({ email: req.body.email, _id: { $ne: req.params.id } });
           if (existing) return res.status(400).json({ message: `The email '${req.body.email}' is already registered. Please use a unique value.` });
           
-          if (resourceName === 'Vet' || resourceName === 'Client') {
+          if (req.body.email !== currentDoc.email && (resourceName === 'Vet' || resourceName === 'Client')) {
              const { default: mongoose } = await import('mongoose');
-             const Clinic = mongoose.models.Clinic;
+             const Clinic = mongoose.models.Clinic || mongoose.model('Clinic');
              if (Clinic) {
                 const clinicConflict = await Clinic.findOne({ 'contact.email': req.body.email.toLowerCase() });
                 if (clinicConflict) throw new Error(`The email '${req.body.email}' is already registered as a Clinic.`);
@@ -125,9 +127,9 @@ export const createCrudHandlers = (Model, resourceName) => {
           const existing = await Model.findOne({ phone: req.body.phone, _id: { $ne: req.params.id } });
           if (existing) return res.status(400).json({ message: `The phone '${req.body.phone}' is already registered. Please use a unique value.` });
           
-          if (resourceName === 'Vet' || resourceName === 'Client') {
+          if (req.body.phone !== currentDoc.phone && (resourceName === 'Vet' || resourceName === 'Client')) {
              const { default: mongoose } = await import('mongoose');
-             const Clinic = mongoose.models.Clinic;
+             const Clinic = mongoose.models.Clinic || mongoose.model('Clinic');
              if (Clinic) {
                 const clinicConflict = await Clinic.findOne({ 'contact.phone': req.body.phone });
                 if (clinicConflict) throw new Error(`The phone '${req.body.phone}' is already registered as a Clinic.`);

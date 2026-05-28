@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDueVaccinations, triggerManualReminder, updateVaccination } from '../controllers/vaccinationController.js';
+import { getDueVaccinations, triggerManualReminder, triggerBatchReminders, updateVaccination } from '../controllers/vaccinationController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { Vaccination } from '../models.js';
 import { createCrudHandlers } from '../utils/crudFactory.js';
@@ -7,6 +7,7 @@ import { createCrudHandlers } from '../utils/crudFactory.js';
 const router = express.Router();
 
 router.get('/due', optionalAuth, getDueVaccinations);
+router.post('/remind/batch', optionalAuth, triggerBatchReminders);
 router.post('/:id/remind', optionalAuth, triggerManualReminder);
 
 const { getAll, getOne, create, update, remove } = createCrudHandlers(Vaccination, 'Vaccination');

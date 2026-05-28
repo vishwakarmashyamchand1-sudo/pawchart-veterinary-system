@@ -47,6 +47,43 @@ export const triggerManualReminder = async (req, res, next) => {
   }
 };
 
+export const triggerBatchReminders = async (req, res, next) => {
+  try {
+    const filter = getQueryFilter(req);
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Find due/overdue
+    filter.dueDate = { $lte: todayStr };
+    filter.status = { $nin: ['Up to date', 'Completed'] };
+    
+    const dueVaccines = await Vaccination.find(filter);
+    
+    let sentCount = 0;
+    for (const v of dueVaccines) {
+      if (v.reminderStatus === 'Auto-sent just now' || v.reminderStatus === 'Sent just now') continue;
+      
+      const details = `Vaccination for ${v.vaccine} was due on ${v.dueDate}. Please schedule an appointment.`;
+      
+      await scheduleReminder(
+        'vaccination',
+        v.petName,
+        v.ownerName,
+        details,
+        v._id,
+        0
+      );
+      
+      v.reminderStatus = 'Auto-sent just now';
+      await v.save();
+      sentCount++;
+    }
+    
+    res.json({ message: `Successfully queued ${sentCount} reminders.`, count: sentCount });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateVaccination = async (req, res, next) => {
   try {
     const { id } = req.params;

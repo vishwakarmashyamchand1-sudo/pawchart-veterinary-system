@@ -3,7 +3,8 @@ import Clinic from '../models/Clinic.js';
 import { 
   sendAppointmentReminderMail, 
   sendMissedAppointmentAlertMail, 
-  sendPendingFollowUpReminderMail 
+  sendPendingFollowUpReminderMail,
+  sendVaccinationReminderMail
 } from './mailService.js';
 
 let Queue = null;
@@ -182,6 +183,14 @@ async function processReminder(data) {
   
   try {
     if (type === 'vaccination') {
+      const vax = await Vaccination.findById(targetId);
+      if (vax) {
+        const client = await Client.findOne({ name: { $regex: new RegExp('^' + ownerName.trim() + '$', 'i') } });
+        if (client) {
+          const clinic = vax.clinic_id ? await Clinic.findById(vax.clinic_id) : null;
+          await sendVaccinationReminderMail(client, petName, vax.vaccine, vax.dueDate, clinic);
+        }
+      }
       await Vaccination.findByIdAndUpdate(targetId, { reminderStatus: 'Sent automatically via schedule' });
     } else if (type === 'followup') {
       await FollowUp.findByIdAndUpdate(targetId, { status: 'Notified' });
