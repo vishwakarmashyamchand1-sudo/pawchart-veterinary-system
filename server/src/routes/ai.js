@@ -114,7 +114,7 @@ router.post('/process-transcript', optionalAuth, async (req, res, next) => {
     let petContext = null;
     let petName = 'Buddy';
     let ownerName = 'James Martinez';
-    let vetName = 'Dr. Sarah Chen';
+    let vetName = 'Assigned Veterinarian';
 
     if (appointment_id && mongoose.Types.ObjectId.isValid(appointment_id)) {
       try {
@@ -366,7 +366,7 @@ router.post('/:id/save', optionalAuth, async (req, res, next) => {
     const soapNote = await SoapNote.create({
       petName: petName || 'Buddy',
       ownerName: ownerName || 'James Martinez',
-      vetName: vetName || 'Dr. Sarah Chen',
+      vetName: vetName || 'Assigned Veterinarian',
       subjective,
       objective,
       assessment,

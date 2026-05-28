@@ -341,12 +341,12 @@ export async function sendFollowUpRecommendationMail(client, soapNote, vet, clin
     }
 
     // Determine follow-up target date (YYYY-MM-DD or whatever is chosen)
-    const targetDate = soapNote.follow_up_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const targetDate = soapNote.follow_up_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     
     // Query already booked slots for this doctor/date in the DB
     const booked = await Appointment.find({
       date: targetDate,
-      vetName: (vet ? vet.name : soapNote.vetName) || 'Dr. Sarah Chen',
+      vetName: (vet ? vet.name : soapNote.vetName) || 'Assigned Veterinarian',
       status: { $ne: 'Cancelled' }
     }).lean();
 
@@ -607,12 +607,12 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
     }
 
     // Determine target date
-    const targetDate = followUp.planDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const targetDate = followUp.planDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     
     // Query already booked slots for this doctor/date in DB
     const booked = await Appointment.find({
       date: targetDate,
-      vetName: followUp.vetName || 'Dr. Sarah Chen',
+      vetName: followUp.vetName || 'Assigned Veterinarian',
       status: { $ne: 'Cancelled' }
     }).lean();
 
@@ -643,7 +643,7 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
           const idx = r * columns + c;
           if (idx < availableSlots.length) {
             const slot = availableSlots[idx];
-            const bookUrl = `${baseUrl}/api/appointments/book-followup?ownerName=${encodeURIComponent(client.name)}&petName=${encodeURIComponent(followUp.petName)}&vetName=${encodeURIComponent(followUp.vetName || 'Dr. Sarah Chen')}&date=${targetDate}&time=${slot}&clinicId=${clinic ? clinic._id : ''}`;
+            const bookUrl = `${baseUrl}/api/appointments/book-followup?ownerName=${encodeURIComponent(client.name)}&petName=${encodeURIComponent(followUp.petName)}&vetName=${encodeURIComponent(followUp.vetName || 'Assigned Veterinarian')}&date=${targetDate}&time=${slot}&clinicId=${clinic ? clinic._id : ''}`;
             const label = format12h(slot);
             slotsHtml += `
               <td style="width: 33.33%; text-align: center; padding: 0;">
@@ -669,7 +669,7 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #ea580c; color: #fff; padding: 24px; text-align: center;">
             <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">🔔 Follow-up Action Required</h2>
-            <div style="font-size: 12.5px; opacity: 0.9; margin-top: 4px;">Patient: ${followUp.petName} · Practitioner: ${followUp.vetName || 'Dr. Sarah Chen'}</div>
+            <div style="font-size: 12.5px; opacity: 0.9; margin-top: 4px;">Patient: ${followUp.petName} · Practitioner: ${followUp.vetName || 'Assigned Veterinarian'}</div>
           </div>
           <div style="padding: 24px; background: #fff;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
@@ -779,7 +779,7 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
           !!soapNote.follow_up_date;
           
         if (isFollowupNeeded) {
-          const targetDate = soapNote.follow_up_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const targetDate = soapNote.follow_up_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
           
           // Create or update a pending follow-up entry
           let followUp = await FollowUp.findOne({
@@ -792,7 +792,7 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
             followUp = await FollowUp.create({
               petName: soapNote.petName,
               ownerName: soapNote.ownerName,
-              vetName: soapNote.vetName || 'Dr. Sarah Chen',
+              vetName: soapNote.vetName || 'Assigned Veterinarian',
               purpose: soapNote.plan || 'Recommended Follow-up',
               planDate: targetDate,
               confirmedDate: '',
@@ -805,7 +805,7 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
             console.log(`🆕 Created pending FollowUp entry via SOAP flow: [ID: ${followUp._id}]`);
           } else {
             followUp.planDate = targetDate;
-            followUp.vetName = soapNote.vetName || 'Dr. Sarah Chen';
+            followUp.vetName = soapNote.vetName || 'Assigned Veterinarian';
             followUp.purpose = soapNote.plan || 'Recommended Follow-up';
             if (clinicId || soapNote.clinic_id) {
               followUp.clinic_id = clinicId || soapNote.clinic_id;

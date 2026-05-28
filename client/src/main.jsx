@@ -643,21 +643,32 @@ function VaccineModal({ initialData, onClose, onSave }) {
 }
 
 function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
-  const [status, setStatus] = useState(vaccination.status);
+  const [status, setStatus] = useState(vaccination.status || 'Completed');
   const [lastDate, setLastDate] = useState(vaccination.lastDate || new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(vaccination.dueDate || '');
+  const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
   const [vetName, setVetName] = useState(vaccination.vetName || '');
   const [notes, setNotes] = useState(vaccination.notes || '');
 
   return (
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>Record Vaccination</h2>
-        <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
-          <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
-          <strong>Due Date:</strong> {vaccination.dueDate}
-        </div>
+        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}</h2>
+        
+        {vaccination.isNew ? (
+          <>
+            <Input label="Vaccine Name" value={vaccine} onChange={setVaccine} />
+            <Input label="Due Date" type="date" value={dueDate} onChange={setDueDate} />
+          </>
+        ) : (
+          <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
+            <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
+            <strong>Due Date:</strong> {vaccination.dueDate}
+          </div>
+        )}
+        
         <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
-        {status === 'Completed' && (
+        {(status === 'Completed' || status === 'Up to date') && (
           <>
             <Input label="Date Administered" type="date" value={lastDate} onChange={setLastDate} />
             <Input label="Administered By (Vet/Clinic)" value={vetName} onChange={setVetName} />
@@ -666,7 +677,7 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
         )}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
           <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, status, lastDate, vetName, notes })}>Save Record</button>
+          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, vaccine, dueDate, status, lastDate, vetName, notes })}>Save Record</button>
         </div>
       </div>
     </div>
@@ -1593,19 +1604,27 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       if (next.time.includes('-')) {
         const parts = next.time.split('-');
         const formatSingle = (singleT) => {
-          const [h, m] = singleT.split(':');
-          const hr = parseInt(h);
+          const trimmed = singleT.trim();
+          const hasPM = /PM/i.test(trimmed);
+          const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+          const [h, m] = clean.split(':');
+          let hr = parseInt(h);
+          if (hasPM && hr < 12) hr += 12;
           const ampm = hr >= 12 ? 'PM' : 'AM';
           const hr12 = hr % 12 || 12;
-          return `${hr12}:${m} ${ampm}`;
+          return `${hr12}:${m || '00'} ${ampm}`;
         };
-        timeStr = `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+        timeStr = `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
       } else {
-        const [h, m] = next.time.split(':');
-        const hr = parseInt(h);
+        const trimmed = next.time.trim();
+        const hasPM = /PM/i.test(trimmed);
+        const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+        const [h, m] = clean.split(':');
+        let hr = parseInt(h);
+        if (hasPM && hr < 12) hr += 12;
         const ampm = hr >= 12 ? 'PM' : 'AM';
         const hr12 = hr % 12 || 12;
-        timeStr = `${hr12}:${m} ${ampm}`;
+        timeStr = `${hr12}:${m || '00'} ${ampm}`;
       }
     } catch (e) {}
 
@@ -2849,6 +2868,10 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               {/* VACCINATIONS TAB */}
               {activeTab === 'vaccines' && (
                 <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
+                  <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Vaccination Records</h3>
+                    <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setEditingVax({ isNew: true, status: 'Completed' })}>+ Add Vaccination</button>
+                  </div>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -2962,13 +2985,24 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
         <PetVaccinationEditModal
           vaccination={editingVax}
           onClose={() => setEditingVax(null)}
-          onSave={(updated) => update('vaccinations', updated._id, updated)
-            .then(() => {
-              window.showToast('Vaccination updated successfully!', 'success');
-              setEditingVax(null);
-            })
-            .catch(err => window.showToast(err.message, 'error'))
-          }
+          onSave={(updated) => {
+            if (updated.isNew) {
+              const payload = { ...updated, petName: currentPet.name, ownerName: owner.name, breed: currentPet.breed, clinic_id: owner.clinic_id };
+              create('vaccinations', payload)
+                .then(() => {
+                  window.showToast('Vaccination added successfully!', 'success');
+                  setEditingVax(null);
+                })
+                .catch(err => window.showToast(err.message, 'error'));
+            } else {
+              update('vaccinations', updated._id, updated)
+                .then(() => {
+                  window.showToast('Vaccination updated successfully!', 'success');
+                  setEditingVax(null);
+                })
+                .catch(err => window.showToast(err.message, 'error'));
+            }
+          }}
         />
       )}
     </>
@@ -3461,20 +3495,17 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      const formatSingle = (singleT) => {
-        const [h, m] = singleT.split(':');
-        const hr = parseInt(h);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const hr12 = hr % 12 || 12;
-        return `${hr12}:${m} ${ampm}`;
-      };
-      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
     }
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
+    const trimmed = t.trim();
+    const hasPM = /PM/i.test(trimmed);
+    const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+    const [h, m] = clean.split(':');
+    let hr = parseInt(h);
+    if (hasPM && hr < 12) hr += 12;
     const ampm = hr >= 12 ? 'PM' : 'AM';
     const hr12 = hr % 12 || 12;
-    return `${hr12}:${m} ${ampm}`;
+    return `${hr12}:${m || '00'} ${ampm}`;
   };
 
   const petEmoji = (species = '') => {
@@ -4746,17 +4777,14 @@ function FollowUps({ rows }) {
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      const formatSingle = (singleT) => {
-        const [h, m] = singleT.split(':');
-        const hr = parseInt(h);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const hr12 = hr % 12 || 12;
-        return `${hr12}:${m} ${ampm}`;
-      };
-      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
     }
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
+    const trimmed = t.trim();
+    const hasPM = /PM/i.test(trimmed);
+    const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+    const [h, m] = clean.split(':');
+    let hr = parseInt(h);
+    if (hasPM && hr < 12) hr += 12;
     const ampm = hr >= 12 ? 'PM' : 'AM';
     const hr12 = hr % 12 || 12;
     return `${hr12}:${m} ${ampm}`;

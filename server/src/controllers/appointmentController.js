@@ -83,7 +83,7 @@ export const bookFollowUpRoute = async (req, res, next) => {
     // 1. Check if an appointment already exists for this slot to prevent double-booking
     const booked = await Appointment.find({
       date,
-      vetName: vetName || 'Dr. Sarah Chen',
+      vetName: vetName || 'Assigned Veterinarian',
       status: { $ne: 'Cancelled' }
     }).lean();
 
@@ -127,7 +127,7 @@ export const bookFollowUpRoute = async (req, res, next) => {
     const apptBody = {
       petName,
       ownerName,
-      vetName: vetName || 'Dr. Sarah Chen',
+      vetName: vetName || 'Assigned Veterinarian',
       reason: 'Recommended Follow-up Visit',
       date,
       time,
@@ -149,7 +149,7 @@ export const bookFollowUpRoute = async (req, res, next) => {
     });
 
     if (existingFollowUp) {
-      existingFollowUp.vetName = vetName || 'Dr. Sarah Chen';
+      existingFollowUp.vetName = vetName || 'Assigned Veterinarian';
       existingFollowUp.planDate = date;
       existingFollowUp.confirmedDate = date;
       existingFollowUp.time = time;
@@ -163,7 +163,7 @@ export const bookFollowUpRoute = async (req, res, next) => {
       const followUpBody = {
         petName,
         ownerName,
-        vetName: vetName || 'Dr. Sarah Chen',
+        vetName: vetName || 'Assigned Veterinarian',
         purpose: 'Recommended Follow-up',
         planDate: date,
         confirmedDate: date,
@@ -181,7 +181,7 @@ export const bookFollowUpRoute = async (req, res, next) => {
 
     // 4. Send Confirmation Emails
     const client = await Client.findOne({ name: ownerName });
-    const vet = await Vet.findOne({ name: vetName || 'Dr. Sarah Chen' });
+    const vet = await Vet.findOne({ name: vetName || 'Assigned Veterinarian' });
     const clinic = clinicId ? await Clinic.findById(clinicId) : null;
     if (vet) {
       await sendDoctorAppointmentMail(vet, newAppt, client, clinic);
