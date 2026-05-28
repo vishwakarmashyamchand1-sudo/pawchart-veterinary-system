@@ -1,6 +1,7 @@
 # PawChart MERN System
 
-PawChart is now a MERN app with a React client, Express API, and MongoDB data layer.
+PawChart is a MERN app with a React client, Express API, and MongoDB data layer.
+Live Demo - https://pawchart-veterinary-system-341e.vercel.app
 
 ## Prerequisites
 
