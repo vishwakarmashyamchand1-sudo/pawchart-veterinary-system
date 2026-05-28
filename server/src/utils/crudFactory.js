@@ -86,6 +86,21 @@ export const createCrudHandlers = (Model, resourceName) => {
           }
         }
 
+        if (resourceName === 'Appointment') {
+          const conflictQuery = {
+            vetName: body.vetName,
+            date: body.date,
+            time: body.time,
+            status: { $ne: 'Cancelled' }
+          };
+          if (clinicId) conflictQuery.clinic_id = clinicId;
+          
+          const conflict = await Model.findOne(conflictQuery);
+          if (conflict) {
+            return res.status(409).json({ message: `Conflict: ${body.vetName} is already booked at ${body.time}. Please select a different time.` });
+          }
+        }
+
         const created = await Model.create(body);
 
         // Trigger dynamic mail notification flows based on resourceName
