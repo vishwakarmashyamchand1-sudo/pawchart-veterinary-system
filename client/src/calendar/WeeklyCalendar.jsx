@@ -77,8 +77,8 @@ export function WeeklyCalendar({
 
   // Determine styling for appointment card based on status/reason
   const getCardStyle = (appt) => {
-    const r = appt.reason.toLowerCase();
-    const t = appt.type?.toLowerCase() || '';
+    const r = (appt.reason || '').toLowerCase();
+    const t = (appt.type || '').toLowerCase();
     const status = appt.status;
     
     if (status === 'Now') {
