@@ -65,6 +65,9 @@ const vetSchema = new Schema(
 
 const appointmentSchema = new Schema(
   {
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    petId: { type: Schema.Types.ObjectId },
+    vetId: { type: Schema.Types.ObjectId, ref: 'Vet' },
     petName: { type: String, required: true },
     ownerName: { type: String, required: true },
     species: String,
