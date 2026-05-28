@@ -4452,6 +4452,9 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
     );
   }
 
+  const currentPetIndex = (doctorPatients || []).findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName) + 1;
+  const totalPatients = (doctorPatients || []).length;
+
   return (
     <div className="main-scroll" style={{ background: 'var(--bg)' }}>
       <div className="main-pad">
@@ -4472,6 +4475,11 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
                 <button className="btn" style={{ padding: '4px 8px', minWidth: 'auto', height: 'auto', fontSize: '16px', background: 'transparent', color: 'var(--text-2)', border: 'none' }} onClick={handleNextPet}>
                   &gt;
                 </button>
+              )}
+              {(role === 'doctor' && selectedDoctor) && (
+                <span style={{ fontSize: '12px', background: 'var(--bg-2)', color: 'var(--text-3)', padding: '2px 8px', borderRadius: '12px', marginLeft: '4px', fontWeight: '600' }}>
+                  {currentPetIndex > 0 ? currentPetIndex : 1} / {totalPatients} {totalPatients === 1 ? 'pet' : 'pets'}
+                </span>
               )}
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
