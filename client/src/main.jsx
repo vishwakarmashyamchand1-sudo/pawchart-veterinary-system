@@ -3210,8 +3210,6 @@ function Vaccinations({ rows, update, clients = [] }) {
       console.error(e);
       alert('Error triggering batch reminders.');
     }
-      return <button className="btn btn-accent btn-sm" onClick={() => handleTriggerReminder(row._id)}>Notify Owner</button>;
-    }
   };
 
   const getDueDateStyle = (status) => {
