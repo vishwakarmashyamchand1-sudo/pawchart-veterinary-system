@@ -74,6 +74,32 @@ function useApi(selectedClinicId) {
         const data = await res.json();
         return (data && data.data && Array.isArray(data.data)) ? data.data : data;
       })));
+
+      // Make statuses fully dynamic by computing them against the current time
+      const todayStr = new Date().toISOString().split('T')[0];
+      const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const vaxIndex = names.indexOf('vaccinations');
+      if (vaxIndex !== -1 && Array.isArray(results[vaxIndex])) {
+        results[vaxIndex].forEach(v => {
+          if (v.status !== 'Completed' && v.status !== 'Waived' && v.dueDate) {
+            if (v.dueDate < todayStr) v.status = 'Overdue';
+            else if (v.dueDate <= next30) v.status = 'Due soon';
+            else v.status = 'Up to date';
+          }
+        });
+      }
+
+      const followIndex = names.indexOf('followups');
+      if (followIndex !== -1 && Array.isArray(results[followIndex])) {
+        results[followIndex].forEach(f => {
+          if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
+            if (f.planDate < todayStr) f.status = 'Overdue';
+            else f.status = 'Pending';
+          }
+        });
+      }
+
       setData(Object.fromEntries(names.map((name, index) => [name, results[index]])));
     } catch (err) {
       setError(err.message);
@@ -935,7 +961,13 @@ function App() {
 
           <nav className="sb-nav">
             {navByRole[role].map(([label, id, icon]) => (
-              <button key={`${role}-${label}`} className={`nav-item ${screen === id ? 'active' : ''}`} onClick={() => setScreen(id)}>
+              <button key={`${role}-${label}`} className={`nav-item ${screen === id ? 'active' : ''}`} onClick={() => {
+                if (id === 'booking' || id === 'calendar') {
+                  setBookingClient(null);
+                  setBookingPet(null);
+                }
+                setScreen(id);
+              }}>
                 <span className="ni">{icons[icon]}</span>{label}
                 {label === 'Vaccinations' && <span className="nav-badge">{data.dashboard?.stats?.vaccinesDue ?? 0}</span>}
                 {label === 'Follow-ups' && <span className="nav-badge">{data.dashboard?.stats?.followUpsPending ?? 0}</span>}
@@ -958,7 +990,7 @@ function App() {
               <>
                 {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} go={setScreen} />}
                 {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} />}
-                {screen === 'vets' && <Vets vets={data.vets} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
+                {screen === 'vets' && <Vets vets={data.vets} appointments={data.appointments} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} />}
@@ -1287,7 +1319,7 @@ function Stat({ label, value, hint, primary, danger }) {
   </div>;
 }
 
-function Vets({ vets, create, update, onDelete, selectedClinic }) {
+function Vets({ vets, appointments = [], create, update, onDelete, selectedClinic }) {
   const [openOnboard, setOpenOnboard] = useState(false);
   const [editingVet, setEditingVet] = useState(null);
 
@@ -1311,7 +1343,49 @@ function Vets({ vets, create, update, onDelete, selectedClinic }) {
           </thead>
           <tbody>
             {vets.length > 0 ? (
-              vets.map((vet) => (
+              vets.map((vet) => {
+                let displayStatus = vet.status || 'Available';
+                
+                const now = new Date();
+                const nowStr = now.toDateString();
+                
+                const inConsultation = appointments.some(appt => {
+                  if (appt.vetName !== vet.name) return false;
+                  if (appt.status === 'Completed' || appt.status === 'Cancelled') return false;
+                  
+                  const apptDate = new Date(appt.date);
+                  if (nowStr !== apptDate.toDateString()) return false;
+                  
+                  if (!appt.time) return false;
+                  let startHour, startMin, endHour, endMin;
+                  if (appt.time.includes('-')) {
+                    const [startT, endT] = appt.time.split('-');
+                    [startHour, startMin] = startT.trim().split(':').map(Number);
+                    [endHour, endMin] = endT.trim().split(':').map(Number);
+                  } else {
+                    [startHour, startMin] = appt.time.split(':').map(Number);
+                    endHour = startHour;
+                    endMin = startMin + (appt.durationMinutes || 30);
+                    if (endMin >= 60) {
+                      endHour += Math.floor(endMin / 60);
+                      endMin = endMin % 60;
+                    }
+                  }
+                  
+                  const start = new Date(now);
+                  start.setHours(startHour, startMin, 0, 0);
+                  
+                  const end = new Date(now);
+                  end.setHours(endHour, endMin, 0, 0);
+                  
+                  return now >= start && now <= end;
+                });
+
+                if (inConsultation) {
+                  displayStatus = 'In Consultation';
+                }
+
+                return (
                 <tr key={vet._id}>
                   <td style={{ paddingLeft: '18px' }}>
                     <div className="td-name">{vet.name}</div>
@@ -1321,7 +1395,7 @@ function Vets({ vets, create, update, onDelete, selectedClinic }) {
                   <td>{vet.experienceYears ? `${vet.experienceYears} yrs` : 'N/A'}</td>
                   <td>{vet.consultationFee ? `$${vet.consultationFee}` : 'N/A'}</td>
                   <td>
-                    <Badge value={vet.status || 'Available'} />
+                    <Badge value={displayStatus} />
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '24px' }}>
                     <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -1346,7 +1420,8 @@ function Vets({ vets, create, update, onDelete, selectedClinic }) {
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+            })
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>
@@ -1823,14 +1898,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const ownerEmail = owner ? owner.email : (currentPet.email || 'james.m@email.com');
   const ownerPhone = owner ? owner.phone : (currentPet.phone || '(555) 824-3901');
 
-  useEffect(() => {
-    if (currentPet && onSetBookingPet) {
-      onSetBookingPet(currentPet);
-    }
-    if (owner && onSetBookingClient) {
-      onSetBookingClient(owner);
-    }
-  }, [currentPet, owner]);
+  // Implicit booking state update removed to prevent leaking state to global appointments tab
 
   const ownerPets = owner ? (owner.pets || []) : [currentPet];
 
@@ -2350,11 +2418,11 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
                 const yRange = 108;
                 const points = chartData.map((w, index) => {
-                  let x = 90;
+                  let x = 44;
                   if (chartData.length > 1) {
-                     x = 90 + (350 / (chartData.length - 1)) * index;
+                     x = 44 + (446 / (chartData.length - 1)) * index;
                   } else {
-                     x = 265;
+                     x = 267;
                   }
                   let y = 124;
                   const diff = maxWeight - minWeight;
@@ -2420,46 +2488,44 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 };
 
                 return (
-                  <div className="panel" style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <div className="card-label" style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
-                        Weight Analytics & History
-                      </div>
-                      <button className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={handleLogWeightInTab}>
-                        + Log Weight
-                      </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-8px' }}>
+                      <button className="btn btn-primary btn-sm" onClick={handleLogWeightInTab}>+ Log Weight</button>
                     </div>
-
-                    <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>CURRENT WEIGHT</div>
-                        <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text)' }}>
-                          {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
+                    <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                      <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
+                        <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>
+                          {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
                         </div>
-                        <div style={{ fontSize: '9.5px', color: lastDiffColor, marginTop: '2px', fontWeight: '500' }}>{lastDiffStr}</div>
+                        <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr}</div>
                       </div>
-                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>6-MONTH CHANGE</div>
-                        <div style={{ fontSize: '18px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span></div>
-                        <div style={{ fontSize: '9.5px', color: sixMonthDiffColor, marginTop: '2px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sixMonthTrendStr}</div>
+                      <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>6-MONTH CHANGE</div>
+                        <div style={{ fontSize: '30px', fontWeight: '700', color: sixMonthDiffColor }}>{sixMonthDiffStr} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span></div>
+                        <div style={{ fontSize: '11px', color: sixMonthDiffColor, marginTop: '3px', fontWeight: '500' }}>{sixMonthTrendStr}</div>
                       </div>
-                      <div className="card" style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                        <div style={{ fontSize: '9px', color: 'var(--text-3)', marginBottom: '2px', fontWeight: '700', letterSpacing: '.04em' }}>IDEAL RANGE</div>
-                        <div style={{ fontSize: '18px', fontWeight: '700', color: rangeColor }}>{idealMin}–{idealMax} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
-                        <div style={{ fontSize: '9.5px', color: rangeColor, marginTop: '2px', fontWeight: '500' }}>{rangeStr}</div>
+                      <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>IDEAL RANGE</div>
+                        <div style={{ fontSize: '26px', fontWeight: '700', color: rangeColor }}>{idealMin}–{idealMax} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{currentUnit}</span></div>
+                        <div style={{ fontSize: '11px', color: rangeColor, marginTop: '3px', fontWeight: '500' }}>{rangeStr}</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '14px' }}>
-                      <div className="card" style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <span className="badge b-blue" style={{ fontSize: '8px', padding: '1px 4px' }}>12m</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: '16px' }}>
+                      <div className="card" style={{ padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Last 12 months · All clinic visits</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <span className="badge b-blue">12 months</span>
+                            <span className="badge b-gray">All time</span>
                           </div>
                         </div>
-
-                        <svg viewBox="0 0 500 150" style={{ width: '100%', height: '120px', display: 'block' }}>
+                        
+                        <svg viewBox="0 0 500 150" style={{ width: '100%', height: '150px', display: 'block' }}>
                           <defs>
                             <linearGradient id="tabBg" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12"/>
@@ -2499,9 +2565,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           )}
                         </svg>
                       </div>
-
-                      <div className="card" style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '144px', overflowY: 'auto' }}>
-                        <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: '8px' }}>Visit Log</div>
+                      
+                      <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px', marginLeft: '4px' }}>Visit Log</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {logList.length > 0 ? (
                             logList.map((row, i) => {
@@ -2510,35 +2576,33 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                               if (i < logList.length - 1) {
                                 const diff = row.value - logList[i+1].value;
                                 if (diff > 0) {
-                                  diffStr = `+${diff.toFixed(1)} ${row.unit || 'lbs'} gained`;
+                                  diffStr = `↑ +${diff.toFixed(1)}`;
                                   diffColor = 'var(--amber)';
                                 } else if (diff < 0) {
-                                  diffStr = `-${Math.abs(diff).toFixed(1)} ${row.unit || 'lbs'} decreased`;
+                                  diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
                                   diffColor = 'var(--green)';
                                 } else {
-                                  diffStr = `0.0 ${row.unit || 'lbs'} stable`;
+                                  diffStr = `—`;
                                   diffColor = 'var(--text-3)';
                                 }
                               }
-                              const timeStr = row.createdAt ? new Date(row.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '12:00 PM';
                               
                               return (
-                                <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '11px' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', width: '75px' }}>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-3)' }}>{timeStr}</span>
+                                <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                  <div style={{ width: '90px' }}>
+                                    <span style={{ fontSize: '12.5px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
                                   </div>
-                                  <div style={{ fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
-                                    {row.value.toFixed(1)} <span style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit || 'lbs'}</span>
+                                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                                    {row.value.toFixed(1)} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit || 'lbs'}</span>
                                   </div>
-                                  <div style={{ color: diffColor, fontWeight: '600', fontSize: '9.5px', width: '90px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  <div style={{ fontSize: '12.5px', color: diffColor, fontWeight: '600', width: '70px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                     {diffStr}
                                   </div>
                                 </div>
                               );
                             })
                           ) : (
-                            <div style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', padding: '16px 0' }}>No logs yet</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-3)', textAlign: 'center', padding: '24px 0' }}>No logs yet</div>
                           )}
                         </div>
                       </div>
@@ -2983,6 +3047,22 @@ function Vaccinations({ rows, update }) {
     return <Badge value={reminderStatus} tone="blue" />;
   };
 
+  const handleTriggerReminder = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/vaccinations/${id}/remind`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        window.showToast?.('Automated Reminder Queued successfully!');
+        update('vaccinations', id, { reminderStatus: 'Resent just now' });
+      } else {
+        alert("Failed to queue reminder.");
+      }
+    } catch (err) {
+      console.error("Reminder error:", err);
+    }
+  };
+
   const getActionButtons = (row) => {
     const isUpToDate = String(row.status).toLowerCase().includes('up to date');
     const isNotSent = !row.reminderStatus || row.reminderStatus === 'Not sent';
@@ -2992,10 +3072,10 @@ function Vaccinations({ rows, update }) {
     }
     
     if (isNotSent) {
-      return <button className="btn btn-accent btn-sm" onClick={() => update('vaccinations', row._id, { reminderStatus: 'Sent just now' })}>Notify Owner</button>;
+      return <button className="btn btn-accent btn-sm" onClick={() => handleTriggerReminder(row._id)}>Notify Owner</button>;
     }
     
-    return <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => update('vaccinations', row._id, { reminderStatus: 'Resent just now' })}>Resend</button>;
+    return <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => handleTriggerReminder(row._id)}>Resend</button>;
   };
 
   const getDueDateStyle = (status) => {
@@ -3143,7 +3223,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   const clientsFiltered = useMemo(() => {
     if (!searchQuery.trim()) return clients;
     const q = searchQuery.toLowerCase();
-    return clients.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
+    return clients.filter(c => c.name?.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
   }, [clients, searchQuery]);
 
   const allPossibleSlots = useMemo(() => {
@@ -3372,7 +3452,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>{appt.reason}</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>{appt.type || 'Checkup'}</div>
                     </td>
-                    <td style={{ color: 'var(--text-2)' }}>{new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    <td style={{ color: 'var(--text-2)' }}>{formatDateSafe(appt.date)}</td>
                     <td style={{ color: 'var(--text)', fontWeight: '700' }}>{format12h(appt.time)}</td>
                     <td>
                       <Badge value={appt.status || 'Scheduled'} />
@@ -4058,7 +4138,7 @@ function Weights({ weights, create, activePet, clients, go }) {
   
   const previousWeightRecord = petWeights.length > 1 ? petWeights[petWeights.length - 2] : null;
   const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
-  const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `(${lastDiff >= 0 ? '+' : ''}${lastDiff.toFixed(1)} lbs from previous visit)` : 'Initial weight visit';
+  const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `${lastDiff > 0 ? '↑' : lastDiff < 0 ? '↓' : ''} ${Math.abs(lastDiff).toFixed(1)} lbs from last visit` : 'Initial weight visit';
   const lastDiffColor = !hasWeights ? 'var(--text-3)' : lastDiff > 0 ? 'var(--amber)' : lastDiff < 0 ? 'var(--green)' : 'var(--text-3)';
 
   // Calculate 6-month change relative to latest weight record's date for run-date independence
@@ -4109,11 +4189,11 @@ function Weights({ weights, create, activePet, clients, go }) {
 
   const yRange = 108;
   const points = chartData.map((w, index) => {
-    let x = 90;
+    let x = 44;
     if (chartData.length > 1) {
-       x = 90 + (350 / (chartData.length - 1)) * index;
+       x = 44 + (446 / (chartData.length - 1)) * index;
     } else {
-       x = 265;
+       x = 267;
     }
     let y = 124;
     const diff = maxWeight - minWeight;
@@ -4178,6 +4258,14 @@ function Weights({ weights, create, activePet, clients, go }) {
     });
   };
 
+  const getPetEmoji = (species = '') => {
+    const s = (species || '').toLowerCase();
+    if (s.includes('cat')) return '🐱';
+    if (s.includes('rabbit') || s.includes('lop')) return '🐰';
+    if (s.includes('bird') || s.includes('parrot')) return '🦜';
+    return '🐕';
+  };
+
   return (
     <div className="main-scroll" style={{ background: 'var(--bg)' }}>
       <div className="main-pad">
@@ -4187,7 +4275,7 @@ function Weights({ weights, create, activePet, clients, go }) {
         <div className="topbar">
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)' }}>
-              Weight Tracker — <span style={{ color: 'var(--brand)' }}>{pet.emoji || '🐕'} {pet.name}</span>
+              Weight Tracker — <span style={{ color: 'var(--brand)' }}>{getPetEmoji(pet.species || pet.emoji)} {pet.name}</span>
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
               {petBreed} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
@@ -4270,9 +4358,9 @@ function Weights({ weights, create, activePet, clients, go }) {
             </svg>
           </div>
           
-          <div className="card" style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>Visit Log</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px', marginLeft: '4px' }}>Visit Log</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {logList.length > 0 ? (
                 logList.map((row, i) => {
                   let diffStr = '—';
@@ -4280,28 +4368,26 @@ function Weights({ weights, create, activePet, clients, go }) {
                   if (i < logList.length - 1) {
                     const diff = row.value - logList[i+1].value;
                     if (diff > 0) {
-                      diffStr = `+${diff.toFixed(1)} ${row.unit || 'lbs'} gained`;
+                      diffStr = `↑ +${diff.toFixed(1)}`;
                       diffColor = 'var(--amber)';
                     } else if (diff < 0) {
-                      diffStr = `-${Math.abs(diff).toFixed(1)} ${row.unit || 'lbs'} decreased`;
+                      diffStr = `↓ -${Math.abs(diff).toFixed(1)}`;
                       diffColor = 'var(--green)';
                     } else {
-                      diffStr = `0.0 ${row.unit || 'lbs'} stable`;
+                      diffStr = `—`;
                       diffColor = 'var(--text-3)';
                     }
                   }
-                  const timeStr = row.createdAt ? new Date(row.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '12:00 PM';
                   
                   return (
-                    <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: i === logList.length - 1 ? 'none' : '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', width: '80px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
-                        <span style={{ fontSize: '10px', color: 'var(--text-3)', marginTop: '2px' }}>{timeStr}</span>
+                    <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '90px' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateSafe(row.date)}</span>
                       </div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', flex: 1, textAlign: 'center' }}>
                         {row.value.toFixed(1)} <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: '400' }}>{row.unit || 'lbs'}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: diffColor, fontWeight: '600', width: '100px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '12.5px', color: diffColor, fontWeight: '600', width: '70px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {diffStr}
                       </div>
                     </div>
@@ -4444,7 +4530,7 @@ function Weights({ weights, create, activePet, clients, go }) {
 }
 
 function FollowUps({ rows }) {
-  const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length || 2;
+  const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length;
 
   const getPetIcon = (breed) => {
     if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐈';

@@ -22,9 +22,9 @@ export function DoctorDashboard({
     let species = appt.species || '';
     let breed = appt.breed || '';
     if (!species && clients && clients.length > 0) {
-      const client = clients.find(c => c.name.toLowerCase() === appt.ownerName.toLowerCase());
+      const client = clients.find(c => c.name?.toLowerCase() === appt.ownerName?.toLowerCase());
       if (client && client.pets) {
-        const pet = client.pets.find(p => p.name.toLowerCase() === appt.petName.toLowerCase());
+        const pet = client.pets.find(p => p.name?.toLowerCase() === appt.petName?.toLowerCase());
         if (pet) {
           species = pet.species;
           breed = pet.breed;

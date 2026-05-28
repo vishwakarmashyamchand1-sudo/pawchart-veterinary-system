@@ -19,6 +19,24 @@ export const getDashboardStats = async (req, res, next) => {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0]; // '2026-05-22'
 
+    // Compute dynamic status for Vaccinations & FollowUps based on current date
+    const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    vaccinations.forEach(v => {
+      if (v.status !== 'Completed' && v.status !== 'Waived' && v.dueDate) {
+        if (v.dueDate < todayStr) v.status = 'Overdue';
+        else if (v.dueDate <= next30Days) v.status = 'Due soon';
+        else v.status = 'Up to date';
+      }
+    });
+
+    followUps.forEach(f => {
+      if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
+        if (f.planDate < todayStr) f.status = 'Overdue';
+        else f.status = 'Pending';
+      }
+    });
+
     // appointments comparison
     const apptsToday = appointments.filter((item) => item.date === todayStr).length;
     const apptsYesterday = appointments.filter((item) => item.date === yesterdayStr).length;
