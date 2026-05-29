@@ -40,8 +40,8 @@ export async function generatePetId(clinicId, species) {
 
     petId = `PET-${speciesCode}-${String(counter.sequence).padStart(4, "0")}`;
     
-    // Safety check against existing Client.pets.petId
-    exists = await Client.exists({ "pets.petId": petId });
+    // Safety check against existing Client.pets.petId within the same clinic
+    exists = await Client.exists({ clinic_id: clinicObjectId, "pets.petId": petId });
     attempts++;
   }
 
