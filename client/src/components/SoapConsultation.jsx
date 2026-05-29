@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../main.jsx';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
+import { createSpeechRecognition } from '../utils/speech.js';
 
 // Centralized API Base URL
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -96,6 +97,7 @@ export function Soap({
   // Web Speech API Reference
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(false);
+  const transcriptRef = useRef('');
 
   // Check browser SpeechRecognition support on mount
   useEffect(() => {
@@ -203,10 +205,11 @@ export function Soap({
     setRecordTimer(0);
     setLiveTranscript([]);
     setRawTranscriptText('');
+    transcriptRef.current = '';
     setErrorInfo('');
     setRawGeminiOutput(null);
     setIsApproved(false);
-    setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+    setDraft({ subjective: '', objective: '', assessment: '', plan: '', chiefComplaint: '', diagnosis: '', prescription: [] });
 
     // Set up timer ticker
     const interval = setInterval(() => {
@@ -214,73 +217,40 @@ export function Soap({
     }, 1000);
     setRecordingIntervalId(interval);
 
-    // Instantiate SpeechRecognition if supported
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = speechLanguage; // en-IN, hi-IN, etc.
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          // Cumulative aggregation starting from 0 to capture whole consultation history
-          for (let i = 0; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript + ' ';
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          const currentText = (finalTranscript + interimTranscript).trim();
-          if (currentText) {
-            setRawTranscriptText(currentText);
-            
-            // Build progressive transcript lines for the live speech feed
-            setLiveTranscript(prev => {
-              const cleaned = currentText.trim();
-              if (prev.length === 0 || prev[prev.length - 1] !== cleaned) {
-                // progressive parsing trigger
-                runProgressiveParsing(cleaned);
-                return [cleaned];
-              }
-              return prev;
-            });
-          }
-        };
-
-        recognition.onerror = (err) => {
-          console.warn("Speech recognition error:", err.error);
-          if (err.error === 'not-allowed') {
-            setErrorInfo("Mic permission denied. Access microphone to record real doctor voice.");
-          }
-        };
-
-        recognition.onend = () => {
-          console.log("Speech recognition ended.");
-          // Automatically restart recognition if the recording state is still active
-          if (isRecordingRef.current && recognitionRef.current) {
-            try {
-              recognitionRef.current.start();
-            } catch (err) {
-              console.warn("Failed to restart speech recognition:", err.message);
-            }
-          }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } catch (err) {
-        console.error("Failed to start speech recognition:", err);
+    const rec = createSpeechRecognition({
+      language: speechLanguage,
+      onInterim: (text) => {
+        const currentText = (transcriptRef.current + " " + text).trim();
+        setRawTranscriptText(currentText);
+        runProgressiveParsing(currentText);
+      },
+      onFinal: (text) => {
+        transcriptRef.current += (transcriptRef.current ? " " : "") + text;
+        const currentText = transcriptRef.current;
+        setRawTranscriptText(currentText);
+        runProgressiveParsing(currentText);
+        setLiveTranscript(prev => [...prev, text]);
+      },
+      onError: (err) => {
+        console.warn("Speech recognition error:", err);
+        if (err === 'not-allowed') {
+          setErrorInfo("Mic permission denied. Access microphone to record real doctor voice.");
+        }
+      },
+      onEnd: () => {
+        console.log("Speech recognition ended naturally.");
       }
-    } else {
-      setErrorInfo("Speech recognition is not supported in this browser. Running high-fidelity simulation workflow.");
+    });
+
+    if (!rec) {
+      setErrorInfo("Browser doesn't support Web Speech API.");
+      return;
     }
+
+    recognitionRef.current = rec;
+    rec.start();
   };
+
 
   // Stop Consultation Recording
   const stopRecording = () => {
@@ -295,13 +265,14 @@ export function Soap({
     // Stop Speech Recognition if active
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.onend = null;
         recognitionRef.current.stop();
+        recognitionRef.current = null;
       } catch (err) {
         console.warn("Failed to stop recognition:", err.message);
       }
     }
   };
+
 
   const sendToAI = async () => {
     if (isRecording) {
