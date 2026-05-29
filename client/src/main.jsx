@@ -773,10 +773,7 @@ function App() {
         const list = await res.json();
         setClinics(list);
         
-        // Auto-assign first clinic to non-superadmin users if no clinic selected yet
-        if (role !== 'superadmin' && list.length > 0 && !selectedClinic) {
-          selectClinic(list[0]);
-        }
+        // Removed auto-assign so the dropdown stays on "Switch Clinic" until the user explicitly selects one
       }
     } catch (err) {
       console.error('Failed to load clinics:', err);
@@ -881,11 +878,7 @@ function App() {
   function switchRole(nextRole) {
     setRole(nextRole);
     setScreen(nextRole === 'doctor' ? 'calendar' : 'dashboard');
-    if (nextRole !== 'superadmin' && clinics.length > 0) {
-      selectClinic(clinics[0]);
-    } else if (nextRole === 'superadmin') {
-      selectClinic(null); // Force Super Admin selector to trigger first
-    }
+    selectClinic(null);
   }
 
   return (
@@ -908,12 +901,16 @@ function App() {
                   className="sb-select"
                   value={selectedClinic?._id || ''}
                   onChange={(e) => {
-                    const c = clinics.find(item => item._id === e.target.value);
-                    selectClinic(c);
+                    if (e.target.value === "") {
+                      selectClinic(null);
+                    } else {
+                      const c = clinics.find(item => item._id === e.target.value);
+                      selectClinic(c);
+                    }
                     setSelectedDoctor(null);
                   }}
                 >
-                  <option value="" disabled>Select clinic...</option>
+                  <option value="">Select clinic...</option>
                   {clinics.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                 </select>
 
@@ -922,12 +919,16 @@ function App() {
                   className="sb-select"
                   value={selectedDoctor?._id || ''}
                   onChange={(e) => {
-                    const d = data.vets?.find(item => item._id === e.target.value);
-                    setSelectedDoctor(d || null);
+                    if (e.target.value === "") {
+                      setSelectedDoctor(null);
+                    } else {
+                      const d = data.vets?.find(item => item._id === e.target.value);
+                      setSelectedDoctor(d || null);
+                    }
                   }}
                   disabled={!selectedClinic || !data.vets?.length}
                 >
-                  <option value="" disabled>{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
+                  <option value="">{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
                   {data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
                 </select>
               </>
@@ -941,11 +942,15 @@ function App() {
                 style={{ flex: 1 }}
                 value={selectedClinic?._id || ''}
                 onChange={(e) => {
-                  const c = clinics.find(item => item._id === e.target.value);
-                  selectClinic(c);
+                  if (e.target.value === "") {
+                    selectClinic(null);
+                  } else {
+                    const c = clinics.find(item => item._id === e.target.value);
+                    selectClinic(c);
+                  }
                 }}
               >
-                <option value="" disabled>Switch Clinic</option>
+                <option value="">Select clinic...</option>
                 {clinics.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
               </select>
             </div>
@@ -994,8 +999,14 @@ function App() {
           {loading && <Status message="Loading clinic data..." />}
           {error && <Status message={`${error}. Start the API and seed MongoDB.`} tone="error" action={reload} />}
           {!loading && !error && (
-            role === 'superadmin' && !selectedClinic && screen !== 'vaccinemaster' ? (
-              <ClinicSelector clinics={clinics} onSelect={selectClinic} onCreate={handleCreateClinic} onEdit={setEditingClinic} onDelete={handleDeleteClinic} />
+            !selectedClinic && screen !== 'vaccinemaster' ? (
+              role === 'superadmin' ? (
+                <ClinicSelector clinics={clinics} onSelect={selectClinic} onCreate={handleCreateClinic} onEdit={setEditingClinic} onDelete={handleDeleteClinic} />
+              ) : (
+                <div style={{ height: '100%', background: 'var(--surface)', padding: '24px' }}>
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Select a clinic from the sidebar to manage your clinic.</p>
+                </div>
+              )
             ) : (
               <>
                 {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} clients={data.clients} go={setScreen} />}
@@ -1025,15 +1036,21 @@ function App() {
                 {screen === 'followup' && <FollowUps rows={data.followups} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
-                    <DoctorDashboard 
-                      appointments={data.appointments} 
-                      clients={data.clients}
-                      selectedDoctor={selectedDoctor} 
-                      selectedClinic={selectedClinic} 
-                      go={setScreen} 
-                      update={update} 
-                      onStartConsultation={setSelectedAppointment}
-                    />
+                    !selectedDoctor ? (
+                      <div style={{ height: '100%', background: 'var(--surface)', padding: '24px' }}>
+                        <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Select a doctor from the sidebar to manage your appointments.</p>
+                      </div>
+                    ) : (
+                      <DoctorDashboard 
+                        appointments={data.appointments} 
+                        clients={data.clients}
+                        selectedDoctor={selectedDoctor} 
+                        selectedClinic={selectedClinic} 
+                        go={setScreen} 
+                        update={update} 
+                        onStartConsultation={setSelectedAppointment}
+                      />
+                    )
                   ) : (
                     <Calendar appointments={selectedDoctor ? data.appointments.filter(a => a.vetName === selectedDoctor.name) : data.appointments} go={setScreen} />
                   )
@@ -3143,8 +3160,6 @@ function Vaccinations({ rows, update, clients = [] }) {
     } catch (e) {
       console.error(e);
       alert('Error triggering batch reminders.');
-    }
-      return <button className="btn btn-accent btn-sm" onClick={() => handleTriggerReminder(row._id)}>Notify Owner</button>;
     }
   };
 
