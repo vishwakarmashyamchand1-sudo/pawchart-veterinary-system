@@ -121,7 +121,7 @@ export function QueueManager({
                 }}
                 onClick={() => onStartSoap(nowInRoom)}
               >
-                Start SOAP
+                Start Consultation
               </button>
             </div>
           </div>

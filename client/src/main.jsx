@@ -3396,6 +3396,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   const [visitType, setVisitType] = useState('Annual Wellness Exam');
   const [selectedTime, setSelectedTime] = useState(null);
   const [isBookedSuccess, setIsBookedSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -3496,6 +3497,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       status: 'Scheduled'
     };
 
+    setIsSubmitting(true);
     create('appointments', appointmentBody).then(() => {
       setIsBookedSuccess(true);
       alert(`Appointment successfully booked for ${bookingPet.name} with ${selectedVet.name} at ${selectedTime}!`);
@@ -3505,6 +3507,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       setIsBookingFlow(false);
     }).catch(err => {
       alert('Failed to book appointment: ' + err.message);
+    }).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -4058,7 +4062,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             className="btn btn-primary" 
             style={{ width: '100%', padding: '12px', justifyContent: 'center', fontSize: '14px', background: 'var(--brand)', color: '#fff' }}
             onClick={handleConfirm}
-            disabled={isBookedSuccess}
+            disabled={isBookedSuccess || isSubmitting}
           >
             Confirm Appointment
           </button>
@@ -4198,7 +4202,7 @@ function LegacySoap({ note, create }) {
     }
   };
 
-  return <Screen title="Veterinary AI SOAP Note" sub="Intelligent audio transcription & SOAP consultation modules">
+  return <Screen title="Veterinary AI Consultation" sub="Intelligent audio transcription & consultation modules">
     <div className="grid-two" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)', gap: '20px' }}>
       
       {/* AI AUDIO & TRANSCRIPT PANEL */}
@@ -4253,7 +4257,7 @@ function LegacySoap({ note, create }) {
 
       {/* SOAP NOTE EDITOR */}
       <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div className="card-label">SOAP Medical Documentation</div>
+        <div className="card-label">Consultation Medical Documentation</div>
 
         <div className="soap-grid" style={{ gridTemplateColumns: '1fr', gap: '10px' }}>
           {['subjective', 'objective', 'assessment', 'plan'].map((field) => (
@@ -4282,11 +4286,11 @@ function LegacySoap({ note, create }) {
               ownerName: rest.ownerName || 'James Martinez', 
               vetName: rest.vetName || 'Dr. Sarah Chen' 
             }).then(() => {
-              alert("SOAP Medical Note saved successfully!");
+              alert("Consultation Medical Note saved successfully!");
             });
           }}
         >
-          💾 Save SOAP Consultation Note
+          📝 Save Consultation Note
         </button>
       </section>
 

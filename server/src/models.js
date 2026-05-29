@@ -141,6 +141,9 @@ const soapNoteSchema = new Schema(
     objective: String,
     assessment: String,
     plan: String,
+    chiefComplaint: String,
+    diagnosis: String,
+    prescription: [Schema.Types.Mixed],
     tags: [String],
     follow_up_date: String,
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }

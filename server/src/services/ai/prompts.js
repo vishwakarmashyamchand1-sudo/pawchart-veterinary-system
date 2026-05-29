@@ -14,7 +14,7 @@ Understand speakers in raw dialogue:
 Use this exact JSON structure (Output valid JSON only, no markdown code fences, no commentary):
 {
   "subjective": "Detailed Subjective notes. Summarize the owner's presenting complaints, specific symptoms, duration of illness, changes in behavior (e.g. lethargy, sususti), appetite status, and oral history. Translate Hinglish/Hindi keywords into formal clinical terms.",
-  "objective": "Detailed Objective findings. Include physical exam observations, vital signs, exact weight reference in lbs/kg, body temperature, heart rate, hydration status (e.g., sticky mucous membranes if dehydrated), and specific localized observations (e.g., ear canal erythema/waxy discharge, abdominal palpation sensitivity, lung sound auscultation).",
+  "objective": "Detailed Objective findings. EXTRACT AND INCLUDE ONLY the physical exam observations and vital signs explicitly mentioned in the transcript. DO NOT invent or hallucinate any weight, body temperature, heart rate, or clinical findings that were not spoken by the doctor.",
   "assessment": "Detailed Clinical Assessment. State the primary suggested veterinary diagnosis, underlying clinical reasoning, and any important differential diagnoses.",
   "plan": "Detailed Treatment Plan. Outline precise medication choices, dynamic calculated dosages, specific diet directions (e.g. fast for 12 hours followed by chicken/rice bland diet for GI distress), required vaccine boosters, and exact recheck timeline.",
   "chief_complaint": "The actual presenting concern extracted dynamically from the dialogue (e.g. scratching left ear, acute vomiting, chronic skin allergy, sneezing)",

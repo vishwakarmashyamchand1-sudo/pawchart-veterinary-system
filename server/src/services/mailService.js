@@ -238,9 +238,14 @@ export async function sendConsultationSummaryMail(client, soapNote, vet, clinic)
             
             <div style="margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
               <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 13.5px; color: #1e293b;">
-                📋 SOAP Medical Records
+                📋 Consultation Medical Records
               </div>
               <div style="padding: 16px; font-size: 13px;">
+                ${soapNote.chiefComplaint ? `
+                <div style="margin-bottom: 12px;">
+                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Chief Complaint:</strong>
+                  <div style="color: #334155; margin-top: 2px;">${soapNote.chiefComplaint}</div>
+                </div>` : ''}
                 <div style="margin-bottom: 12px;">
                   <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Subjective (Symptoms Reported):</strong>
                   <div style="color: #334155; margin-top: 2px;">${soapNote.subjective || 'N/A'}</div>
@@ -249,16 +254,29 @@ export async function sendConsultationSummaryMail(client, soapNote, vet, clinic)
                   <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Objective (Exam Findings):</strong>
                   <div style="color: #334155; margin-top: 2px;">${soapNote.objective || 'N/A'}</div>
                 </div>
+                ${soapNote.diagnosis ? `
+                <div style="margin-bottom: 12px;">
+                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Diagnosis:</strong>
+                  <div style="color: #1e293b; font-weight: 700; margin-top: 2px;">${soapNote.diagnosis}</div>
+                </div>` : `
                 <div style="margin-bottom: 12px;">
                   <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Clinical Diagnosis Assessment:</strong>
                   <div style="color: #1e293b; font-weight: 700; margin-top: 2px;">${soapNote.assessment || 'N/A'}</div>
-                </div>
+                </div>`}
                 <div>
-                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Plan & Medication Prescriptions:</strong>
-                  <div style="color: #334155; margin-top: 2px; padding: 8px 10px; background: #eff6ff; border-radius: 4px; border-left: 3px solid #2563eb;">
-                    ${soapNote.plan || 'Standard care monitoring.'}
-                  </div>
+                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Plan:</strong>
+                  <div style="color: #334155; margin-top: 2px;">${soapNote.plan || 'Standard care monitoring.'}</div>
                 </div>
+                ${soapNote.prescription && soapNote.prescription.length > 0 ? `
+                <div style="margin-top: 16px;">
+                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 4px;">Prescriptions:</strong>
+                  ${soapNote.prescription.map(rx => `
+                  <div style="color: #334155; margin-top: 4px; padding: 8px 10px; background: #eff6ff; border-radius: 4px; border-left: 3px solid #2563eb;">
+                    <strong>${rx.medicine_name || 'Medicine'}</strong> - ${rx.dosage || ''} (${rx.frequency || ''} for ${rx.duration || ''})<br/>
+                    <em style="font-size: 12px;">${rx.instructions || ''}</em>
+                  </div>
+                  `).join('')}
+                </div>` : ''}
               </div>
             </div>
 

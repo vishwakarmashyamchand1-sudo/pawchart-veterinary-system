@@ -349,7 +349,7 @@ export function Soap({
             follow_up_date: result.preview.follow_up_date || ''
           });
           setRawGeminiOutput(result.rawGeminiOutput || null);
-          window.showToast?.("AI SOAP note polished successfully!", "success");
+          window.showToast?.("AI Consultation note polished successfully!", "success");
         }
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -410,7 +410,7 @@ export function Soap({
           clearInterval(interval);
           setRecordTimer(8);
           setIsRecording(false);
-          setLiveTranscript(prev => [...prev, "Scenario complete. Instantly generated polished SOAP note!"]);
+          setLiveTranscript(prev => [...prev, "Scenario complete. Instantly generated polished Consultation note!"]);
         }
       }, 1000);
       setRecordingIntervalId(interval);
@@ -437,7 +437,7 @@ export function Soap({
   // Approve & Save complete flow
   const handleApprove = () => {
     if (!draft.subjective || !draft.objective || !draft.assessment || !draft.plan) {
-      alert("SOAP sections cannot be empty before approval!");
+      alert("Consultation sections cannot be empty before approval!");
       return;
     }
 
@@ -449,6 +449,9 @@ export function Soap({
       objective: draft.objective,
       assessment: draft.assessment,
       plan: draft.plan,
+      chiefComplaint: draft.chief_complaint || draft.chiefComplaint,
+      diagnosis: draft.diagnosis,
+      prescription: draft.prescription,
       follow_up_date: draft.follow_up_date,
       tags: [
         showOtomaxBadge && 'Otomax 4 drops - 7 days',
@@ -458,14 +461,14 @@ export function Soap({
     }).then(() => {
       // Transition appointment status to Completed in the DB
       update('appointments', activeAppointment._id, { status: 'Completed' }).then(() => {
-        window.showToast?.("SOAP note approved & saved successfully!", "success");
+        window.showToast?.("Consultation note approved & saved successfully!", "success");
         // Open the premium delivery modal
         setShowSendModal(true);
       }).catch(err => {
         window.showToast?.("Failed to complete appointment status: " + err.message, "error");
       });
     }).catch(err => {
-      alert("Failed to save SOAP note: " + err.message);
+      alert("Failed to save Consultation note: " + err.message);
     });
   };
 
@@ -593,7 +596,7 @@ export function Soap({
                 gap: '12px' 
               }}>
                 {[
-                  { key: 'soap', label: 'SOAP Notes' },
+                  { key: 'soap', label: 'Consultation Notes' },
                   { key: 'vax', label: 'Vaccines' },
                   { key: 'weight', label: 'Weights' },
                   { key: 'followup', label: 'Follow-ups' }
@@ -1265,7 +1268,7 @@ export function Soap({
                   🎉 Consultation Finalized!
                 </h3>
                 <span style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                  SOAP record persisted for {activeAppointment.petName}
+                  Consultation record persisted for {activeAppointment.petName}
                 </span>
               </div>
               <button 
