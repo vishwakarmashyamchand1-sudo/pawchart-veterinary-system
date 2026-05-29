@@ -186,6 +186,9 @@ export const bookFollowUpRoute = async (req, res, next) => {
     if (vet) {
       await sendDoctorAppointmentMail(vet, newAppt, client, clinic);
     }
+    if (client) {
+      await sendClientAppointmentConfirmationMail(client, newAppt, vet, clinic);
+    }
 
     // 5. Render a premium confirmation screen
     res.send(`
