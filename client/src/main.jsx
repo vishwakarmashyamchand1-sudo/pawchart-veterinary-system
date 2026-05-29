@@ -670,8 +670,8 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
         <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
         {(status === 'Completed' || status === 'Up to date') && (
           <>
-            <Input label="Date Administered" type="date" value={lastDate} onChange={setLastDate} />
-            <Input label="Administered By (Vet/Clinic)" value={vetName} onChange={setVetName} />
+            <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
+            <Input label="Given By (Vet/Clinic)" value={vetName} onChange={setVetName} />
             <Input label="Batch Number / Notes" value={notes} onChange={setNotes} />
           </>
         )}
@@ -1589,14 +1589,25 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   const getVaccinesBadgeForClient = (clientPets, vaccinations, clientName) => {
     let overdue = 0;
     let dueSoon = 0;
+    let totalVaxes = 0;
+    let hasCompleted = false;
+
     (clientPets || []).forEach(p => {
       const petVaxes = vaccinations.filter(v => v.petName === p.name && v.ownerName === clientName);
+      totalVaxes += petVaxes.length;
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
+        if (s.includes('completed') || s.includes('up to date') || v.lastDate) {
+          hasCompleted = true;
+        }
         if (s.includes('overdue')) overdue++;
         else if (s.includes('due') || s.includes('soon')) dueSoon++;
       });
     });
+
+    if (totalVaxes === 0 || !hasCompleted) {
+      return <span className="badge" style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' }}>Not recorded</span>;
+    }
 
     if (overdue > 0) return <span className="badge b-red">{overdue} overdue</span>;
     if (dueSoon > 0) return <span className="badge b-amber">{dueSoon} due soon</span>;
@@ -1605,7 +1616,20 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
 
   const getNextAppointmentBadge = (clientPets, appointments, clientName) => {
     const petNames = (clientPets || []).map(p => p.name.toLowerCase());
-    const clientAppts = appointments.filter(a => a.ownerName === clientName && petNames.includes(a.petName.toLowerCase()) && a.status !== 'Completed' && a.status !== 'Cancelled');
+    const todayStr = getLocalDateString();
+    const clientAppts = appointments.filter(a => {
+      if (a.ownerName !== clientName) return false;
+      if (!petNames.includes(a.petName.toLowerCase())) return false;
+      if (a.status === 'Completed' || a.status === 'Cancelled') return false;
+      
+      const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
+      if (apptDateOnly > todayStr) return true;
+      if (apptDateOnly === todayStr) {
+        const apptDateTime = parseApptDateTime(a.date, a.time);
+        return apptDateTime > new Date();
+      }
+      return false;
+    });
     
     if (clientAppts.length === 0) return <span style={{ color: 'var(--text-3)' }}>None</span>;
 
@@ -1645,7 +1669,6 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       }
     } catch (e) {}
 
-    const todayStr = getLocalDateString();
     let prefix = next.date === todayStr ? 'Today ' : `${new Date(next.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} `;
     
     let badgeColor = 'blue';
@@ -2893,7 +2916,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                     <thead>
                       <tr>
                         <th style={{ paddingLeft: '14px' }}>Vaccine</th>
-                        <th>Last Administered</th>
+                        <th>Last Given</th>
                         <th>Next Due Date</th>
                         <th>Status</th>
                         <th style={{ textAlign: 'right', paddingRight: '14px' }}>Action</th>
@@ -3324,7 +3347,7 @@ function Vaccinations({ rows, update, clients = [] }) {
             </td>
             <td>{row.ownerName}</td>
             <td>{row.vaccine}</td>
-            <td style={{ color: 'var(--text-3)' }}>{row.lastGiven || 'May 18, 2025'}</td>
+            <td style={{ color: 'var(--text-3)' }}>{row.lastDate ? formatDateSafe(row.lastDate) : 'N/A'}</td>
             <td style={getDueDateStyle(row.status)}>{row.dueDate}</td>
             <td><Badge value={row.status} /></td>
             <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
@@ -3359,7 +3382,7 @@ function Vaccinations({ rows, update, clients = [] }) {
               </div>
               <div>
                 <label className="field-label">Last Given</label>
-                <div style={{ padding: '8px 0' }}>{viewingVax.lastGiven || 'May 18, 2025'}</div>
+                <div style={{ padding: '8px 0' }}>{viewingVax.lastDate ? formatDateSafe(viewingVax.lastDate) : 'N/A'}</div>
               </div>
               <div>
                 <label className="field-label">Next Due</label>
@@ -3862,6 +3885,16 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {(bookingClient.pets || []).map((pet) => {
                 const isSelected = bookingPet && bookingPet.name === pet.name;
+                const petAppt = appointments.find(appt => 
+                  appt.date === selectedDate && 
+                  appt.status !== 'Cancelled' && 
+                  (
+                    (appt.petId && pet._id && String(appt.petId) === String(pet._id)) || 
+                    (appt.petName && pet.name && appt.petName.toLowerCase() === pet.name.toLowerCase() && 
+                     appt.ownerName && bookingClient.name && appt.ownerName.toLowerCase() === bookingClient.name.toLowerCase())
+                  )
+                );
+
                 return (
                   <div 
                     key={pet._id || pet.name}
@@ -3888,8 +3921,24 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       )}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-                      {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'}
+                      {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'}
                     </div>
+                    {petAppt && (
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#0369a1',
+                        fontWeight: '700', 
+                        marginTop: '8px',
+                        background: '#e0f2fe',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        🕒 Booked: {format12h(petAppt.time)} {petAppt.vetName ? `(${petAppt.vetName})` : ''}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -4029,6 +4078,11 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span style={{ color: '#94a3b8' }}>Pet</span>
               <strong style={{ color: '#fff' }}>{bookingPet ? `${petEmoji(bookingPet.species)} ${bookingPet.name}` : 'Not selected'}</strong>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              <span style={{ color: '#94a3b8' }}>Species</span>
+              <strong style={{ color: '#fff' }}>{bookingPet ? bookingPet.species : 'Not selected'}</strong>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>

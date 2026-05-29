@@ -522,12 +522,10 @@ export function Soap({
             </div>
             <div>
               <strong style={{ fontSize: '18px', color: 'var(--text)', display: 'block' }}>
-                {activeOwner.name}
+                {activeOwner.name} (Pet: {activePet.name})
               </strong>
               <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', display: 'flex', gap: '14px' }}>
-                <span>{activePet.sex || 'Female'}</span>
-                <span>•</span>
-                <span>{activePet.bloodType || 'A+'}</span>
+                <span>{activePet.species || 'Dog'}</span>
                 <span>•</span>
                 <span>{activeOwner.phone}</span>
                 <span>•</span>
@@ -797,12 +795,10 @@ export function Soap({
             </div>
             <div>
               <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
-                {activeOwner.name}
+                {activeOwner.name} (Pet: {activePet.name})
               </strong>
               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
-                <span>{activePet.sex || 'Female'}</span>
-                <span>•</span>
-                <span>{activePet.bloodType || 'A+'}</span>
+                <span>{activePet.species || 'Dog'}</span>
                 <span>•</span>
                 <span>{activeOwner.phone}</span>
                 <span>•</span>
@@ -997,12 +993,10 @@ export function Soap({
           </div>
           <div>
             <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
-              {activeOwner.name}
+              {activeOwner.name} (Pet: {activePet.name})
             </strong>
             <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
-              <span>{activePet.sex || 'Female'}</span>
-              <span>•</span>
-              <span>{activePet.bloodType || 'A+'}</span>
+              <span>{activePet.species || 'Dog'}</span>
               <span>•</span>
               <span>{activeOwner.phone}</span>
               <span>•</span>

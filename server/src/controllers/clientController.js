@@ -1,40 +1,7 @@
 import { Client, Vaccination, VaccineMaster } from '../models.js';
 import { getQueryFilter } from '../middleware/auth.js';
 import { calculateDueDate } from '../utils/dateCalculator.js';
-
-async function generateVaccinesForPets(pets, clientName, clinicId) {
-  const newVaccinations = [];
-  const allMasterVaccines = await VaccineMaster.find({});
-  
-  for (const pet of pets) {
-    if (pet.dateOfBirth && pet.species) {
-      const petTokens = pet.species.toLowerCase().split(/[\s/]+/);
-      const masterVaccines = allMasterVaccines.filter(mv => {
-        if (!mv.species) return false;
-        const mvTokens = mv.species.toLowerCase().split(/[\s/]+/);
-        return petTokens.some(pt => mvTokens.includes(pt));
-      });
-      
-      for (const mv of masterVaccines) {
-        const dueDate = calculateDueDate(pet.dateOfBirth, mv.recommendedAge);
-        if (dueDate) {
-          newVaccinations.push({
-            petName: pet.name,
-            ownerName: clientName,
-            breed: pet.breed,
-            vaccine: mv.name,
-            dueDate: dueDate,
-            status: 'Pending',
-            clinic_id: clinicId
-          });
-        }
-      }
-    }
-  }
-  if (newVaccinations.length > 0) {
-    await Vaccination.insertMany(newVaccinations);
-  }
-}
+import { generateVaccinesForPets } from '../utils/vaccineGenerator.js';
 
 
 export const searchClients = async (req, res, next) => {
@@ -137,6 +104,8 @@ export const deletePet = async (req, res, next) => {
         if (models.Appointment) await models.Appointment.deleteMany(cascadeQuery);
         if (models.Vaccination) await models.Vaccination.deleteMany(cascadeQuery);
         if (models.FollowUp) await models.FollowUp.deleteMany(cascadeQuery);
+        if (models.WeightLog) await models.WeightLog.deleteMany({ petName: pet.name, ownerName: client.name, clinic_id: client.clinic_id });
+        if (models.SoapNote) await models.SoapNote.deleteMany({ petName: pet.name, ownerName: client.name, clinic_id: client.clinic_id });
     }
 
     client.pets.pull(petId);

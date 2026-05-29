@@ -157,6 +157,42 @@ export const createCrudHandlers = (Model, resourceName) => {
           }
         }
 
+        if (resourceName === 'Client' && req.body.pets) {
+          const currentPets = currentDoc.pets || [];
+          const updatedPets = req.body.pets || [];
+          
+          const deletedPets = currentPets.filter(cp => {
+            const cpIdStr = cp._id ? String(cp._id) : null;
+            return !updatedPets.some(up => {
+              if (up._id && cpIdStr && String(up._id) === cpIdStr) return true;
+              return up.name === cp.name;
+            });
+          });
+
+          if (deletedPets.length > 0) {
+            const { default: mongoose } = await import('mongoose');
+            const models = mongoose.models;
+            for (const pet of deletedPets) {
+              const cascadeQuery = { petName: pet.name, ownerName: currentDoc.name, clinic_id: currentDoc.clinic_id };
+              if (models.Appointment) await models.Appointment.deleteMany(cascadeQuery);
+              if (models.Vaccination) await models.Vaccination.deleteMany(cascadeQuery);
+              if (models.FollowUp) await models.FollowUp.deleteMany(cascadeQuery);
+              if (models.WeightLog) await models.WeightLog.deleteMany({ petName: pet.name, ownerName: currentDoc.name, clinic_id: currentDoc.clinic_id });
+              if (models.SoapNote) await models.SoapNote.deleteMany({ petName: pet.name, ownerName: currentDoc.name, clinic_id: currentDoc.clinic_id });
+            }
+          }
+
+          const newPets = updatedPets.filter(up => {
+            if (!up._id) return true;
+            return !currentPets.some(cp => String(cp._id) === String(up._id));
+          });
+
+          if (newPets.length > 0) {
+            const { generateVaccinesForPets } = await import('./vaccineGenerator.js');
+            await generateVaccinesForPets(newPets, currentDoc.name, currentDoc.clinic_id);
+          }
+        }
+
         const updated = await Model.findOneAndUpdate(filter, req.body, { new: true, runValidators: true });
         if (!updated) return res.status(404).json({ message: `${resourceName} not found` });
         res.json(updated);
