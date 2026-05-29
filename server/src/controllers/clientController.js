@@ -1,8 +1,52 @@
-import { Client, Vaccination, VaccineMaster } from '../models.js';
+import { Client, Vaccination, VaccineMaster, PetCounter } from '../models.js';
 import { getQueryFilter } from '../middleware/auth.js';
 import { calculateDueDate } from '../utils/dateCalculator.js';
 import { generateVaccinesForPets } from '../utils/vaccineGenerator.js';
+import mongoose from 'mongoose';
 
+export async function generatePetId(clinicId, species) {
+  let speciesCode = "UNK";
+  if (species) {
+    speciesCode = species.trim().substring(0, 3).toUpperCase();
+  }
+  
+  const safeClinicId = clinicId ? clinicId : "000000000000000000000000";
+  const clinicObjectId = safeClinicId instanceof mongoose.Types.ObjectId
+    ? safeClinicId
+    : new mongoose.Types.ObjectId(safeClinicId);
+
+  let petId;
+  let exists = true;
+  let attempts = 0;
+
+  while (exists && attempts < 10) {
+    const counter = await PetCounter.findOneAndUpdate(
+      {
+        clinic_id: clinicObjectId,
+        species_code: speciesCode,
+      },
+      {
+        $inc: { sequence: 1 },
+        $setOnInsert: {
+          clinic_id: clinicObjectId,
+          species_code: speciesCode
+        }
+      },
+      {
+        new: true,
+        upsert: true
+      }
+    );
+
+    petId = `PET-${speciesCode}-${String(counter.sequence).padStart(4, "0")}`;
+    
+    // Safety check against existing Client.pets.petId
+    exists = await Client.exists({ "pets.petId": petId });
+    attempts++;
+  }
+
+  return petId || `PET-${speciesCode}-${Date.now().toString().slice(-4)}`;
+}
 
 export const searchClients = async (req, res, next) => {
   try {
@@ -40,11 +84,17 @@ export const createClient = async (req, res, next) => {
       if (existing) return res.status(400).json({ message: `The phone '${body.phone}' is already registered. Please use a unique value.` });
     }
 
+    if (body.pets && Array.isArray(body.pets)) {
+      for (const pet of body.pets) {
+        pet.petId = await generatePetId(body.clinic_id, pet.species);
+      }
+    }
+
     const created = await Client.create(body);
     
     // Auto-generate vaccination plan for initial pets
     if (created.pets && created.pets.length > 0) {
-      await generateVaccinesForPets(created.pets, created.name, created.clinic_id);
+      await generateVaccinesForPets(created.pets, created.name, created.clinic_id, created._id);
     }
 
     res.status(201).json(created);
@@ -58,13 +108,17 @@ export const addPet = async (req, res, next) => {
     const client = await Client.findOne(filter);
     if (!client) return res.status(404).json({ message: 'Client not found' });
 
-    client.pets.push(req.body);
+    const petData = { ...req.body };
+    petData.petId = await generatePetId(client.clinic_id, petData.species);
+
+    client.pets.push(petData);
     await client.save();
     
     // Auto-generate vaccination plan
     const newPet = client.pets[client.pets.length - 1]; // get the newly added pet with its generated _id
-    await generateVaccinesForPets([newPet], client.name, client.clinic_id);
-
+    if (newPet.dateOfBirth && newPet.species) {
+      await generateVaccinesForPets([client.pets[client.pets.length - 1]], client.name, client.clinic_id, client._id);
+    }
     res.status(201).json(client);
   } catch (error) {
     next(error);
@@ -80,6 +134,11 @@ export const updatePet = async (req, res, next) => {
 
     const pet = client.pets.id(petId);
     if (!pet) return res.status(404).json({ message: 'Pet not found' });
+
+    // Do NOT allow overwriting petId from the frontend
+    if (req.body.petId) {
+      delete req.body.petId;
+    }
 
     pet.set(req.body);
     await client.save();

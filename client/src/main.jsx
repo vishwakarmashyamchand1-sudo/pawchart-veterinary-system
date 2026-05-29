@@ -686,6 +686,7 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
 
 function VaccinesConfig({ vaccines, create }) {
   const [showModal, setShowModal] = useState(false);
+  const [expanded, setExpanded] = useState({});
 
   const handleSave = async (data) => {
     if (!data.name || !data.recommendedAge) {
@@ -700,6 +701,22 @@ function VaccinesConfig({ vaccines, create }) {
     }
   };
 
+  const toggle = (sp) => {
+    setExpanded(prev => ({ ...prev, [sp]: !prev[sp] }));
+  };
+
+  const grouped = vaccines.reduce((acc, v) => {
+    if (!acc[v.species]) acc[v.species] = [];
+    acc[v.species].push(v);
+    return acc;
+  }, {});
+
+  const baseSpecies = ['Dog', 'Cat', 'Rabbit', 'Bird'];
+  const speciesList = [...baseSpecies];
+  Object.keys(grouped).forEach(sp => {
+    if (!speciesList.includes(sp)) speciesList.push(sp);
+  });
+
   return (
     <div className="main-scroll">
       <div className="main-pad">
@@ -711,29 +728,46 @@ function VaccinesConfig({ vaccines, create }) {
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Vaccine</button>
         </div>
 
-        <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', marginTop: '10px' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ paddingLeft: '18px', width: '33%' }}>Vaccine Name</th>
-                <th style={{ width: '33%' }}>Species</th>
-                <th style={{ width: '33%' }}>Recommended Age</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vaccines.map(v => (
-                <tr key={v._id}>
-                  <td style={{ paddingLeft: '18px', fontWeight: '700', color: 'var(--text)', fontSize: '13.5px' }}>{v.name}</td>
-                  <td style={{ color: 'var(--text-2)', fontSize: '13px' }}>{v.species}</td>
-                  <td style={{ color: 'var(--text-2)', fontSize: '13px' }}>{v.recommendedAge}</td>
-                </tr>
-              ))}
-              {vaccines.length === 0 && (
-                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-3)' }}>No vaccines found in master list.</td></tr>
+        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {speciesList.map(sp => (
+            <section key={sp} className="panel no-pad">
+              <button 
+                onClick={() => toggle(sp)}
+                style={{ width: '100%', padding: '16px 20px', background: 'transparent', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontWeight: '600' }}
+              >
+                <span>{sp}</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>{expanded[sp] ? '▲' : '▼'}</span>
+              </button>
+              
+              {expanded[sp] && (
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Vaccine Name</th>
+                        <th>Recommended Age</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(grouped[sp] || []).map(v => (
+                        <tr key={v._id}>
+                          <td>{v.name}</td>
+                          <td>{v.recommendedAge}</td>
+                        </tr>
+                      ))}
+                      {(!grouped[sp] || grouped[sp].length === 0) && (
+                        <tr><td colSpan="2" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>No vaccines configured for this species.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </tbody>
-          </table>
-        </section>
+            </section>
+          ))}
+          {vaccines.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-3)' }}>No vaccines found in master list.</div>
+          )}
+        </div>
 
         {showModal && <VaccineModal onClose={() => setShowModal(false)} onSave={handleSave} />}
       </div>
@@ -743,6 +777,7 @@ function VaccinesConfig({ vaccines, create }) {
 
 function App() {
   const [clinics, setClinics] = useState([]);
+  const [clinicsLoading, setClinicsLoading] = useState(true);
   const [selectedClinic, setSelectedClinic] = useState(() => {
     const saved = localStorage.getItem('pawchart_clinic');
     return saved ? JSON.parse(saved) : null;
@@ -778,6 +813,7 @@ function App() {
   const [role, setRole] = useState('admin');
 
   async function loadClinics() {
+    setClinicsLoading(true);
     try {
       const res = await fetch(`${API_URL}/clinics`);
       if (res.ok) {
@@ -788,6 +824,8 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to load clinics:', err);
+    } finally {
+      setClinicsLoading(false);
     }
   }
 
@@ -880,7 +918,7 @@ function App() {
       phone: client.phone
     })));
     if (selectedPet) {
-      const found = allPets.find(p => p._id === selectedPet._id || p.name === selectedPet.name);
+      const found = allPets.find(p => p._id === selectedPet._id);
       if (found) return found;
     }
     return allPets.find((pet) => pet.name === 'Buddy') || allPets[0] || null;
@@ -950,9 +988,14 @@ function App() {
                     }
                     setSelectedDoctor(null);
                   }}
+                  disabled={clinicsLoading}
                 >
                   <option value="">Select clinic...</option>
-                  {clinics.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  {clinicsLoading ? (
+                    <option value="loading" disabled>Loading clinics...</option>
+                  ) : (
+                    clinics.map(c => <option key={c._id} value={c._id}>{c.name}</option>)
+                  )}
                 </select>
 
                 <label className="sb-field-label" style={{ marginTop: '16px' }}>Doctor</label>
@@ -967,10 +1010,14 @@ function App() {
                       setSelectedDoctor(d || null);
                     }
                   }}
-                  disabled={!selectedClinic || !data.vets?.length}
+                  disabled={loading}
                 >
                   <option value="">{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
-                  {data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                  {loading ? (
+                    <option value="loading" disabled>Loading doctors...</option>
+                  ) : (
+                    data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)
+                  )}
                 </select>
               </>
             )}
@@ -1037,7 +1084,7 @@ function App() {
         </aside>
 
         <main className="main">
-          {loading && <SkeletonLoader />}
+          {loading && <SkeletonLoader message={screen === 'dashboard' ? 'Loading dashboard data...' : screen === 'clients' ? 'Loading clients...' : screen === 'booking' ? 'Loading appointments...' : screen === 'vaccinemaster' ? 'Loading vaccines...' : `Loading ${screen}...`} />}
           {error && <Status message={`${error}. Start the API and seed MongoDB.`} tone="error" action={reload} />}
           {!loading && !error && (
             !selectedClinic && screen !== 'vaccinemaster' ? (
@@ -1169,9 +1216,13 @@ function Status({ message, tone = 'info', action }) {
   return <div className="status"><div className={`status-box ${tone}`}>{message}{action && <button className="btn btn-primary" onClick={action}>Retry</button>}</div></div>;
 }
 
-function SkeletonLoader() {
+function SkeletonLoader({ message = 'Loading...' }) {
   return (
     <div className="main-scroll" style={{ padding: '24px' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="spinner" style={{ width: '20px', height: '20px', border: '3px solid var(--border)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <h2 style={{ fontSize: '18px', color: 'var(--text)', margin: 0 }}>{message}</h2>
+      </div>
       <div className="skeleton skeleton-title"></div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '20px' }}>
@@ -1593,7 +1644,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
     let hasCompleted = false;
 
     (clientPets || []).forEach(p => {
-      const petVaxes = vaccinations.filter(v => v.petName === p.name && v.ownerName === clientName);
+      const petVaxes = vaccinations.filter(v => v.petId ? v.petId === p._id : (v.petName === p.name && v.ownerName === clientName));
       totalVaxes += petVaxes.length;
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
@@ -1615,12 +1666,12 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   };
 
   const getNextAppointmentBadge = (clientPets, appointments, clientName) => {
-    const petNames = (clientPets || []).map(p => p.name.toLowerCase());
     const todayStr = getLocalDateString();
     const clientAppts = appointments.filter(a => {
-      if (a.ownerName !== clientName) return false;
-      if (!petNames.includes(a.petName.toLowerCase())) return false;
       if (a.status === 'Completed' || a.status === 'Cancelled') return false;
+      
+      const isMatch = (clientPets || []).some(p => a.petId ? a.petId === p._id : (a.petName.toLowerCase() === p.name.toLowerCase() && a.ownerName === clientName));
+      if (!isMatch) return false;
       
       const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
       if (apptDateOnly > todayStr) return true;
@@ -1683,8 +1734,10 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   };
 
   const getLastVisitDate = (clientPets, appointments, clientCreatedAt, clientName) => {
-    const petNames = (clientPets || []).map(p => p.name.toLowerCase());
-    const pastAppts = appointments.filter(a => a.ownerName === clientName && petNames.includes(a.petName.toLowerCase()) && (a.status === 'Completed' || new Date(a.date) < new Date()));
+    const pastAppts = appointments.filter(a => {
+      if (a.status !== 'Completed' && new Date(a.date) >= new Date()) return false;
+      return (clientPets || []).some(p => a.petId ? a.petId === p._id : (a.petName.toLowerCase() === p.name.toLowerCase() && a.ownerName === clientName));
+    });
     if (pastAppts.length > 0) {
       pastAppts.sort((a, b) => new Date(b.date) - new Date(a.date));
       return new Date(pastAppts[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1701,7 +1754,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       <div className="search-row">
         <input 
           className="search-box" 
-          placeholder="Search by owner name, pet name, phone, or Pet ID..." 
+          placeholder="Search by owner name, pet name, or phone..." 
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -2024,7 +2077,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
   if (!currentPet) return <Status message="Select a pet to view profile." />;
 
-  const owner = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()));
+  const owner = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id));
   const ownerName = owner ? owner.name : (currentPet.ownerName || 'James Martinez');
   const ownerEmail = owner ? owner.email : (currentPet.email || 'james.m@email.com');
   const ownerPhone = owner ? owner.phone : (currentPet.phone || '(555) 824-3901');
@@ -2034,7 +2087,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const ownerPets = owner ? (owner.pets || []) : [currentPet];
 
   const handlePrevPet = () => {
-    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
+    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id);
     if (currentIndex !== -1) {
       const prevIndex = (currentIndex - 1 + ownerPets.length) % ownerPets.length;
       setCurrentPet(ownerPets[prevIndex]);
@@ -2076,12 +2129,12 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   })();
 
   // dynamic timeline records (visits) from SoapNotes
-  const petVisits = soapnotes.filter(s => s.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const petVisits = soapnotes.filter(s => s.petId ? s.petId === currentPet._id : (s.petName.toLowerCase() === currentPet.name.toLowerCase() && s.ownerName.toLowerCase() === ownerName.toLowerCase()));
   
   // dynamic vaccinations
   const today = new Date().toISOString().split('T')[0];
   const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const petVax = vaccinations.filter(v => v.petName.toLowerCase() === currentPet.name.toLowerCase()).map(v => {
+  const petVax = vaccinations.filter(v => v.petId ? v.petId === currentPet._id : (v.petName.toLowerCase() === currentPet.name.toLowerCase() && v.ownerName.toLowerCase() === ownerName.toLowerCase())).map(v => {
     let displayStatus = v.status;
     if (displayStatus !== 'Completed' && displayStatus !== 'Up to date') {
       if (v.dueDate < today) {
@@ -2114,7 +2167,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   }
 
   // Find the first assigned vet name from the appointments
-  const petAppts = appointments.filter(a => a.petName.toLowerCase() === currentPet.name.toLowerCase());
+  const petAppts = appointments.filter(a => a.petId ? a.petId === currentPet._id : (a.petName.toLowerCase() === currentPet.name.toLowerCase() && a.ownerName.toLowerCase() === ownerName.toLowerCase()));
   const assignedVetAppt = petAppts.find(a => a.vetName);
   const primaryVetName = assignedVetAppt ? assignedVetAppt.vetName : null;
 
@@ -2173,7 +2226,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
   const handleSavePetDetails = async (updatedPetFields) => {
     try {
-      const ownerClient = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()));
+      const ownerClient = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id));
       if (!ownerClient) {
         alert("Parent client account not found!");
         return;
@@ -2197,7 +2250,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       }
 
       const updatedPets = (ownerClient.pets || []).map(p => {
-        if (p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase()) {
+        if (p._id === currentPet._id) {
           return {
             ...p,
             microchip: updatedPetFields.microchip,
@@ -2217,7 +2270,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       await update('clients', ownerClient._id, updatedClientBody);
 
       // Find the updated pet inside updatedPets
-      const savedPet = updatedPets.find(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
+      const savedPet = updatedPets.find(p => p._id === currentPet._id);
       if (savedPet) {
         setCurrentPet({
           ...savedPet,
@@ -3439,9 +3492,23 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }, [bookingClient, bookingPet, selectedDate, selectedVet, visitType, selectedTime]);
 
   const clientsFiltered = useMemo(() => {
-    if (!searchQuery.trim()) return clients;
+    if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
-    return clients.filter(c => c.name?.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
+    const results = [];
+    clients.forEach(c => {
+      const matchClient = c.name?.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q));
+      if (c.pets && c.pets.length > 0) {
+        c.pets.forEach(p => {
+          const matchPet = p.name?.toLowerCase().includes(q) || (p.petId && p.petId.toLowerCase().includes(q));
+          if (matchClient || matchPet) {
+            results.push({ client: c, pet: p });
+          }
+        });
+      } else if (matchClient) {
+        results.push({ client: c, pet: null });
+      }
+    });
+    return results;
   }, [clients, searchQuery]);
 
   const allPossibleSlots = useMemo(() => {
@@ -3738,7 +3805,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             </span>
             <input 
               type="text"
-              placeholder="Search client by owner name, email, or phone..." 
+              placeholder="Search by Client Name, Pet Name or Pet ID..." 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -3775,12 +3842,22 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                 </thead>
                 <tbody>
                   {clientsFiltered.length > 0 ? (
-                    clientsFiltered.map(c => (
-                      <tr key={c._id}>
-                        <td style={{ paddingLeft: '18px', fontWeight: '700', color: 'var(--text)' }}>{c.name}</td>
-                        <td>{c.email} · {c.phone}</td>
+                    clientsFiltered.map((row, idx) => (
+                      <tr key={row.pet ? `${row.client._id}-${row.pet._id}` : `${row.client._id}-${idx}`}>
+                        <td style={{ paddingLeft: '18px' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text)' }}>{row.client.name}</div>
+                          {row.pet && (
+                            <div style={{ fontSize: '12.5px', color: 'var(--text-2)', marginTop: '2px' }}>
+                              <span style={{ fontWeight: '600' }}>{row.pet.name}</span> <span style={{ opacity: 0.8 }}>({row.pet.petId || 'No ID'})</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>{row.client.email} · {row.client.phone}</td>
                         <td style={{ textAlign: 'right', paddingRight: '18px' }}>
-                          <button className="btn btn-primary btn-sm" onClick={() => setBookingClient(c)}>Select</button>
+                          <button className="btn btn-primary btn-sm" onClick={() => {
+                            setBookingClient(row.client);
+                            if (row.pet) setBookingPet(row.pet);
+                          }}>Select</button>
                         </td>
                       </tr>
                     ))
@@ -4362,20 +4439,20 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   let ownerName = 'James Martinez';
   if (clients) {
-    const owner = clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase()));
+    const owner = clients.find(c => c.pets && c.pets.some(p => p._id === pet._id));
     if (owner) ownerName = owner.name;
   }
 
   // Resilient case-insensitive name mapping
   const petWeights = [...weights]
-    .filter(w => w.petName.toLowerCase() === pet.name.toLowerCase() && w.ownerName.toLowerCase() === ownerName.toLowerCase())
+    .filter(w => w.petId ? w.petId === pet._id : (w.petName.toLowerCase() === pet.name.toLowerCase() && w.ownerName.toLowerCase() === ownerName.toLowerCase()))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const hasWeights = petWeights.length > 0;
 
   // Determine species & breed from DB dynamically
-  const clientOwner = clients ? clients.find(c => c.pets && c.pets.some(p => p.name.toLowerCase() === pet.name.toLowerCase())) : null;
-  const petInDb = clientOwner ? clientOwner.pets.find(p => p.name.toLowerCase() === pet.name.toLowerCase()) : null;
+  const clientOwner = clients ? clients.find(c => c.pets && c.pets.some(p => p._id === pet._id)) : null;
+  const petInDb = clientOwner ? clientOwner.pets.find(p => p._id === pet._id) : null;
   const petSpecies = petInDb ? petInDb.species : (pet.species || 'Dog');
   const petBreed = petInDb ? petInDb.breed : (pet.breed || 'Golden Retriever');
 
@@ -4525,14 +4602,14 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   const handlePrevPet = () => {
     if (!doctorPatients || doctorPatients.length === 0) return;
-    const currentIndex = doctorPatients.findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName);
+    const currentIndex = doctorPatients.findIndex(p => p._id === pet._id);
     const prevIndex = currentIndex > 0 ? currentIndex - 1 : doctorPatients.length - 1;
     onPetSelect?.(doctorPatients[prevIndex]);
   };
 
   const handleNextPet = () => {
     if (!doctorPatients || doctorPatients.length === 0) return;
-    const currentIndex = doctorPatients.findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName);
+    const currentIndex = doctorPatients.findIndex(p => p._id === pet._id);
     const nextIndex = currentIndex < doctorPatients.length - 1 ? currentIndex + 1 : 0;
     onPetSelect?.(doctorPatients[nextIndex]);
   };
@@ -4558,7 +4635,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
     );
   }
 
-  const currentPetIndex = (doctorPatients || []).findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName) + 1;
+  const currentPetIndex = (doctorPatients || []).findIndex(p => p._id === pet._id) + 1;
   const totalPatients = (doctorPatients || []).length;
 
   return (
@@ -5298,14 +5375,11 @@ function ClientModal({ onClose, onSave, client }) {
         alert(`Please specify a name for Pet #${i + 1}!`);
         return;
       }
-      if (!pets[i].petId || !pets[i].petId.trim()) {
-        alert(`Please specify a Pet ID for Pet #${i + 1}!`);
-        return;
-      }
     }
 
     const savedPets = pets.map(p => ({
       _id: p._id || undefined,
+      petId: p.petId || undefined,
       name: p.name,
       species: p.species,
       breed: p.breed || undefined,
@@ -5313,7 +5387,6 @@ function ClientModal({ onClose, onSave, client }) {
       sex: p.sex,
       microchip: p.microchip || undefined,
       spayedNeutered: p.spayedNeutered,
-      petId: p.petId.trim(),
       alerts: p.alerts || []
     }));
 
@@ -5471,17 +5544,7 @@ function ClientModal({ onClose, onSave, client }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                    <label className="field-label">
-                      Pet ID *
-                      <input 
-                        className="input" 
-                        required 
-                        placeholder="e.g. PET-1234" 
-                        value={pet.petId || ''} 
-                        onChange={e => handleUpdatePetField(index, 'petId', e.target.value)} 
-                      />
-                    </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <label className="field-label">
                       Pet Name *
                       <input 

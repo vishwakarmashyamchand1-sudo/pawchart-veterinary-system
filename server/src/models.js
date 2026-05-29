@@ -86,6 +86,8 @@ const appointmentSchema = new Schema(
 
 const vaccinationSchema = new Schema(
   {
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    petId: { type: Schema.Types.ObjectId },
     petName: String,
     ownerName: String,
     breed: String,
@@ -103,6 +105,8 @@ const vaccinationSchema = new Schema(
 
 const followUpSchema = new Schema(
   {
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    petId: { type: Schema.Types.ObjectId },
     petName: String,
     ownerName: String,
     vetName: String,
@@ -121,6 +125,8 @@ const followUpSchema = new Schema(
 
 const weightLogSchema = new Schema(
   {
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    petId: { type: Schema.Types.ObjectId },
     petName: String,
     ownerName: String,
     value: Number,
@@ -134,6 +140,8 @@ const weightLogSchema = new Schema(
 
 const soapNoteSchema = new Schema(
   {
+    clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
+    petId: { type: Schema.Types.ObjectId },
     petName: String,
     ownerName: String,
     vetName: String,
@@ -166,3 +174,13 @@ const vaccineMasterSchema = new Schema({
 }, { timestamps: true });
 
 export const VaccineMaster = model('VaccineMaster', vaccineMasterSchema);
+
+const petCounterSchema = new Schema({
+  clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic', required: true },
+  species_code: { type: String, required: true },
+  sequence: { type: Number, default: 0 }
+});
+
+petCounterSchema.index({ clinic_id: 1, species_code: 1 }, { unique: true });
+
+export const PetCounter = model('PetCounter', petCounterSchema);
