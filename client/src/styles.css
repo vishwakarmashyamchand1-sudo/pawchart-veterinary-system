@@ -236,3 +236,44 @@ button{cursor:pointer}
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -468px 0;
+  }
+  100% {
+    background-position: 468px 0;
+  }
+}
+
+.skeleton {
+  background: #f6f7f8;
+  background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+  background-repeat: no-repeat;
+  background-size: 800px 104px; 
+  display: inline-block;
+  position: relative; 
+  animation-duration: 1s;
+  animation-fill-mode: forwards; 
+  animation-iteration-count: infinite;
+  animation-name: skeleton-shimmer;
+  animation-timing-function: linear;
+  border-radius: 4px;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 50%;
+  margin-bottom: 16px;
+}
+
+.skeleton-avatar {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+}

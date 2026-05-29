@@ -53,6 +53,5 @@ const clinicSchema = new mongoose.Schema({
 clinicSchema.index({ status: 1 });
 // `registration_number` already has `unique: true` on the field definition.
 // Only add indexes for fields without unique constraints
-clinicSchema.index({ status: 1 });
 const Clinic = mongoose.model('Clinic', clinicSchema);
 export default Clinic;

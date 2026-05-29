@@ -436,7 +436,7 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
       {openForm && (
         <ClinicCreateModal 
           onClose={() => setOpenForm(false)} 
-          onSave={(body) => onCreate(body).then(() => setOpenForm(false))} 
+          onSave={(body) => onCreate(body).then(() => setOpenForm(false)).catch(err => window.showToast(err.message, 'error'))} 
         />
       )}
     </div>
@@ -499,7 +499,7 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
       address: { street, city, state, postal_code: zip },
       contact: { phone, email },
       specialties: selectedSpecs.join(', ') || 'Veterinary Medicine'
-    });
+    }).catch(err => window.showToast(err.message, 'error'));
   };
 
   return (
@@ -643,21 +643,32 @@ function VaccineModal({ initialData, onClose, onSave }) {
 }
 
 function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
-  const [status, setStatus] = useState(vaccination.status);
+  const [status, setStatus] = useState(vaccination.status || 'Completed');
   const [lastDate, setLastDate] = useState(vaccination.lastDate || new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(vaccination.dueDate || '');
+  const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
   const [vetName, setVetName] = useState(vaccination.vetName || '');
   const [notes, setNotes] = useState(vaccination.notes || '');
 
   return (
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>Record Vaccination</h2>
-        <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
-          <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
-          <strong>Due Date:</strong> {vaccination.dueDate}
-        </div>
+        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}</h2>
+        
+        {vaccination.isNew ? (
+          <>
+            <Input label="Vaccine Name" value={vaccine} onChange={setVaccine} />
+            <Input label="Due Date" type="date" value={dueDate} onChange={setDueDate} />
+          </>
+        ) : (
+          <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
+            <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
+            <strong>Due Date:</strong> {vaccination.dueDate}
+          </div>
+        )}
+        
         <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
-        {status === 'Completed' && (
+        {(status === 'Completed' || status === 'Up to date') && (
           <>
             <Input label="Date Administered" type="date" value={lastDate} onChange={setLastDate} />
             <Input label="Administered By (Vet/Clinic)" value={vetName} onChange={setVetName} />
@@ -666,7 +677,7 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
         )}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
           <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, status, lastDate, vetName, notes })}>Save Record</button>
+          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, vaccine, dueDate, status, lastDate, vetName, notes })}>Save Record</button>
         </div>
       </div>
     </div>
@@ -875,6 +886,36 @@ function App() {
     return allPets.find((pet) => pet.name === 'Buddy') || allPets[0] || null;
   }, [data?.clients, selectedPet]);
 
+  const doctorPatients = useMemo(() => {
+    if (role !== 'doctor' || !selectedDoctor || !data?.appointments || !data?.clients) return [];
+    const patientMap = new Map();
+    data.appointments.forEach(app => {
+      if (app.vetName === selectedDoctor.name) {
+        const key = `${app.ownerName}-${app.petName}`;
+        if (!patientMap.has(key)) {
+          patientMap.set(key, { ownerName: app.ownerName, petName: app.petName });
+        }
+      }
+    });
+    const pets = [];
+    patientMap.forEach((pt) => {
+      const client = data.clients.find(c => c.name === pt.ownerName);
+      if (client && client.pets) {
+        const pet = client.pets.find(p => p.name === pt.petName);
+        if (pet) {
+          pets.push({
+            ...pet,
+            ownerId: client._id,
+            ownerName: client.name,
+            email: client.email,
+            phone: client.phone
+          });
+        }
+      }
+    });
+    return pets;
+  }, [role, selectedDoctor, data?.appointments, data?.clients]);
+
   function switchRole(nextRole) {
     setRole(nextRole);
     setScreen(nextRole === 'doctor' ? 'calendar' : 'dashboard');
@@ -996,7 +1037,7 @@ function App() {
         </aside>
 
         <main className="main">
-          {loading && <Status message="Loading clinic data..." />}
+          {loading && <SkeletonLoader />}
           {error && <Status message={`${error}. Start the API and seed MongoDB.`} tone="error" action={reload} />}
           {!loading && !error && (
             !selectedClinic && screen !== 'vaccinemaster' ? (
@@ -1032,8 +1073,8 @@ function App() {
                     setBookingPet={setBookingPet}
                   />
                 )}
-                {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} />}
-                {screen === 'followup' && <FollowUps rows={data.followups} />}
+                {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} doctorPatients={doctorPatients} selectedDoctor={selectedDoctor} onPetSelect={setSelectedPet} role={role} />}
+                {screen === 'followup' && <FollowUps rows={role === 'doctor' && selectedDoctor ? (data.followups || []).filter(f => f.vetName === selectedDoctor.name) : (data.followups || [])} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
                     !selectedDoctor ? (
@@ -1126,6 +1167,37 @@ function App() {
 
 function Status({ message, tone = 'info', action }) {
   return <div className="status"><div className={`status-box ${tone}`}>{message}{action && <button className="btn btn-primary" onClick={action}>Retry</button>}</div></div>;
+}
+
+function SkeletonLoader() {
+  return (
+    <div className="main-scroll" style={{ padding: '24px' }}>
+      <div className="skeleton skeleton-title"></div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+        <div className="card" style={{ padding: '20px' }}>
+          <div className="skeleton skeleton-avatar" style={{ marginBottom: '10px' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '60%' }}></div>
+        </div>
+        <div className="card" style={{ padding: '20px' }}>
+          <div className="skeleton skeleton-avatar" style={{ marginBottom: '10px' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '60%' }}></div>
+        </div>
+        <div className="card" style={{ padding: '20px' }}>
+          <div className="skeleton skeleton-avatar" style={{ marginBottom: '10px' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '60%' }}></div>
+        </div>
+      </div>
+      <div className="card" style={{ padding: '20px' }}>
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+      </div>
+    </div>
+  );
 }
 
 function AlertCard({ type, petName, title, sub }) {
@@ -1549,19 +1621,27 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       if (next.time.includes('-')) {
         const parts = next.time.split('-');
         const formatSingle = (singleT) => {
-          const [h, m] = singleT.split(':');
-          const hr = parseInt(h);
+          const trimmed = singleT.trim();
+          const hasPM = /PM/i.test(trimmed);
+          const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+          const [h, m] = clean.split(':');
+          let hr = parseInt(h);
+          if (hasPM && hr < 12) hr += 12;
           const ampm = hr >= 12 ? 'PM' : 'AM';
           const hr12 = hr % 12 || 12;
-          return `${hr12}:${m} ${ampm}`;
+          return `${hr12}:${m || '00'} ${ampm}`;
         };
-        timeStr = `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+        timeStr = `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
       } else {
-        const [h, m] = next.time.split(':');
-        const hr = parseInt(h);
+        const trimmed = next.time.trim();
+        const hasPM = /PM/i.test(trimmed);
+        const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+        const [h, m] = clean.split(':');
+        let hr = parseInt(h);
+        if (hasPM && hr < 12) hr += 12;
         const ampm = hr >= 12 ? 'PM' : 'AM';
         const hr12 = hr % 12 || 12;
-        timeStr = `${hr12}:${m} ${ampm}`;
+        timeStr = `${hr12}:${m || '00'} ${ampm}`;
       }
     } catch (e) {}
 
@@ -1912,6 +1992,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [weightLogVal, setWeightLogVal] = useState('');
   const [weightLogNote, setWeightLogNote] = useState('');
+  const [weightTimeframe, setWeightTimeframe] = useState('12months');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
@@ -2465,7 +2546,11 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const rangeStr = !hasWeights ? 'Awaiting weight log' : isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
 
                 const logList = [...sortedPetWeights].reverse();
-                const chartData = sortedPetWeights.slice(-6);
+                const now = new Date();
+                const twelveMonthsAgo = new Date(now.setFullYear(now.getFullYear() - 1));
+                const chartData = weightTimeframe === '12months' 
+                  ? sortedPetWeights.filter(w => new Date(w.date) >= twelveMonthsAgo)
+                  : sortedPetWeights;
 
                 // Dynamic Weight Graph Scaling
                 const weightValues = chartData.map(w => w.value);
@@ -2578,11 +2663,11 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                           <div>
                             <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Last 12 months · All clinic visits</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>{weightTimeframe === '12months' ? 'Last 12 months' : 'All time'} · All clinic visits</div>
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
-                            <span className="badge b-blue">12 months</span>
-                            <span className="badge b-gray">All time</span>
+                            <span className={`badge ${weightTimeframe === '12months' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('12months')}>12 months</span>
+                            <span className={`badge ${weightTimeframe === 'alltime' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('alltime')}>All time</span>
                           </div>
                         </div>
                         
@@ -2800,6 +2885,10 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               {/* VACCINATIONS TAB */}
               {activeTab === 'vaccines' && (
                 <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
+                  <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Vaccination Records</h3>
+                    <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setEditingVax({ isNew: true, status: 'Completed' })}>+ Add Vaccination</button>
+                  </div>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -2913,13 +3002,24 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
         <PetVaccinationEditModal
           vaccination={editingVax}
           onClose={() => setEditingVax(null)}
-          onSave={(updated) => update('vaccinations', updated._id, updated)
-            .then(() => {
-              window.showToast('Vaccination updated successfully!', 'success');
-              setEditingVax(null);
-            })
-            .catch(err => window.showToast(err.message, 'error'))
-          }
+          onSave={(updated) => {
+            if (updated.isNew) {
+              const payload = { ...updated, petName: currentPet.name, ownerName: owner.name, breed: currentPet.breed, clinic_id: owner.clinic_id };
+              create('vaccinations', payload)
+                .then(() => {
+                  window.showToast('Vaccination added successfully!', 'success');
+                  setEditingVax(null);
+                })
+                .catch(err => window.showToast(err.message, 'error'));
+            } else {
+              update('vaccinations', updated._id, updated)
+                .then(() => {
+                  window.showToast('Vaccination updated successfully!', 'success');
+                  setEditingVax(null);
+                })
+                .catch(err => window.showToast(err.message, 'error'));
+            }
+          }}
         />
       )}
     </>
@@ -3381,6 +3481,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     }
 
     const appointmentBody = {
+      clientId: bookingClient._id,
+      petId: bookingPet._id,
+      vetId: selectedVet._id,
       petName: bookingPet.name,
       species: bookingPet.species,
       breed: bookingPet.breed || '',
@@ -3409,20 +3512,17 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      const formatSingle = (singleT) => {
-        const [h, m] = singleT.split(':');
-        const hr = parseInt(h);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const hr12 = hr % 12 || 12;
-        return `${hr12}:${m} ${ampm}`;
-      };
-      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
     }
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
+    const trimmed = t.trim();
+    const hasPM = /PM/i.test(trimmed);
+    const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+    const [h, m] = clean.split(':');
+    let hr = parseInt(h);
+    if (hasPM && hr < 12) hr += 12;
     const ampm = hr >= 12 ? 'PM' : 'AM';
     const hr12 = hr % 12 || 12;
-    return `${hr12}:${m} ${ampm}`;
+    return `${hr12}:${m || '00'} ${ampm}`;
   };
 
   const petEmoji = (species = '') => {
@@ -3574,7 +3674,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               }
               setIsBookingFlow(true);
               setOpenRegisterModal(false);
-            })} 
+            }).catch(err => window.showToast(err.message, 'error'))} 
           />
         )}
       </Screen>
@@ -3702,7 +3802,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               }
               setIsBookingFlow(true);
               setOpenRegisterModal(false);
-            })} 
+            }).catch(err => window.showToast(err.message, 'error'))} 
           />
         )}
       </Screen>
@@ -3981,7 +4081,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             }
             setIsBookingFlow(true);
             setOpenRegisterModal(false);
-          })} 
+          }).catch(err => window.showToast(err.message, 'error'))} 
         />
       )}
     </Screen>
@@ -4194,12 +4294,13 @@ function LegacySoap({ note, create }) {
   </Screen>;
 }
 
-function Weights({ weights, create, activePet, clients, go }) {
+function Weights({ weights, create, activePet, clients, go, doctorPatients, selectedDoctor, onPetSelect, role }) {
   const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐕', age: '4 yrs' };
   
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [weightLogVal, setWeightLogVal] = useState('');
   const [weightLogNote, setWeightLogNote] = useState('');
+  const [weightTimeframe, setWeightTimeframe] = useState('12months');
 
   let ownerName = 'James Martinez';
   if (clients) {
@@ -4269,7 +4370,11 @@ function Weights({ weights, create, activePet, clients, go }) {
   const rangeStr = !hasWeights ? 'Awaiting weight log' : isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
 
   const logList = [...petWeights].reverse();
-  const chartData = petWeights.slice(-6); 
+  const now = new Date();
+  const twelveMonthsAgo = new Date(now.setFullYear(now.getFullYear() - 1));
+  const chartData = weightTimeframe === '12months' 
+    ? petWeights.filter(w => new Date(w.date) >= twelveMonthsAgo)
+    : petWeights;
   
   // Dynamic Weight Graph Scaling
   const weightValues = chartData.map(w => w.value);
@@ -4354,11 +4459,49 @@ function Weights({ weights, create, activePet, clients, go }) {
 
   const getPetEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('cat')) return '🐱';
-    if (s.includes('rabbit') || s.includes('lop')) return '🐰';
+    if (s.includes('cat')) return '🐈';
+    if (s.includes('rabbit') || s.includes('lop')) return '🐇';
     if (s.includes('bird') || s.includes('parrot')) return '🦜';
     return '🐕';
   };
+
+  const handlePrevPet = () => {
+    if (!doctorPatients || doctorPatients.length === 0) return;
+    const currentIndex = doctorPatients.findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : doctorPatients.length - 1;
+    onPetSelect?.(doctorPatients[prevIndex]);
+  };
+
+  const handleNextPet = () => {
+    if (!doctorPatients || doctorPatients.length === 0) return;
+    const currentIndex = doctorPatients.findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName);
+    const nextIndex = currentIndex < doctorPatients.length - 1 ? currentIndex + 1 : 0;
+    onPetSelect?.(doctorPatients[nextIndex]);
+  };
+
+  const hasMultiplePatients = role === 'doctor' && doctorPatients && doctorPatients.length > 1;
+
+  if (role === 'doctor' && selectedDoctor && (!doctorPatients || doctorPatients.length === 0)) {
+    return (
+      <div className="main-scroll" style={{ background: 'var(--bg)' }}>
+        <div className="main-pad">
+          <div className="topbar">
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)' }}>
+                Weight Tracker
+              </h2>
+              <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
+                No patients found for Dr. {selectedDoctor.name}.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentPetIndex = (doctorPatients || []).findIndex(p => p.name === pet.name && p.ownerName === pet.ownerName) + 1;
+  const totalPatients = (doctorPatients || []).length;
 
   return (
     <div className="main-scroll" style={{ background: 'var(--bg)' }}>
@@ -4368,8 +4511,24 @@ function Weights({ weights, create, activePet, clients, go }) {
         </div>
         <div className="topbar">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)' }}>
-              Weight Tracker — <span style={{ color: 'var(--brand)' }}>{getPetEmoji(pet.species || pet.emoji)} {pet.name}</span>
+            <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Weight Tracker — 
+              {hasMultiplePatients && (
+                <button className="btn" style={{ padding: '4px 8px', minWidth: 'auto', height: 'auto', fontSize: '16px', background: 'transparent', color: 'var(--text-2)', border: 'none' }} onClick={handlePrevPet}>
+                  &lt;
+                </button>
+              )}
+              <span style={{ color: 'var(--brand)' }}>{getPetEmoji(pet.species || pet.emoji)} {pet.name}</span>
+              {hasMultiplePatients && (
+                <button className="btn" style={{ padding: '4px 8px', minWidth: 'auto', height: 'auto', fontSize: '16px', background: 'transparent', color: 'var(--text-2)', border: 'none' }} onClick={handleNextPet}>
+                  &gt;
+                </button>
+              )}
+              {(role === 'doctor' && selectedDoctor) && (
+                <span style={{ fontSize: '12px', background: 'var(--bg-2)', color: 'var(--text-3)', padding: '2px 8px', borderRadius: '12px', marginLeft: '4px', fontWeight: '600' }}>
+                  {currentPetIndex > 0 ? currentPetIndex : 1} / {totalPatients} {totalPatients === 1 ? 'pet' : 'pets'}
+                </span>
+              )}
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
               {petBreed} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
@@ -4403,11 +4562,11 @@ function Weights({ weights, create, activePet, clients, go }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>Weight Over Time</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Last 12 months · All clinic visits</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>{weightTimeframe === '12months' ? 'Last 12 months' : 'All time'} · All clinic visits</div>
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <span className="badge b-blue">12 months</span>
-                <span className="badge b-gray">All time</span>
+                <span className={`badge ${weightTimeframe === '12months' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('12months')}>12 months</span>
+                <span className={`badge ${weightTimeframe === 'alltime' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('alltime')}>All time</span>
               </div>
             </div>
             
@@ -4635,17 +4794,14 @@ function FollowUps({ rows }) {
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      const formatSingle = (singleT) => {
-        const [h, m] = singleT.split(':');
-        const hr = parseInt(h);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const hr12 = hr % 12 || 12;
-        return `${hr12}:${m} ${ampm}`;
-      };
-      return `${formatSingle(parts[0])} – ${formatSingle(parts[1])}`;
+      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
     }
-    const [h, m] = t.split(':');
-    const hr = parseInt(h);
+    const trimmed = t.trim();
+    const hasPM = /PM/i.test(trimmed);
+    const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+    const [h, m] = clean.split(':');
+    let hr = parseInt(h);
+    if (hasPM && hr < 12) hr += 12;
     const ampm = hr >= 12 ? 'PM' : 'AM';
     const hr12 = hr % 12 || 12;
     return `${hr12}:${m} ${ampm}`;
@@ -5023,7 +5179,7 @@ function ClientModal({ onClose, onSave, client }) {
       }));
     }
     return [
-      { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes' }
+      { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes', petId: '' }
     ];
   });
 
@@ -5044,7 +5200,7 @@ function ClientModal({ onClose, onSave, client }) {
   const addAnotherPet = () => {
     setPets([
       ...pets,
-      { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes' }
+      { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes', petId: '' }
     ]);
   };
 
@@ -5084,6 +5240,10 @@ function ClientModal({ onClose, onSave, client }) {
         alert(`Please specify a name for Pet #${i + 1}!`);
         return;
       }
+      if (!pets[i].petId || !pets[i].petId.trim()) {
+        alert(`Please specify a Pet ID for Pet #${i + 1}!`);
+        return;
+      }
     }
 
     const savedPets = pets.map(p => ({
@@ -5095,7 +5255,7 @@ function ClientModal({ onClose, onSave, client }) {
       sex: p.sex,
       microchip: p.microchip || undefined,
       spayedNeutered: p.spayedNeutered,
-      petId: p.petId || `PET-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      petId: p.petId.trim(),
       alerts: p.alerts || []
     }));
 
@@ -5253,7 +5413,17 @@ function ClientModal({ onClose, onSave, client }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                    <label className="field-label">
+                      Pet ID *
+                      <input 
+                        className="input" 
+                        required 
+                        placeholder="e.g. PET-1234" 
+                        value={pet.petId || ''} 
+                        onChange={e => handleUpdatePetField(index, 'petId', e.target.value)} 
+                      />
+                    </label>
                     <label className="field-label">
                       Pet Name *
                       <input 
