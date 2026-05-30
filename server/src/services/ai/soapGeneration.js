@@ -65,7 +65,7 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
 
   // 1. Force Anthropic API Call (Temporarily disable fallback to identify errors directly)
   if (anthropicKey) {
-    console.log("🟢 ACTIVE PROVIDER: Anthropic (claude-3-5-sonnet-20241022)");
+    console.log("🟢 ACTIVE PROVIDER: Anthropic (claude-sonnet-4-6)");
     try {
       console.log("🤖 Initializing Anthropic Claude API call...");
       console.log("📤 TRANSCRIPT SENT TO ANTHROPIC:", transcript);
@@ -78,7 +78,7 @@ export async function generateSOAPNote(transcript, petContext = null, pastNotes 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
+          model: "claude-sonnet-4-6",
           max_tokens: 2048,
           temperature: 0.0,
           system: VETERINARY_SYSTEM_PROMPT,
