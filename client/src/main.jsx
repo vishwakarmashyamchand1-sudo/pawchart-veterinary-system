@@ -2447,7 +2447,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   petVax.map(v => (
                     <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : v.displayStatus === 'Upcoming' ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
+                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : (v.displayStatus === 'Upcoming' || v.displayStatus === 'Completed') ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
                         <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
                       </div>
                       <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
