@@ -12,7 +12,7 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
   const breed = petContext?.breed || 'Golden Retriever';
   
   // Extract or parse pet weight
-  let weightLbs = 32.4;
+  let weightLbs = null;
   if (petContext?.weightRange) {
     const numericWeight = parseFloat(petContext.weightRange);
     if (!isNaN(numericWeight)) weightLbs = numericWeight;
@@ -31,10 +31,13 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
       }
     }
   }
-  const weightKg = (weightLbs * 0.453592).toFixed(1);
+  let weightKg = null;
+  if (weightLbs !== null) {
+    weightKg = (weightLbs * 0.453592).toFixed(1);
+  }
 
   // 2. Scan Transcript for Vital Signs
-  let temp = "101.5°F";
+  let temp = null;
   const tempMatch = t.match(/(?:temp|temperature|bukhar|body|body temp)\s*(?:is|around|he|hai)?\s*(\d+(?:\.\d+)?)\s*(f|c|degrees|degree)?/i);
   if (tempMatch) {
     const val = parseFloat(tempMatch[1]);
@@ -87,7 +90,7 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
     const drug = VETERINARY_DRUG_DATABASE[mKey];
     if (drug) {
       let computedDose = drug.dosage;
-      if (drug.doseRate) {
+      if (drug.doseRate && weightKg !== null) {
         // Calculate dosage e.g. weightKg * doseRate
         const mg = Math.round(weightKg * drug.doseRate);
         computedDose = `${mg} mg`;
@@ -102,7 +105,7 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
     }
   });
 
-  // Calculate dynamic follow-up date ONLY if explicitly mentioned
+  // Calculate dynamic follow-up date
   let followUpDate = null;
   const followUpMatch = t.match(/(?:follow\s*up|recheck).*(?:in|after)\s*(\d+)\s*(day|week|month)s?/i);
   if (followUpMatch) {
@@ -117,22 +120,15 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
 
   // 6. Formulate Conversation-Aware Context Summary paragraphs (SOAP)
   const subjectiveLines = [
-    `Owner reports pet presents for consultation today due to: ${profile.complaint.toLowerCase()}.`,
-    `Conversation details: "${transcript.trim()}"`,
-    appetiteLoss ? "Reduced appetite and decreased eating behaviors are noted." : "Appetite and water consumption are reported as normal.",
-    lethargy ? "Pet shows notable lethargy (susti) and reduced playfulness." : "Energy levels remain stable.",
-    dehydration && "Owner expresses concern about potential dehydration."
+    `Owner reports pet presents for consultation today. Chief concerns involve symptoms suggestive of ${profile.diagnosis}.`,
+    appetiteLoss ? "Reduced appetite and decreased eating behaviors are noted based on transcript." : null,
+    lethargy ? "Pet shows notable lethargy (susti) and reduced playfulness based on transcript." : null,
+    dehydration ? "Owner expresses concern about potential dehydration." : null
   ].filter(Boolean);
 
   const objectiveLines = [
-    `Patient is a ${breed} ${species}, weighing ${weightLbs.toFixed(1)} lbs (${weightKg} kg).`,
-    `Measured temperature is ${temp}. Heart rate checked at 90 bpm, normal rhythm.`,
-    category === 'ear' && "Left ear canal reveals moderate erythema, waxy dark brown discharge, and yeast-like odor. Right ear is clear. Tympanic membrane is healthy and intact.",
-    category === 'skin' && "Dermatological exam reveals localized hair loss, mild scaling, and erythema on abdominal/paw skin sections.",
-    category === 'tummy' && "Abdomen is soft, non-distended, and non-painful on moderate palpation. Mucous membranes are pink and moist.",
-    category === 'respiratory' && "Lungs clear on auscultation. Clear serous nasal discharge is present. Dry cough responsive to tracheal palpation.",
-    category === 'general' && "Lungs clear, heart sounds normal, skin coat healthy. No major anatomical anomalies noticed.",
-    dehydration ? "Mucous membranes appear slightly dry/sticky, indicating mild dehydration." : "Hydration is adequate; skin tent normal."
+    weightLbs ? `Patient is a ${breed} ${species}, weighing ${weightLbs.toFixed(1)} lbs (${weightKg} kg).` : `Patient is a ${breed} ${species}.`,
+    temp ? `Measured temperature is ${temp}.` : null
   ].filter(Boolean);
 
   const assessmentLines = [

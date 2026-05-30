@@ -914,7 +914,7 @@ export function Soap({
 
   // Stage 3: AI REVIEW SCREEN
   return (
-    <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
+    <div className="main-scroll" style={{ background: '#f1f5f9', height: '100%', overflowY: 'auto', color: '#334155' }}>
       <div className="main-pad" style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
         
         {/* Back Navigation bar */}
@@ -945,8 +945,8 @@ export function Soap({
           alignItems: 'center',
           marginBottom: '24px',
           padding: '16px 20px',
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
           borderRadius: '12px'
         }}>
           <div style={{
@@ -963,10 +963,10 @@ export function Soap({
             👤
           </div>
           <div>
-            <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
+            <strong style={{ fontSize: '18px', color: '#0f172a', display: 'block' }}>
               {activeOwner.name} (Pet: {activePet.name})
             </strong>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '14px' }}>
               <span>{activePet.species || 'Dog'}</span>
               <span>•</span>
               <span>{activeOwner.phone}</span>
@@ -977,8 +977,8 @@ export function Soap({
         </div>
 
         {/* Review Form */}
-        <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px' }}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
+        <div className="panel" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '24px', borderRadius: '12px' }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
             {isGenerating ? "⚡ Processing AI Polishing..." : "Review AI-Generated Consultation"}
           </h2>
           <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#64748b' }}>
@@ -989,20 +989,20 @@ export function Soap({
             
             {/* Patient Summary (Subjective) */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Patient Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the patient said)</span>
               </label>
               <textarea
-                value={draft.subjective || ''}
+                value={draft.subjective || rawTranscriptText || ''}
                 onChange={(e) => setDraft({ ...draft, subjective: e.target.value })}
                 style={{
                   width: '100%',
                   minHeight: '80px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1014,7 +1014,7 @@ export function Soap({
 
             {/* Doctor Summary (Objective & Plan) */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Doctor Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the doctor said)</span>
               </label>
               <textarea
@@ -1026,11 +1026,11 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '100px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1042,20 +1042,20 @@ export function Soap({
 
             {/* Chief Complaint */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Chief Complaint
               </label>
               <textarea
-                value={activeAppointment.reason || ''}
+                value={draft.chief_complaint || activeAppointment.reason || ''}
                 readOnly
                 style={{
                   width: '100%',
                   minHeight: '60px',
-                  background: '#1f2937',
-                  border: '1px solid #374151',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#e2e8f0',
+                  color: '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1066,7 +1066,7 @@ export function Soap({
 
             {/* Diagnosis */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Diagnosis
               </label>
               <textarea
@@ -1075,11 +1075,11 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '60px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1092,7 +1092,7 @@ export function Soap({
             {/* Prescriptions */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
                   Prescriptions
                 </label>
                 <button 
@@ -1106,27 +1106,27 @@ export function Soap({
                     }
                   }}
                   disabled={isApproved}
-                  style={{ color: isApproved ? '#64748b' : '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: isApproved ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ color: isApproved ? '#94a3b8' : '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: isApproved ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <span>+</span> Add
                 </button>
               </div>
               {(draft.prescription && draft.prescription.length > 0 ? draft.prescription : [{ medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]).map((rx, idx) => (
-                <div key={idx} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Duration" value={rx.duration || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Duration" value={rx.duration || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
                   </div>
-                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', boxSizing: 'border-box', cursor: isApproved ? 'not-allowed' : 'text' }} />
                 </div>
               ))}
             </div>
 
             {/* Follow-up Date */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Follow-up Date
               </label>
               <input 
@@ -1135,11 +1135,11 @@ export function Soap({
                 value={draft.follow_up_date || ''}
                 onChange={e => setDraft({...draft, follow_up_date: e.target.value})}
                 style={{
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '10px 12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   outline: 'none',
                   width: '200px',
@@ -1152,7 +1152,7 @@ export function Soap({
           </div>
           
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '32px', borderTop: '1px solid #1f2937', paddingTop: '24px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '32px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
             <button 
               className="btn btn-outline"
               onClick={() => {
@@ -1221,15 +1221,15 @@ export function Soap({
         <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999 }}>
           <div className="modal" style={{ 
             width: '540px', 
-            background: '#111827', 
-            color: '#cbd5e1', 
-            border: '1px solid #374151',
+            background: '#ffffff', 
+            color: '#334155', 
+            border: '1px solid #e2e8f0',
             padding: '28px',
             borderRadius: '16px'
           }}>
-            <div className="modal-hd" style={{ borderBottom: '1px solid #1f2937', paddingBottom: '14px', marginBottom: '20px' }}>
+            <div className="modal-hd" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   🎉 Consultation Finalized!
                 </h3>
                 <span style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
@@ -1248,7 +1248,7 @@ export function Soap({
               </button>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
               <button 
                 className="btn btn-primary"
                 onClick={() => {
