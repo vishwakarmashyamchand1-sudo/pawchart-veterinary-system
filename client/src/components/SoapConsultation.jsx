@@ -223,13 +223,13 @@ export function Soap({
       onInterim: (text) => {
         const currentText = (transcriptRef.current + " " + text).trim();
         setRawTranscriptText(currentText);
-        runProgressiveParsing(currentText);
+        // runProgressiveParsing(currentText);
       },
       onFinal: (text) => {
         transcriptRef.current += (transcriptRef.current ? " " : "") + text;
         const currentText = transcriptRef.current;
         setRawTranscriptText(currentText);
-        runProgressiveParsing(currentText);
+        // runProgressiveParsing(currentText);
         setLiveTranscript(prev => [...prev, text]);
       },
       onError: (err) => {
@@ -293,7 +293,7 @@ export function Soap({
         "Vet: Exam shows redness and waxy debris in left ear canal. Tympanic membrane is healthy.",
         "Vet: Otitis externa diagnosed. Plan: Otomax ear drops, 4 drops twice daily for 7 days. Follow up in 14 days."
       ]);
-      runProgressiveParsing(finalTranscript);
+      // runProgressiveParsing(finalTranscript);
     }
 
     // Trigger Final Claude AI Polish pass
