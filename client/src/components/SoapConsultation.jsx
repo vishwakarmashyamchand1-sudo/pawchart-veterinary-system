@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../main.jsx';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
+import { createSpeechRecognition } from '../utils/speech.js';
 
 // Centralized API Base URL
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -77,6 +78,7 @@ export function Soap({
   const [isRecognitionSupported, setIsRecognitionSupported] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [historyTab, setHistoryTab] = useState('soap');
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
   // SOAP drafts
   const [draft, setDraft] = useState({
@@ -96,6 +98,7 @@ export function Soap({
   // Web Speech API Reference
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(false);
+  const transcriptRef = useRef('');
 
   // Check browser SpeechRecognition support on mount
   useEffect(() => {
@@ -139,7 +142,7 @@ export function Soap({
         t.includes('sneeze') || t.includes('chheenk') ||
         t.includes('cough') || t.includes('khansi')
       ) {
-        nextDraft.subjective = `Owner reports symptoms: ${text.trim()}. Discomfort or gastrointestinal/respiratory distress noticed.`;
+        nextDraft.subjective = text.trim();
       }
 
       // Objective classifications
@@ -151,7 +154,7 @@ export function Soap({
         t.includes('waxy') || t.includes('discharge') || t.includes('exudate') ||
         t.includes('exam') || t.includes('checkup')
       ) {
-        nextDraft.objective = `Objective findings: Temp 101.8°F. HR 88 bpm. Left ear canal reveals mild erythema and waxy brown exudate. Lungs clear on auscultation. Weight stable at ${activePet.weightRange || '32.4 lbs'}.`;
+        nextDraft.objective = `Patient checkup in progress.`;
       }
 
       // Assessment classifications
@@ -203,10 +206,11 @@ export function Soap({
     setRecordTimer(0);
     setLiveTranscript([]);
     setRawTranscriptText('');
+    transcriptRef.current = '';
     setErrorInfo('');
     setRawGeminiOutput(null);
     setIsApproved(false);
-    setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
+    setDraft({ subjective: '', objective: '', assessment: '', plan: '', chiefComplaint: '', diagnosis: '', prescription: [] });
 
     // Set up timer ticker
     const interval = setInterval(() => {
@@ -214,73 +218,40 @@ export function Soap({
     }, 1000);
     setRecordingIntervalId(interval);
 
-    // Instantiate SpeechRecognition if supported
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = speechLanguage; // en-IN, hi-IN, etc.
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          // Cumulative aggregation starting from 0 to capture whole consultation history
-          for (let i = 0; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript + ' ';
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          const currentText = (finalTranscript + interimTranscript).trim();
-          if (currentText) {
-            setRawTranscriptText(currentText);
-            
-            // Build progressive transcript lines for the live speech feed
-            setLiveTranscript(prev => {
-              const cleaned = currentText.trim();
-              if (prev.length === 0 || prev[prev.length - 1] !== cleaned) {
-                // progressive parsing trigger
-                runProgressiveParsing(cleaned);
-                return [cleaned];
-              }
-              return prev;
-            });
-          }
-        };
-
-        recognition.onerror = (err) => {
-          console.warn("Speech recognition error:", err.error);
-          if (err.error === 'not-allowed') {
-            setErrorInfo("Mic permission denied. Access microphone to record real doctor voice.");
-          }
-        };
-
-        recognition.onend = () => {
-          console.log("Speech recognition ended.");
-          // Automatically restart recognition if the recording state is still active
-          if (isRecordingRef.current && recognitionRef.current) {
-            try {
-              recognitionRef.current.start();
-            } catch (err) {
-              console.warn("Failed to restart speech recognition:", err.message);
-            }
-          }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } catch (err) {
-        console.error("Failed to start speech recognition:", err);
+    const rec = createSpeechRecognition({
+      language: speechLanguage,
+      onInterim: (text) => {
+        const currentText = (transcriptRef.current + " " + text).trim();
+        setRawTranscriptText(currentText);
+        // runProgressiveParsing(currentText);
+      },
+      onFinal: (text) => {
+        transcriptRef.current += (transcriptRef.current ? " " : "") + text;
+        const currentText = transcriptRef.current;
+        setRawTranscriptText(currentText);
+        // runProgressiveParsing(currentText);
+        setLiveTranscript(prev => [...prev, text]);
+      },
+      onError: (err) => {
+        console.warn("Speech recognition error:", err);
+        if (err === 'not-allowed') {
+          setErrorInfo("Mic permission denied. Access microphone to record real doctor voice.");
+        }
+      },
+      onEnd: () => {
+        console.log("Speech recognition ended naturally.");
       }
-    } else {
-      setErrorInfo("Speech recognition is not supported in this browser. Running high-fidelity simulation workflow.");
+    });
+
+    if (!rec) {
+      setErrorInfo("Browser doesn't support Web Speech API.");
+      return;
     }
+
+    recognitionRef.current = rec;
+    rec.start();
   };
+
 
   // Stop Consultation Recording
   const stopRecording = () => {
@@ -295,13 +266,14 @@ export function Soap({
     // Stop Speech Recognition if active
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.onend = null;
         recognitionRef.current.stop();
+        recognitionRef.current = null;
       } catch (err) {
         console.warn("Failed to stop recognition:", err.message);
       }
     }
   };
+
 
   const sendToAI = async () => {
     if (isRecording) {
@@ -321,7 +293,7 @@ export function Soap({
         "Vet: Exam shows redness and waxy debris in left ear canal. Tympanic membrane is healthy.",
         "Vet: Otitis externa diagnosed. Plan: Otomax ear drops, 4 drops twice daily for 7 days. Follow up in 14 days."
       ]);
-      runProgressiveParsing(finalTranscript);
+      // runProgressiveParsing(finalTranscript);
     }
 
     // Trigger Final Claude AI Polish pass
@@ -345,6 +317,8 @@ export function Soap({
             objective: result.preview.objective || draft.objective,
             assessment: result.preview.assessment || draft.assessment,
             plan: result.preview.plan || draft.plan,
+              chief_complaint: result.consultation?.chief_complaint || draft.chief_complaint,
+              diagnosis: result.consultation?.diagnosis || draft.diagnosis,
             prescription: result.preview.prescription || [],
             follow_up_date: result.preview.follow_up_date || ''
           });
@@ -624,27 +598,79 @@ export function Soap({
               <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
                 {historyTab === 'soap' && (
                   petHistory.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {petHistory.map((note, idx) => (
-                        <div 
-                          key={note._id || idx} 
-                          style={{ 
-                            borderBottom: idx < petHistory.length - 1 ? '1px solid var(--border)' : 'none', 
-                            paddingBottom: '14px' 
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
-                            <span>{new Date(note.createdAt || note.date || activeAppointment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <span style={{ color: 'var(--brand)' }}>{note.vetName || 'Dr. Chen'}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', paddingTop: '8px' }}>
+                      {petHistory.map((note, idx) => {
+                        const isExpanded = expandedHistoryId === (note._id || idx);
+                        return (
+                          <div key={note._id || idx} style={{ display: 'flex', gap: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid #22c55e', background: '#fff', zIndex: 1, marginTop: '2px' }}></div>
+                              {idx < petHistory.length - 1 && <div style={{ flex: 1, width: '2px', background: '#e2e8f0', margin: '4px 0' }}></div>}
+                            </div>
+                            <div style={{ flex: 1, paddingBottom: '24px' }}>
+                              <div 
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}
+                                onClick={() => setExpandedHistoryId(isExpanded ? null : (note._id || idx))}
+                              >
+                                <span style={{ color: '#94a3b8', fontSize: '10px', width: '12px', textAlign: 'center', display: 'inline-block' }}>{isExpanded ? '▼' : '▶'}</span>
+                                <strong style={{ fontSize: '14px', color: '#0f172a' }}>{new Date(note.createdAt || note.date || activeAppointment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+                                <span style={{ fontSize: '13px', color: '#64748b' }}>{note.vetName || 'Dr. Shivam Sharma'}</span>
+                                <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500' }}>completed</span>
+                              </div>
+                              
+                              {isExpanded && (
+                                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', color: '#334155', fontSize: '13px', lineHeight: '1.5', paddingLeft: '22px' }}>
+                                  <div>
+                                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Summary</div>
+                                    <div>{note.subjective || note.assessment}</div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Chief Complaint</div>
+                                    <div>{note.chiefComplaint || 'Consultation visit'}</div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Diagnosis</div>
+                                    <div>{note.diagnosis || note.assessment}</div>
+                                  </div>
+                                  {note.prescription && note.prescription.length > 0 && (
+                                    <div>
+                                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>Prescription</div>
+                                      <div style={{ width: '100%', overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                                          <thead>
+                                            <tr style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
+                                              <th style={{ paddingBottom: '8px', fontWeight: '500' }}>Medicine</th>
+                                              <th style={{ paddingBottom: '8px', fontWeight: '500' }}>Dosage</th>
+                                              <th style={{ paddingBottom: '8px', fontWeight: '500' }}>Frequency</th>
+                                              <th style={{ paddingBottom: '8px', fontWeight: '500' }}>Duration</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {note.prescription.map((rx, rIdx) => (
+                                              <tr key={rIdx}>
+                                                <td style={{ padding: '8px 0', color: '#334155' }}>{rx.medicine_name || rx.name}</td>
+                                                <td style={{ padding: '8px 0', color: '#334155' }}>{rx.dosage}</td>
+                                                <td style={{ padding: '8px 0', color: '#334155' }}>{rx.frequency}</td>
+                                                <td style={{ padding: '8px 0', color: '#334155' }}>{rx.duration}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {note.follow_up_date && (
+                                    <div>
+                                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Follow-up</div>
+                                      <div>{new Date(note.follow_up_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} <span style={{ color: '#94a3b8', fontSize: '12px' }}>(pending)</span></div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p style={{ margin: '6px 0 2px 0', fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>
-                            {note.assessment}
-                          </p>
-                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
-                            {note.plan}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: '12px' }}>
@@ -731,7 +757,7 @@ export function Soap({
   // Stage 2: ACTIVE RECORDING SCREEN
   if (isConsultationStarted && !draft.subjective && !isGenerating) {
     return (
-      <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
+      <div className="main-scroll" style={{ background: '#f1f5f9', height: '100%', overflowY: 'auto', color: '#334155' }}>
         <div className="main-pad" style={{ padding: '24px' }}>
           
           {/* Back Navigation bar */}
@@ -745,8 +771,8 @@ export function Soap({
               gap: '6px', 
               fontSize: '13px', 
               fontWeight: '700',
-              borderColor: '#374151',
-              color: '#94a3b8'
+              borderColor: '#cbd5e1',
+              color: '#475569'
             }} 
             onClick={() => {
               if (recordingIntervalId) {
@@ -776,8 +802,8 @@ export function Soap({
             alignItems: 'center',
             marginBottom: '22px',
             padding: '16px 20px',
-            background: '#111827',
-            border: '1px solid #1f2937',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px'
           }}>
             <div style={{
@@ -794,10 +820,10 @@ export function Soap({
               👤
             </div>
             <div>
-              <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
+              <strong style={{ fontSize: '18px', color: '#0f172a', display: 'block' }}>
                 {activeOwner.name} (Pet: {activePet.name})
               </strong>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '14px' }}>
                 <span>{activePet.species || 'Dog'}</span>
                 <span>•</span>
                 <span>{activeOwner.phone}</span>
@@ -810,12 +836,12 @@ export function Soap({
           <div className="grid-two" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '22px' }}>
             
             {/* LEFT COLUMN: ACTIVE RECORDER */}
-            <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', fontWeight: '800', color: '#fff', alignSelf: 'flex-start' }}>
+            <div className="panel" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h3 style={{ margin: '0 0 24px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a', alignSelf: 'flex-start' }}>
                 Consultation Recording
               </h3>
               
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#fff', fontFamily: 'monospace', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace', marginBottom: '8px' }}>
                 {formatTimer(recordTimer)}
               </div>
               <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '32px' }}>
@@ -858,11 +884,11 @@ export function Soap({
                   style={{
                     width: '100%',
                     height: '120px',
-                    background: '#1f2937',
-                    border: '1px solid #374151',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                     borderRadius: '8px',
                     padding: '12px',
-                    color: '#e2e8f0',
+                    color: '#334155',
                     fontSize: '13px',
                     resize: 'none',
                     outline: 'none'
@@ -891,7 +917,7 @@ export function Soap({
                     setDraft({ subjective: '', objective: '', assessment: '', plan: '' });
                     setLiveTranscript([]);
                   }}
-                  style={{ flex: 1, borderColor: '#374151', color: '#94a3b8', padding: '12px', borderRadius: '8px' }}
+                  style={{ flex: 1, borderColor: '#cbd5e1', color: '#475569', padding: '12px', borderRadius: '8px' }}
                 >
                   Cancel
                 </button>
@@ -904,9 +930,9 @@ export function Soap({
                     padding: '12px', 
                     borderRadius: '8px', 
                     fontWeight: '800',
-                    background: (!isRecording && recordTimer === 0) ? '#374151' : '#10b981',
-                    borderColor: (!isRecording && recordTimer === 0) ? '#374151' : '#10b981',
-                    color: (!isRecording && recordTimer === 0) ? '#9ca3af' : '#fff',
+                    background: (!isRecording && recordTimer === 0) ? '#e2e8f0' : '#10b981',
+                    borderColor: (!isRecording && recordTimer === 0) ? '#e2e8f0' : '#10b981',
+                    color: (!isRecording && recordTimer === 0) ? '#94a3b8' : '#fff',
                     cursor: (!isRecording && recordTimer === 0) ? 'not-allowed' : 'pointer',
                     opacity: (!isRecording && recordTimer === 0) ? 0.5 : 1
                   }}
@@ -924,9 +950,9 @@ export function Soap({
             </div>
 
             {/* RIGHT COLUMN: HISTORICAL VISITS */}
-            <div className="panel" style={{ padding: '22px 20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="panel" style={{ padding: '22px 20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#fff' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>
                   Visit History
                 </h3>
               </div>
@@ -943,7 +969,7 @@ export function Soap({
 
   // Stage 3: AI REVIEW SCREEN
   return (
-    <div className="main-scroll" style={{ background: '#090d16', height: '100%', overflowY: 'auto', color: '#cbd5e1' }}>
+    <div className="main-scroll" style={{ background: '#f1f5f9', height: '100%', overflowY: 'auto', color: '#334155' }}>
       <div className="main-pad" style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
         
         {/* Back Navigation bar */}
@@ -974,8 +1000,8 @@ export function Soap({
           alignItems: 'center',
           marginBottom: '24px',
           padding: '16px 20px',
-          background: '#111827',
-          border: '1px solid #1f2937',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
           borderRadius: '12px'
         }}>
           <div style={{
@@ -992,10 +1018,10 @@ export function Soap({
             👤
           </div>
           <div>
-            <strong style={{ fontSize: '18px', color: '#fff', display: 'block' }}>
+            <strong style={{ fontSize: '18px', color: '#0f172a', display: 'block' }}>
               {activeOwner.name} (Pet: {activePet.name})
             </strong>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '14px' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '14px' }}>
               <span>{activePet.species || 'Dog'}</span>
               <span>•</span>
               <span>{activeOwner.phone}</span>
@@ -1006,8 +1032,8 @@ export function Soap({
         </div>
 
         {/* Review Form */}
-        <div className="panel" style={{ background: '#111827', border: '1px solid #1f2937', padding: '24px', borderRadius: '12px' }}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
+        <div className="panel" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '24px', borderRadius: '12px' }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
             {isGenerating ? "⚡ Processing AI Polishing..." : "Review AI-Generated Consultation"}
           </h2>
           <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#64748b' }}>
@@ -1018,20 +1044,20 @@ export function Soap({
             
             {/* Patient Summary (Subjective) */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Patient Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the patient said)</span>
               </label>
               <textarea
-                value={draft.subjective || ''}
+                value={draft.subjective || rawTranscriptText || ''}
                 onChange={(e) => setDraft({ ...draft, subjective: e.target.value })}
                 style={{
                   width: '100%',
                   minHeight: '80px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1043,7 +1069,7 @@ export function Soap({
 
             {/* Doctor Summary (Objective & Plan) */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Doctor Summary <span style={{ color: '#64748b', fontWeight: '400' }}>(what the doctor said)</span>
               </label>
               <textarea
@@ -1055,11 +1081,11 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '100px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1071,20 +1097,20 @@ export function Soap({
 
             {/* Chief Complaint */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Chief Complaint
               </label>
               <textarea
-                value={activeAppointment.reason || ''}
+                value={draft.chief_complaint || activeAppointment.reason || ''}
                 readOnly
                 style={{
                   width: '100%',
                   minHeight: '60px',
-                  background: '#1f2937',
-                  border: '1px solid #374151',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#e2e8f0',
+                  color: '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1095,7 +1121,7 @@ export function Soap({
 
             {/* Diagnosis */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Diagnosis
               </label>
               <textarea
@@ -1104,11 +1130,11 @@ export function Soap({
                 style={{
                   width: '100%',
                   minHeight: '60px',
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   lineHeight: '1.5',
                   resize: 'vertical',
@@ -1121,7 +1147,7 @@ export function Soap({
             {/* Prescriptions */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
                   Prescriptions
                 </label>
                 <button 
@@ -1135,27 +1161,27 @@ export function Soap({
                     }
                   }}
                   disabled={isApproved}
-                  style={{ color: isApproved ? '#64748b' : '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: isApproved ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ color: isApproved ? '#94a3b8' : '#3b82f6', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '600', cursor: isApproved ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <span>+</span> Add
                 </button>
               </div>
               {(draft.prescription && draft.prescription.length > 0 ? draft.prescription : [{ medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]).map((rx, idx) => (
-                <div key={idx} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
-                    <input type="text" placeholder="Duration" value={rx.duration || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Medicine name" value={rx.medicine_name || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].medicine_name = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Dosage" value={rx.dosage || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].dosage = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Frequency" value={rx.frequency || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].frequency = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                    <input type="text" placeholder="Duration" value={rx.duration || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].duration = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', cursor: isApproved ? 'not-allowed' : 'text' }} />
                   </div>
-                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: isApproved ? '#374151' : '#111827', border: '1px solid #374151', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#fff', fontSize: '13px', outline: 'none', boxSizing: 'border-box', cursor: isApproved ? 'not-allowed' : 'text' }} />
+                  <input type="text" placeholder="Special instructions" value={rx.instructions || ''} disabled={isApproved} onChange={e => { const newRx = [...(draft.prescription||[])]; if(!newRx[idx]) newRx[idx]={}; newRx[idx].instructions = e.target.value; setDraft({...draft, prescription: newRx}) }} style={{ width: '100%', background: isApproved ? '#f1f5f9' : '#ffffff', border: '1px solid #e2e8f0', padding: '10px 12px', borderRadius: '6px', color: isApproved ? '#94a3b8' : '#334155', fontSize: '13px', outline: 'none', boxSizing: 'border-box', cursor: isApproved ? 'not-allowed' : 'text' }} />
                 </div>
               ))}
             </div>
 
             {/* Follow-up Date */}
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
                 Follow-up Date
               </label>
               <input 
@@ -1164,11 +1190,11 @@ export function Soap({
                 value={draft.follow_up_date || ''}
                 onChange={e => setDraft({...draft, follow_up_date: e.target.value})}
                 style={{
-                  background: isApproved ? '#374151' : '#1f2937',
-                  border: '1px solid #374151',
+                  background: isApproved ? '#f8fafc' : '#ffffff',
+                  border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   padding: '10px 12px',
-                  color: isApproved ? '#94a3b8' : '#e2e8f0',
+                  color: isApproved ? '#94a3b8' : '#334155',
                   fontSize: '14px',
                   outline: 'none',
                   width: '200px',
@@ -1181,7 +1207,7 @@ export function Soap({
           </div>
           
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '32px', borderTop: '1px solid #1f2937', paddingTop: '24px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '32px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
             <button 
               className="btn btn-outline"
               onClick={() => {
@@ -1250,15 +1276,15 @@ export function Soap({
         <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999 }}>
           <div className="modal" style={{ 
             width: '540px', 
-            background: '#111827', 
-            color: '#cbd5e1', 
-            border: '1px solid #374151',
+            background: '#ffffff', 
+            color: '#334155', 
+            border: '1px solid #e2e8f0',
             padding: '28px',
             borderRadius: '16px'
           }}>
-            <div className="modal-hd" style={{ borderBottom: '1px solid #1f2937', paddingBottom: '14px', marginBottom: '20px' }}>
+            <div className="modal-hd" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   🎉 Consultation Finalized!
                 </h3>
                 <span style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
@@ -1277,7 +1303,7 @@ export function Soap({
               </button>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
               <button 
                 className="btn btn-primary"
                 onClick={() => {

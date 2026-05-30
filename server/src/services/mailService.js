@@ -755,15 +755,23 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
   try {
     if (resource === 'appointments') {
       const appt = created;
-      // Case-insensitive regex match to resolve clients securely
-      const client = await Client.findOne({ 
-        name: { $regex: new RegExp('^' + appt.ownerName.trim() + '$', 'i') } 
-      });
+      let client = null;
+      if (appt.clientId) {
+        client = await Client.findById(appt.clientId);
+      }
+      if (!client && appt.ownerName) {
+        client = await Client.findOne({ 
+          name: { $regex: new RegExp('^' + appt.ownerName.trim() + '$', 'i') } 
+        });
+      }
       const vet = await Vet.findOne({ name: appt.vetName });
       const clinic = clinicId ? await Clinic.findById(clinicId) : null;
       
       if (vet) {
         await sendDoctorAppointmentMail(vet, appt, client, clinic);
+      }
+      if (client) {
+        await sendClientAppointmentConfirmationMail(client, appt, vet, clinic);
       }
     } else if (resource === 'soapnotes') {
       const soapNote = created;

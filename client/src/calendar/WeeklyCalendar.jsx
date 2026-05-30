@@ -81,54 +81,38 @@ export function WeeklyCalendar({
     const t = (appt.type || '').toLowerCase();
     const status = appt.status;
     
-    if (status === 'Now') {
-      return {
-        bg: '#f0f7ff',
-        borderLeft: '4px solid #2563eb',
-        border: '1px solid rgba(37, 99, 235, 0.08)',
-        color: '#1e40af',
-        tagColor: '#2563eb'
-      };
-    }
-    
-    if (r.includes('vaccin') || t.includes('vaccin')) {
-      return {
-        bg: '#fffbeb',
-        borderLeft: '4px solid #d97706',
-        border: '1px solid rgba(217, 119, 6, 0.08)',
-        color: '#92400e',
-        tagColor: '#d97706'
-      };
-    }
-    
-    if (r.includes('dental') || r.includes('teeth')) {
-      return {
-        bg: '#faf5ff',
-        borderLeft: '4px solid #7c3aed',
-        border: '1px solid rgba(124, 58, 237, 0.08)',
-        color: '#6b21a8',
-        tagColor: '#7c3aed'
-      };
-    }
-    
-    if (r.includes('ear') || r.includes('throat') || r.includes('sneeze') || r.includes('cough') || r.includes('post-op')) {
-      return {
-        bg: '#fef2f2',
-        borderLeft: '4px solid #ef4444',
-        border: '1px solid rgba(239, 68, 68, 0.08)',
-        color: '#991b1b',
-        tagColor: '#ef4444'
-      };
-    }
-    
-    // Default Scheduled Checkup / General Consultation
-    return {
+    // Status-based box colors
+    const isCompleted = status === 'Completed';
+    const boxStyle = isCompleted ? {
       bg: '#f0fdf4',
       borderLeft: '4px solid #10b981',
       border: '1px solid rgba(16, 185, 129, 0.08)',
-      color: '#065f46',
-      tagColor: '#10b981'
+      color: '#065f46'
+    } : {
+      bg: '#eff6ff',
+      borderLeft: '4px solid #3b82f6',
+      border: '1px solid rgba(59, 130, 246, 0.08)',
+      color: '#1e40af'
     };
+
+    // Category Badges
+    let badge = { text: 'Checkup', bg: '#e2e8f0', color: '#475569' };
+    
+    if (r.includes('follow') || t.includes('follow')) {
+      badge = { text: 'Follow Up', bg: '#7c3aed', color: '#fff' };
+    } else if (r.includes('vaccin') || t.includes('vaccin')) {
+      badge = { text: 'Vaccine', bg: '#d97706', color: '#fff' };
+    } else if (r.includes('dental') || r.includes('teeth')) {
+      badge = { text: 'Dental', bg: '#ef4444', color: '#fff' };
+    } else if (r.includes('surg') || r.includes('op')) {
+      badge = { text: 'Surgery', bg: '#dc2626', color: '#fff' };
+    } else if (r.includes('emerg')) {
+      badge = { text: 'Emergency', bg: '#b91c1c', color: '#fff' };
+    } else if (status === 'Now') {
+      badge = { text: 'In Progress', bg: '#2563eb', color: '#fff' };
+    }
+
+    return { ...boxStyle, badge };
   };
 
   // Handle navigate previous/next week
@@ -233,7 +217,7 @@ export function WeeklyCalendar({
           width: '100%',
           borderCollapse: 'collapse',
           tableLayout: 'fixed',
-          minWidth: viewMode === 'Week' ? '800px' : 'auto'
+          minWidth: viewMode === 'Week' ? '1200px' : 'auto'
         }}>
           <thead>
             <tr>
@@ -331,13 +315,14 @@ export function WeeklyCalendar({
                                 border: card.border,
                                 borderLeft: card.borderLeft,
                                 borderRadius: '6px',
-                                padding: '8px 10px',
+                                padding: '8px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '3px',
+                                gap: '4px',
                                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+                                overflow: 'hidden'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'translateY(-1px)';
@@ -348,17 +333,31 @@ export function WeeklyCalendar({
                                 e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.03)';
                               }}
                             >
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                <span style={{ fontSize: '14px', flexShrink: 0 }}>
-                                  {getSpeciesEmoji(appt.species, appt.breed)}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
+                                  <span style={{ fontSize: '13px', flexShrink: 0 }}>
+                                    {getSpeciesEmoji(appt.species, appt.breed)}
+                                  </span>
+                                  <strong style={{ color: card.color, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {appt.petName}
+                                  </strong>
+                                </div>
+                                <span style={{ 
+                                  background: card.badge.bg, 
+                                  color: card.badge.color, 
+                                  fontSize: '9px', 
+                                  fontWeight: '700', 
+                                  padding: '2px 6px', 
+                                  borderRadius: '12px',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0
+                                }}>
+                                  {card.badge.text}
                                 </span>
-                                <strong style={{ color: card.color, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {appt.petName} - {appt.ownerName}
-                                </strong>
                               </div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {format12h(appt.time)} · {appt.reason} {appt.status === 'Now' && '· NOW'}
-                              </span>
+                              <div style={{ color: card.color, fontSize: '11px', opacity: 0.8, paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {appt.ownerName}
+                              </div>
                             </div>
                           );
                         })}
