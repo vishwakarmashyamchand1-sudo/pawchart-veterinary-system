@@ -60,13 +60,13 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
 
   // 3. Determine Symptom Category
   let category = 'general';
-  if (t.includes('scratch') || t.includes('ear') || t.includes('otitis') || t.includes('khujli') || t.includes('kaan') || t.includes('discharge') || t.includes('exudate')) {
+  if (t.includes('scratch') || /\bear\b/.test(t) || t.includes('otitis') || t.includes('khujli') || t.includes('kaan') || t.includes('discharge') || t.includes('exudate')) {
     category = 'ear';
-  } else if (t.includes('skin') || t.includes('itch') || t.includes('hair loss') || t.includes('rash') || t.includes('allergy') || t.includes('allergi')) {
+  } else if (/\bskin\b/.test(t) || /\bitch\b/.test(t) || t.includes('hair loss') || t.includes('rash') || t.includes('allergy') || t.includes('allergi')) {
     category = 'skin';
-  } else if (t.includes('vomit') || t.includes('diarrhea') || t.includes('dast') || t.includes('loose motion') || t.includes('ulti') || t.includes('tummy') || t.includes('pet')) {
+  } else if (t.includes('vomit') || t.includes('diarrhea') || t.includes('dast') || t.includes('loose motion') || t.includes('ulti') || t.includes('tummy') || /\bpet\b/.test(t)) {
     category = 'tummy';
-  } else if (t.includes('cough') || t.includes('sneeze') || t.includes('chheenk') || t.includes('khansi') || t.includes('cold') || t.includes('tracheal') || t.includes('nasal')) {
+  } else if (t.includes('cough') || t.includes('sneeze') || t.includes('chheenk') || t.includes('khansi') || /\bcold\b/.test(t) || t.includes('tracheal') || t.includes('nasal')) {
     category = 'respiratory';
   }
 
