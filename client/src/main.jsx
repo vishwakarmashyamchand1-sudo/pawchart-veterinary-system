@@ -1657,7 +1657,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       totalVaxes += petVaxes.length;
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
-        if (s.includes('completed') || s.includes('up to date') || v.lastDate) {
+        if (s.includes('completed') || s.includes('waived') || v.lastDate) {
           hasCompleted = true;
         }
         if (s.includes('overdue')) overdue++;
@@ -2157,10 +2157,19 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return { ...v, displayStatus };
   });
 
+  const hasRecordedVax = petVax.some(v => 
+    String(v.status).toLowerCase().includes('completed') || 
+    String(v.status).toLowerCase().includes('waived') || 
+    v.lastDate
+  );
+
   let vaxIndicatorColor = '#94a3b8'; // Grey
-  let vaxIndicatorTooltip = 'Vaccines Pending';
+  let vaxIndicatorTooltip = 'Not recorded';
   if (petVax.length > 0) {
-    if (petVax.some(v => v.displayStatus === 'Overdue')) {
+    if (!hasRecordedVax) {
+      vaxIndicatorColor = '#94a3b8'; // Grey
+      vaxIndicatorTooltip = 'Not recorded';
+    } else if (petVax.some(v => v.displayStatus === 'Overdue')) {
       vaxIndicatorColor = 'var(--red)';
       vaxIndicatorTooltip = 'Vaccines Overdue!';
     } else if (petVax.some(v => v.displayStatus === 'Due soon')) {
