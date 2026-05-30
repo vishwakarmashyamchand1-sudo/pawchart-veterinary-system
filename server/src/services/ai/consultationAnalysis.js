@@ -89,7 +89,7 @@ export function analyzeConsultation(transcript, petContext = null, pastNotes = [
   profile.meds.forEach(mKey => {
     const drug = VETERINARY_DRUG_DATABASE[mKey];
     if (drug) {
-      let computedDose = drug.dosage;
+      let computedDose = drug.dosage || 'TBD based on weight';
       if (drug.doseRate && weightKg !== null) {
         // Calculate dosage e.g. weightKg * doseRate
         const mg = Math.round(weightKg * drug.doseRate);
