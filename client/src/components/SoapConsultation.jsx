@@ -317,6 +317,8 @@ export function Soap({
             objective: result.preview.objective || draft.objective,
             assessment: result.preview.assessment || draft.assessment,
             plan: result.preview.plan || draft.plan,
+              chief_complaint: result.consultation?.chief_complaint || draft.chief_complaint,
+              diagnosis: result.consultation?.diagnosis || draft.diagnosis,
             prescription: result.preview.prescription || [],
             follow_up_date: result.preview.follow_up_date || ''
           });
