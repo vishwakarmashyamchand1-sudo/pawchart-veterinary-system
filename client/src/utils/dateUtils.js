@@ -102,7 +102,7 @@ export function format12h(t) {
       const hr12 = hr % 12 || 12;
       return `${hr12}:${m} ${ampm}`;
     };
-    return `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
+    return `${formatSingle(parts[0])}`;
   }
   const [h, m] = t.split(':');
   if (!h || !m) return t;

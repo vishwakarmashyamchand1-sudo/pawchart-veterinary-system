@@ -19,7 +19,7 @@ for (let sh = 9; sh < 18; sh++) {
     const h12_2 = nextHour % 12 || 12;
     const m_2 = nextMin === 0 ? '00' : '30';
     HALF_HOUR_SLOTS.push({
-      label: `${h12_1}:${m_1} ${ampm1} - ${h12_2}:${m_2} ${ampm2}`,
+      label: `${h12_1}:${m_1} ${ampm1}`,
       startMins: sh * 60 + sm,
       endMins: nextHour * 60 + nextMin,
       dbFormat: `${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')}-${String(nextHour).padStart(2,'0')}:${String(nextMin).padStart(2,'0')}`
@@ -222,8 +222,9 @@ export function WeeklyCalendar({
           <thead>
             <tr>
               {/* Hour Column Header */}
-              <th style={{
-                width: '60px',
+              <th style={{ 
+                width: '75px',
+                whiteSpace: 'nowrap',
                 padding: '10px',
                 background: 'var(--surface-2)',
                 borderBottom: '2px solid var(--border)',
@@ -268,6 +269,7 @@ export function WeeklyCalendar({
                 <td style={{
                   padding: '12px 6px',
                   fontSize: '11px',
+                  whiteSpace: 'nowrap',
                   fontWeight: '700',
                   color: 'var(--text-3)',
                   textAlign: 'right',

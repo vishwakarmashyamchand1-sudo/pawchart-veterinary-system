@@ -170,7 +170,8 @@ export const SoapNote = model('SoapNote', soapNoteSchema);
 const vaccineMasterSchema = new Schema({
   name: { type: String, required: true },
   species: { type: String, required: true },
-  recommendedAge: { type: String, required: true }
+  recommendedAge: { type: String, required: true },
+  desc: { type: String }
 }, { timestamps: true });
 
 export const VaccineMaster = model('VaccineMaster', vaccineMasterSchema);
