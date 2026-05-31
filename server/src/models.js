@@ -159,6 +159,18 @@ const soapNoteSchema = new Schema(
   { timestamps: true }
 );
 
+// Add performance indexes
+clientSchema.index({ clinic_id: 1, createdAt: -1 });
+vetSchema.index({ clinic_id: 1, status: 1 });
+appointmentSchema.index({ clinic_id: 1, date: 1, time: 1 });
+appointmentSchema.index({ clinic_id: 1, createdAt: -1 });
+vaccinationSchema.index({ clinic_id: 1, dueDate: 1 });
+vaccinationSchema.index({ clinic_id: 1, createdAt: -1 });
+followUpSchema.index({ clinic_id: 1, planDate: 1, status: 1 });
+followUpSchema.index({ clinic_id: 1, createdAt: -1 });
+weightLogSchema.index({ clinic_id: 1, date: -1 });
+soapNoteSchema.index({ clinic_id: 1, createdAt: -1 });
+
 export const Client = model('Client', clientSchema);
 export const Vet = model('Vet', vetSchema);
 export const Appointment = model('Appointment', appointmentSchema);
