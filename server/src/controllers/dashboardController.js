@@ -48,26 +48,19 @@ export const getDashboardStats = async (req, res, next) => {
 
     const todayPetNames = new Set(todayAppointments.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
-    // Active patients comparison
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    const yesterdayStart = new Date(); yesterdayStart.setDate(yesterdayStart.getDate() - 1); yesterdayStart.setHours(0,0,0,0);
-    const clientsToday = clients.filter(c => new Date(c.createdAt) >= todayStart);
-    const clientsYesterday = clients.filter(c => new Date(c.createdAt) >= yesterdayStart && new Date(c.createdAt) < todayStart);
-    const petsToday = clientsToday.reduce((sum, c) => sum + (c.pets || []).length, 0);
-    const petsYesterday = clientsYesterday.reduce((sum, c) => sum + (c.pets || []).length, 0);
-    const patientsDiff = petsToday - petsYesterday;
-    const patientsHint = patientsDiff >= 0
-      ? `+${patientsDiff} active patients compared to yesterday`
-      : `${patientsDiff} active patients compared to yesterday`;
+    // Active patients comparison (new this month)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0,0,0,0);
+    const newThisMonth = clients
+      .filter(c => new Date(c.createdAt) >= startOfMonth)
+      .reduce((sum, c) => sum + (c.pets || []).length, 0);
+    const patientsHint = `↑ ${newThisMonth} new this month`;
 
-    // Vaccines comparison
+    // Vaccines comparison (overdue vaccines)
     const vaxDue = vaccinations.filter((item) => item.status !== 'Up to date').length;
-    const vaxDueToday = vaccinations.filter(v => v.dueDate <= todayStr && v.status !== 'Up to date').length;
-    const vaxDueYesterday = vaccinations.filter(v => v.dueDate <= yesterdayStr && v.status !== 'Up to date').length;
-    const vaxDiff = vaxDueToday - vaxDueYesterday;
-    const vaxHint = vaxDiff >= 0 
-      ? `+${vaxDiff} due compared to yesterday` 
-      : `${vaxDiff} due compared to yesterday`;
+    const overdueCount = vaccinations.filter(v => v.status === 'Overdue').length;
+    const vaxHint = `⚠ ${overdueCount} overdue`;
 
     // Follow ups pending comparison
     const followPending = followUps.filter((item) => item.status === 'Pending').length;
@@ -75,8 +68,8 @@ export const getDashboardStats = async (req, res, next) => {
     const followPendingYesterday = followUps.filter(f => f.planDate <= yesterdayStr && f.status === 'Pending').length;
     const followDiff = followPendingToday - followPendingYesterday;
     const followHint = followDiff >= 0 
-      ? `+${followDiff} more pending than yesterday` 
-      : `${followDiff} fewer pending than yesterday`;
+      ? `↑ ${followDiff} from yesterday` 
+      : `↓ ${Math.abs(followDiff)} from yesterday`;
 
     res.json({
       stats: {

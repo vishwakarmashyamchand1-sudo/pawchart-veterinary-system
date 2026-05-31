@@ -32,20 +32,21 @@ const navByRole = {
     ['Follow-ups', 'followup', 'loop']
   ],
   superadmin: [
-    ['Clinics', 'dashboard', 'home'],
+    ['Clinics', 'dashboard', 'clinic'],
     ['Vaccines Config', 'vaccinemaster', 'shot']
   ]
 };
 const icons = {
-  home: '⌂',
-  vet: '+',
-  paw: '◆',
-  cal: '◫',
-  shot: '!',
-  loop: '↻',
-  note: 'N',
-  scale: 'S',
-  chart: '▥'
+  home: '🏠',
+  vet: '🩺',
+  paw: '🐾',
+  cal: '📅',
+  shot: '💉',
+  loop: '🔄',
+  note: '📝',
+  scale: '⚖️',
+  chart: '📊',
+  clinic: '🏥'
 };
 
 function useApi(selectedClinicId) {
@@ -78,7 +79,7 @@ function useApi(selectedClinicId) {
       // Make statuses fully dynamic by computing them against the current time
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
+
       const vaxIndex = names.indexOf('vaccinations');
       if (vaxIndex !== -1 && Array.isArray(results[vaxIndex])) {
         results[vaxIndex].forEach(v => {
@@ -234,7 +235,7 @@ function ClinicCreateModal({ onClose, onSave }) {
   };
 
   return (
-    <div 
+    <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -252,7 +253,7 @@ function ClinicCreateModal({ onClose, onSave }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section 
+      <section
         className="modal clinic-create-card"
         style={{
           width: 'min(560px, calc(100% - 32px))',
@@ -270,8 +271,8 @@ function ClinicCreateModal({ onClose, onSave }) {
           <h3>Create New Veterinary Clinic</h3>
           <button type="button" className="modal-x" onClick={onClose}>×</button>
         </div>
-        
-        <form 
+
+        <form
           onSubmit={handleSubmit}
           style={{
             display: 'flex',
@@ -280,13 +281,13 @@ function ClinicCreateModal({ onClose, onSave }) {
             flex: 1
           }}
         >
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            marginBottom: '18px', 
-            maxHeight: 'calc(100vh - 220px)', 
-            overflowY: 'auto', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '18px',
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
             paddingRight: '6px',
             minHeight: 0,
             flex: 1
@@ -320,10 +321,10 @@ function ClinicCreateModal({ onClose, onSave }) {
                   const checked = selectedSpecs.includes(spec);
                   return (
                     <label key={spec} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-2)', fontWeight: '500' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={checked} 
-                        onChange={(e) => handleSpecChange(spec, e.target.checked)} 
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => handleSpecChange(spec, e.target.checked)}
                         style={{ width: '15px', height: '15px', cursor: 'pointer' }}
                       />
                       {spec}
@@ -334,11 +335,11 @@ function ClinicCreateModal({ onClose, onSave }) {
             </div>
             <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
           </div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            justifyContent: 'flex-end', 
-            borderTop: '1px solid var(--border)', 
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'flex-end',
+            borderTop: '1px solid var(--border)',
             paddingTop: '14px',
             flexShrink: 0,
             flexWrap: 'wrap'
@@ -382,8 +383,8 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
                 clinics.map(c => (
                   <tr key={c._id}>
                     <td style={{ paddingLeft: '18px' }}>
-                      <button 
-                        className="btn btn-sm btn-outline" 
+                      <button
+                        className="btn btn-sm btn-outline"
                         style={{ border: 0, padding: 0, background: 'transparent', fontWeight: '700', color: 'var(--text)', textAlign: 'left', fontSize: '13.5px' }}
                         onClick={() => onSelect(c)}
                         title="Click to launch clinic dashboard"
@@ -401,16 +402,16 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
                     <td style={{ color: 'var(--text-2)', fontSize: '13px' }}>{c.specialties || 'General Practice, Vaccines, Surgery'}</td>
                     <td style={{ textAlign: 'right', paddingRight: '24px' }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
-                        <button 
-                          className="btn btn-outline" 
+                        <button
+                          className="btn btn-outline"
                           style={{ padding: '6px 8px', color: 'var(--text-3)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           onClick={() => onEdit(c)}
                           title="Edit Clinic Details"
                         >
                           ✏️
                         </button>
-                        <button 
-                          className="btn btn-outline" 
+                        <button
+                          className="btn btn-outline"
                           style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           onClick={() => onDelete(c)}
                           title="Delete Clinic"
@@ -434,9 +435,9 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
       </div>
 
       {openForm && (
-        <ClinicCreateModal 
-          onClose={() => setOpenForm(false)} 
-          onSave={(body) => onCreate(body).then(() => setOpenForm(false)).catch(err => window.showToast(err.message, 'error'))} 
+        <ClinicCreateModal
+          onClose={() => setOpenForm(false)}
+          onSave={(body) => onCreate(body).then(() => setOpenForm(false)).catch(err => window.showToast(err.message, 'error'))}
         />
       )}
     </div>
@@ -503,7 +504,7 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
   };
 
   return (
-    <div 
+    <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -521,7 +522,7 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section 
+      <section
         className="modal clinic-edit-card"
         style={{
           width: 'min(560px, calc(100% - 32px))',
@@ -539,8 +540,8 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
           <h3>Edit Clinic - {clinic.name}</h3>
           <button type="button" className="modal-x" onClick={onClose}>×</button>
         </div>
-        
-        <form 
+
+        <form
           onSubmit={handleSubmit}
           style={{
             display: 'flex',
@@ -549,13 +550,13 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
             flex: 1
           }}
         >
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            marginBottom: '18px', 
-            maxHeight: 'calc(100vh - 220px)', 
-            overflowY: 'auto', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '18px',
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
             paddingRight: '6px',
             minHeight: 0,
             flex: 1
@@ -589,10 +590,10 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
                   const checked = selectedSpecs.includes(spec);
                   return (
                     <label key={spec} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-2)', fontWeight: '500' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={checked} 
-                        onChange={(e) => handleSpecChange(spec, e.target.checked)} 
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => handleSpecChange(spec, e.target.checked)}
                         style={{ width: '15px', height: '15px', cursor: 'pointer' }}
                       />
                       {spec}
@@ -603,11 +604,11 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
             </div>
             <label className="field-label">Email<input className="input" required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
           </div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            justifyContent: 'flex-end', 
-            borderTop: '1px solid var(--border)', 
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'flex-end',
+            borderTop: '1px solid var(--border)',
             paddingTop: '14px',
             flexShrink: 0,
             flexWrap: 'wrap'
@@ -654,7 +655,7 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}</h2>
-        
+
         {vaccination.isNew ? (
           <>
             <Input label="Vaccine Name" value={vaccine} onChange={setVaccine} />
@@ -662,11 +663,11 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
           </>
         ) : (
           <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
-            <strong>Vaccine:</strong> {vaccination.vaccine} <br/>
+            <strong>Vaccine:</strong> {vaccination.vaccine} <br />
             <strong>Due Date:</strong> {vaccination.dueDate}
           </div>
         )}
-        
+
         <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
         {(status === 'Completed' || status === 'Up to date') && (
           <>
@@ -731,14 +732,14 @@ function VaccinesConfig({ vaccines, create }) {
         <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {speciesList.map(sp => (
             <section key={sp} className="panel no-pad">
-              <button 
+              <button
                 onClick={() => toggle(sp)}
                 style={{ width: '100%', padding: '16px 20px', background: 'transparent', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontWeight: '600' }}
               >
                 <span>{sp}</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>{expanded[sp] ? '▲' : '▼'}</span>
               </button>
-              
+
               {expanded[sp] && (
                 <div style={{ borderTop: '1px solid var(--border)' }}>
                   <table className="data-table">
@@ -804,7 +805,7 @@ function App() {
     };
 
     window.alert = (msg) => {
-      window.showToast?.(msg, 'info');
+      window.showToast?.(msg, 'error');
     };
   }, []);
 
@@ -819,7 +820,7 @@ function App() {
       if (res.ok) {
         const list = await res.json();
         setClinics(list);
-        
+
         // Removed auto-assign so the dropdown stays on "Switch Clinic" until the user explicitly selects one
       }
     } catch (err) {
@@ -972,11 +973,11 @@ function App() {
               <option value="admin">Clinic Admin</option>
               <option value="doctor">Doctor</option>
             </select>
-            
+
             {role === 'doctor' && (
               <>
                 <label className="sb-field-label" style={{ marginTop: '16px' }}>Clinic</label>
-                <select 
+                <select
                   className="sb-select"
                   value={selectedClinic?._id || ''}
                   onChange={(e) => {
@@ -999,7 +1000,7 @@ function App() {
                 </select>
 
                 <label className="sb-field-label" style={{ marginTop: '16px' }}>Doctor</label>
-                <select 
+                <select
                   className="sb-select"
                   value={selectedDoctor?._id || ''}
                   onChange={(e) => {
@@ -1022,10 +1023,10 @@ function App() {
               </>
             )}
           </div>
-          
+
           {role === 'admin' && clinics.length > 0 ? (
             <div style={{ padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'flex', gap: '6px' }}>
-              <select 
+              <select
                 className="sb-select"
                 style={{ flex: 1 }}
                 value={selectedClinic?._id || ''}
@@ -1105,8 +1106,8 @@ function App() {
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} clients={data.clients} />}
                 {screen === 'booking' && <Booking vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
                 {screen === 'soap' && (
-                  <Soap 
-                    appointment={selectedAppointment} 
+                  <Soap
+                    appointment={selectedAppointment}
                     clients={data.clients}
                     appointments={data.appointments}
                     soapNotes={data.soapnotes}
@@ -1115,13 +1116,13 @@ function App() {
                     followups={data.followups}
                     create={create}
                     update={update}
-                    go={setScreen} 
+                    go={setScreen}
                     setBookingClient={setBookingClient}
                     setBookingPet={setBookingPet}
                   />
                 )}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} doctorPatients={doctorPatients} selectedDoctor={selectedDoctor} onPetSelect={setSelectedPet} role={role} />}
-                {screen === 'followup' && <FollowUps rows={role === 'doctor' && selectedDoctor ? (data.followups || []).filter(f => f.vetName === selectedDoctor.name) : (data.followups || [])} />}
+                {screen === 'followup' && <FollowUps rows={role === 'doctor' && selectedDoctor ? (data.followups || []).filter(f => f.vetName === selectedDoctor.name) : (data.followups || [])} selectedClinic={selectedClinic} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
                     !selectedDoctor ? (
@@ -1129,13 +1130,13 @@ function App() {
                         <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Select a doctor from the sidebar to manage your appointments.</p>
                       </div>
                     ) : (
-                      <DoctorDashboard 
-                        appointments={data.appointments} 
+                      <DoctorDashboard
+                        appointments={data.appointments}
                         clients={data.clients}
-                        selectedDoctor={selectedDoctor} 
-                        selectedClinic={selectedClinic} 
-                        go={setScreen} 
-                        update={update} 
+                        selectedDoctor={selectedDoctor}
+                        selectedClinic={selectedClinic}
+                        go={setScreen}
+                        update={update}
                         onStartConsultation={setSelectedAppointment}
                       />
                     )
@@ -1150,16 +1151,16 @@ function App() {
       </div>
 
       {editingClinic && (
-        <ClinicEditModal 
-          clinic={editingClinic} 
-          onClose={() => setEditingClinic(null)} 
-          onSave={handleUpdateClinic} 
+        <ClinicEditModal
+          clinic={editingClinic}
+          onClose={() => setEditingClinic(null)}
+          onSave={handleUpdateClinic}
         />
       )}
 
       {/* Custom Confirmation Modal */}
       {confirmState && (
-        <div className="modal-wrap">
+        <div className="modal-wrap" style={{ zIndex: 200 }}>
           <div className="modal" style={{ width: '420px', padding: '24px' }}>
             <div className="modal-hd" style={{ marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Confirm Action</h3>
@@ -1170,9 +1171,9 @@ function App() {
             </p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button className="btn btn-outline" onClick={() => setConfirmState(null)}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                style={{ background: 'var(--red)', color: 'white' }} 
+              <button
+                className="btn btn-primary"
+                style={{ background: 'var(--red)', color: 'white' }}
                 onClick={async () => {
                   await confirmState.onConfirm();
                   setConfirmState(null);
@@ -1286,8 +1287,7 @@ function MonitoringBox({ count = 3 }) {
       border: '1px solid #1e293b',
       borderRadius: '12px',
       padding: '16px',
-      color: '#fff',
-      marginTop: '12px'
+      color: '#fff'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#60a5fa', fontWeight: '700' }}>
         <span className="pulse-dot" style={{ background: '#3b82f6' }} /> Background Monitoring
@@ -1304,7 +1304,7 @@ function MonitoringBox({ count = 3 }) {
 
 function Dashboard({ data, appointments = [], clients = [], go }) {
   const stats = data?.stats || {};
-  
+
   // Real time date
   const todayStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -1332,8 +1332,8 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
   });
   const yesterdayCount = yesterdayAppts.length;
   const diff = todayCount - yesterdayCount;
-  const apptsHint = diff >= 0 
-    ? `+${diff} appointments compared to yesterday` 
+  const apptsHint = diff >= 0
+    ? `+${diff} appointments compared to yesterday`
     : `${diff} appointments compared to yesterday`;
 
   // Filter and sort today's appointments for the dashboard list
@@ -1379,36 +1379,36 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
   }
 
   return (
-    <Screen 
-      title="Dashboard" 
-      sub={subtitle} 
+    <Screen
+      title="Dashboard"
+      sub={subtitle}
       action={<button className="btn btn-primary" onClick={() => go('booking')}>+ New Appointment</button>}
     >
       <div className="stat-grid">
-        <Stat 
-          label="TODAY'S APPOINTMENTS" 
-          value={todayCount} 
-          hint={apptsHint} 
-          primary 
+        <Stat
+          label="TODAY'S APPOINTMENTS"
+          value={todayCount}
+          hint={apptsHint}
+          primary
         />
-        <Stat 
-          label="ACTIVE PATIENTS" 
-          value={stats.activePatients ?? 0} 
-          hint={stats.activePatientsHint || "No new patients this month"} 
+        <Stat
+          label="ACTIVE PATIENTS"
+          value={`${stats.activePatients ?? 0} 🐾`}
+          hint={stats.activePatientsHint || "No new patients this month"}
         />
-        <Stat 
-          label="VACCINES DUE" 
-          value={stats.vaccinesDue ?? 0} 
-          hint={stats.vaccinesDueHint || "No vaccines due"} 
-          danger 
+        <Stat
+          label="VACCINES DUE"
+          value={`${stats.vaccinesDue ?? 0} 💉`}
+          hint={stats.vaccinesDueHint || "No vaccines due"}
+          danger
         />
-        <Stat 
-          label="FOLLOW-UPS PENDING" 
-          value={stats.followUpsPending ?? 0} 
-          hint={stats.followUpsPendingHint || "No pending follow-ups"} 
+        <Stat
+          label="FOLLOW-UPS PENDING"
+          value={`${stats.followUpsPending ?? 0} 🔄`}
+          hint={stats.followUpsPendingHint || "No pending follow-ups"}
         />
       </div>
-      
+
       <div className="grid-two">
         <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -1417,7 +1417,7 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
               {todayCount} total
             </span>
           </div>
-          
+
           {todayApptsSorted.length > 0 ? (
             <AppointmentList rows={todayApptsSorted} clients={clients} />
           ) : (
@@ -1431,40 +1431,42 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
             </div>
           )}
         </section>
-        
-        <section className="panel" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
-          <div className="card-label" style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '.07em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>
-            ALERTS & REMINDERS
-          </div>
-          
-          <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
-            {alertsList.length > 0 ? (
-              alertsList.map((alert) => (
-                <AlertCard 
-                  key={alert._id || alert.title}
-                  type={alert.type} 
-                  petName={alert.petName} 
-                  title={alert.title} 
-                  sub={alert.sub} 
-                />
-              ))
-            ) : (
-              <div style={{
-                padding: '30px 16px',
-                textAlign: 'center',
-                color: 'var(--text-3)',
-                fontSize: '13px',
-                border: '1.5px dashed var(--border)',
-                borderRadius: '8px',
-                fontStyle: 'italic'
-              }}>
-                No alerts or reminders
-              </div>
-            )}
-          </div>
-          
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <section className="panel" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+            <div className="card-label" style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '.07em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>
+              ALERTS & REMINDERS
+            </div>
+
+            <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+              {alertsList.length > 0 ? (
+                alertsList.map((alert) => (
+                  <AlertCard
+                    key={alert._id || alert.title}
+                    type={alert.type}
+                    petName={alert.petName}
+                    title={alert.title}
+                    sub={alert.sub}
+                  />
+                ))
+              ) : (
+                <div style={{
+                  padding: '30px 16px',
+                  textAlign: 'center',
+                  color: 'var(--text-3)',
+                  fontSize: '13px',
+                  border: '1.5px dashed var(--border)',
+                  borderRadius: '8px',
+                  fontStyle: 'italic'
+                }}>
+                  No alerts or reminders
+                </div>
+              )}
+            </div>
+          </section>
+
           <MonitoringBox count={stats.followUpsPending ?? 0} />
-        </section>
+        </div>
       </div>
     </Screen>
   );
@@ -1483,12 +1485,12 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
   const [editingVet, setEditingVet] = useState(null);
 
   return (
-    <Screen 
-      title="Veterinarians" 
-      sub={`${selectedClinic?.name || 'Clinic'} · ${vets.length} vets on staff`} 
+    <Screen
+      title="Veterinarians"
+      sub={`${selectedClinic?.name || 'Clinic'} · ${vets.length} vets on staff`}
       action={<button className="btn btn-primary" onClick={() => setOpenOnboard(true)}>+ Onboard Vet</button>}
     >
-      <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
+      <section style={{ background: 'transparent', border: 'none' }}>
         <table className="data-table">
           <thead>
             <tr>
@@ -1504,17 +1506,17 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
             {vets.length > 0 ? (
               vets.map((vet) => {
                 let displayStatus = vet.status || 'Available';
-                
+
                 const now = new Date();
                 const nowStr = now.toDateString();
-                
+
                 const inConsultation = appointments.some(appt => {
                   if (appt.vetName !== vet.name) return false;
                   if (appt.status === 'Completed' || appt.status === 'Cancelled') return false;
-                  
+
                   const apptDate = new Date(appt.date);
                   if (nowStr !== apptDate.toDateString()) return false;
-                  
+
                   if (!appt.time) return false;
                   let startHour, startMin, endHour, endMin;
                   if (appt.time.includes('-')) {
@@ -1530,13 +1532,13 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                       endMin = endMin % 60;
                     }
                   }
-                  
+
                   const start = new Date(now);
                   start.setHours(startHour, startMin, 0, 0);
-                  
+
                   const end = new Date(now);
                   end.setHours(endHour, endMin, 0, 0);
-                  
+
                   return now >= start && now <= end;
                 });
 
@@ -1545,42 +1547,42 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                 }
 
                 return (
-                <tr key={vet._id}>
-                  <td style={{ paddingLeft: '18px' }}>
-                    <div className="td-name">{vet.name}</div>
-                    <div className="td-sub">{vet.email}</div>
-                  </td>
-                  <td>{vet.specialization || 'General Practice'}</td>
-                  <td>{vet.experienceYears ? `${vet.experienceYears} yrs` : 'N/A'}</td>
-                  <td>{vet.consultationFee ? `$${vet.consultationFee}` : 'N/A'}</td>
-                  <td>
-                    <Badge value={displayStatus} />
-                  </td>
-                  <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                    <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => setEditingVet(vet)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
-                        onClick={() => {
-                          window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
-                            onDelete('vets', vet._id);
-                          });
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
+                  <tr key={vet._id}>
+                    <td style={{ paddingLeft: '18px' }}>
+                      <div className="td-name">{vet.name}</div>
+                      <div className="td-sub">{vet.email}</div>
+                    </td>
+                    <td>{vet.specialization || 'General Practice'}</td>
+                    <td>{vet.experienceYears ? `${vet.experienceYears} yrs` : 'N/A'}</td>
+                    <td>{vet.consultationFee ? `$${vet.consultationFee}` : 'N/A'}</td>
+                    <td>
+                      <Badge value={displayStatus} />
+                    </td>
+                    <td style={{ textAlign: 'right', paddingRight: '24px' }}>
+                      <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                          onClick={() => setEditingVet(vet)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
+                          onClick={() => {
+                            window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
+                              onDelete('vets', vet._id);
+                            });
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>
@@ -1593,29 +1595,29 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
       </section>
 
       {openOnboard && (
-        <VetModal 
-          onClose={() => setOpenOnboard(false)} 
+        <VetModal
+          onClose={() => setOpenOnboard(false)}
           onSave={(body) => create('vets', body)
             .then(() => {
               window.showToast('Veterinarian onboarded successfully!', 'success');
               setOpenOnboard(false);
             })
             .catch(err => window.showToast(err.message, 'error'))
-          } 
+          }
         />
       )}
 
       {editingVet && (
-        <VetModal 
-          vet={editingVet} 
-          onClose={() => setEditingVet(null)} 
+        <VetModal
+          vet={editingVet}
+          onClose={() => setEditingVet(null)}
           onSave={(body) => update('vets', editingVet._id, body)
             .then(() => {
               window.showToast('Veterinarian updated successfully!', 'success');
               setEditingVet(null);
             })
             .catch(err => window.showToast(err.message, 'error'))
-          } 
+          }
         />
       )}
     </Screen>
@@ -1678,10 +1680,10 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
     const todayStr = getLocalDateString();
     const clientAppts = appointments.filter(a => {
       if (a.status === 'Completed' || a.status === 'Cancelled') return false;
-      
+
       const isMatch = (clientPets || []).some(p => a.petId ? a.petId === p._id : (a.petName.toLowerCase() === p.name.toLowerCase() && a.ownerName === clientName));
       if (!isMatch) return false;
-      
+
       const apptDateOnly = a.date && a.date.includes('T') ? a.date.split('T')[0] : a.date;
       if (apptDateOnly > todayStr) return true;
       if (apptDateOnly === todayStr) {
@@ -1690,7 +1692,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       }
       return false;
     });
-    
+
     if (clientAppts.length === 0) return <span style={{ color: 'var(--text-3)' }}>None</span>;
 
     clientAppts.sort((a, b) => {
@@ -1699,7 +1701,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       return new Date(`${a.date}T${timeA}`) - new Date(`${b.date}T${timeB}`);
     });
     const next = clientAppts[0];
-    
+
     let timeStr = next.time;
     try {
       if (next.time.includes('-')) {
@@ -1727,10 +1729,10 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
         const hr12 = hr % 12 || 12;
         timeStr = `${hr12}:${m || '00'} ${ampm}`;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     let prefix = next.date === todayStr ? 'Today ' : `${new Date(next.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} `;
-    
+
     let badgeColor = 'blue';
     if (next.petName === 'Luna') {
       prefix = 'Follow-up ';
@@ -1755,22 +1757,22 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   };
 
   return (
-    <Screen 
-      title="Clients & Pets" 
-      sub={`${clients.reduce((sum, c) => sum + (c.pets || []).length, 0)} pets across ${clients.length} client accounts · Owner is the account, each pet is a separate patient`} 
+    <Screen
+      title="Clients & Pets"
+      sub={`${clients.reduce((sum, c) => sum + (c.pets || []).length, 0)} pets across ${clients.length} client accounts · Owner is the account, each pet is a separate patient`}
       action={<button className="btn btn-primary" onClick={() => setOpen(true)}>+ Register New Client</button>}
     >
       <div className="search-row">
-        <input 
-          className="search-box" 
-          placeholder="Search by owner name, pet name, or phone..." 
+        <input
+          className="search-box"
+          placeholder="Search by owner name, pet name, or phone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         <button className="btn btn-outline">Search</button>
       </div>
 
-      <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
+      <section style={{ background: 'transparent', border: 'none' }}>
         <table className="data-table">
           <thead>
             <tr>
@@ -1802,8 +1804,8 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         {pet ? (
-                          <span 
-                            className="pet-chip" 
+                          <span
+                            className="pet-chip"
                             style={{ cursor: 'pointer', marginBottom: 0 }}
                             onClick={() => {
                               onSelectPet(pet);
@@ -1816,7 +1818,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                           <span className="td-sub">No pets</span>
                         )}
                         {idx === 0 && pets.length > 1 && (
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setExpandedClients(prev => ({ ...prev, [client._id]: !prev[client._id] }));
@@ -1835,8 +1837,8 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {pet && (
-                          <button 
-                            className="btn btn-outline" 
+                          <button
+                            className="btn btn-outline"
                             style={{ padding: '6px 8px', color: 'var(--text-2)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => {
                               onSelectPet(pet);
@@ -1845,34 +1847,20 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                             title={`View ${pet.name}'s Profile`}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ display: 'block' }}>
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                              <circle cx="12" cy="12" r="3"/>
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
                             </svg>
                           </button>
                         )}
                         {idx === 0 && (
-                          <>
-                            <button 
-                              className="btn btn-outline" 
-                              style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
-                              onClick={() => setEditingClient(client)}
-                              title="Edit Client & Pets"
-                            >
-                              Edit
-                            </button>
-                            <button 
-                              className="btn btn-outline" 
-                              style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
-                              onClick={() => {
-                                window.showConfirm(`Are you sure you want to delete ${client.name} and all their pets?`, () => {
-                                  onDelete('clients', client._id);
-                                });
-                              }}
-                              title="Delete Client & Pets"
-                            >
-                              🗑️
-                            </button>
-                          </>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
+                            onClick={() => setEditingClient(client)}
+                            title="Edit Client & Pets"
+                          >
+                            Edit
+                          </button>
                         )}
                       </div>
                     </td>
@@ -1891,29 +1879,39 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       </section>
 
       {open && (
-        <ClientModal 
-          onClose={() => setOpen(false)} 
+        <ClientModal
+          onClose={() => setOpen(false)}
           onSave={(body) => create('clients', body)
             .then(() => {
               window.showToast('Client added successfully!', 'success');
               setOpen(false);
             })
             .catch(err => window.showToast(err.message, 'error'))
-          } 
+          }
         />
       )}
 
       {editingClient && (
-        <ClientModal 
+        <ClientModal
           client={editingClient}
-          onClose={() => setEditingClient(null)} 
+          onClose={() => setEditingClient(null)}
           onSave={(body) => update('clients', editingClient._id, body)
             .then(() => {
               window.showToast('Client updated successfully!', 'success');
               setEditingClient(null);
             })
             .catch(err => window.showToast(err.message, 'error'))
-          } 
+          }
+          onDeleteClient={() => {
+            window.showConfirm(`Are you sure you want to delete ${editingClient.name} and all their pets?`, () => {
+              onDelete('clients', editingClient._id)
+                .then(() => {
+                  window.showToast('Client deleted successfully!', 'success');
+                  setEditingClient(null);
+                })
+                .catch(err => window.showToast(err.message, 'error'));
+            });
+          }}
         />
       )}
     </Screen>
@@ -1974,22 +1972,22 @@ const getAgeStr = (dobStr) => {
     const birth = new Date(dobStr);
     if (isNaN(birth.getTime())) return dobStr;
     const today = new Date();
-    
+
     let years = today.getFullYear() - birth.getFullYear();
     let months = today.getMonth() - birth.getMonth();
     let days = today.getDate() - birth.getDate();
-    
+
     if (days < 0) {
       months--;
       const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
       days += prevMonth.getDate();
     }
-    
+
     if (months < 0) {
       years--;
       months += 12;
     }
-    
+
     if (years > 0) {
       if (months > 0) {
         return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
@@ -2032,7 +2030,7 @@ const parseWeightRange = (rangeStr) => {
 const getIdealRange = (species = '', breed = '') => {
   const s = (species || '').toLowerCase();
   const b = (breed || '').toLowerCase();
-  
+
   // Dogs
   if (s.includes('dog')) {
     if (b.includes('retriever') || b.includes('shepherd')) return { min: 60, max: 80 };
@@ -2045,28 +2043,28 @@ const getIdealRange = (species = '', breed = '') => {
     if (b.includes('french')) return { min: 16, max: 28 };
     return { min: 25, max: 75 }; // Default dog
   }
-  
+
   // Cats
   if (s.includes('cat')) {
     if (b.includes('maine coon')) return { min: 11, max: 25 };
     if (b.includes('siamese') || b.includes('persian')) return { min: 7, max: 12 };
     return { min: 8, max: 15 }; // Default cat
   }
-  
+
   // Rabbits
   if (s.includes('rabbit') || s.includes('lop')) {
     if (b.includes('flemish')) return { min: 10, max: 22 };
     if (b.includes('netherland') || b.includes('dwarf')) return { min: 1.5, max: 3.5 };
     return { min: 3, max: 10 }; // Default rabbit
   }
-  
+
   // Birds
   if (s.includes('bird') || s.includes('parrot')) {
     if (b.includes('macaw')) return { min: 2, max: 4.5 };
     if (b.includes('cockatiel')) return { min: 0.15, max: 0.25 };
     return { min: 0.1, max: 4 }; // Default bird
   }
-  
+
   return { min: 5, max: 50 }; // Safe overall fallback
 };
 
@@ -2120,13 +2118,13 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return '🐾';
   };
 
-  const petWeights = weights.filter(w => 
+  const petWeights = weights.filter(w =>
     w.petName.toLowerCase() === currentPet.name.toLowerCase() &&
     w.ownerName.toLowerCase() === ownerName.toLowerCase()
   );
   const latestWeightLog = [...petWeights].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   const currentWeight = (() => {
-    if (petWeights.length === 0) return 'No Weight Logged';
+    if (petWeights.length === 0) return '-';
     const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
     const latest = sorted[sorted.length - 1];
     const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
@@ -2139,7 +2137,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
   // dynamic timeline records (visits) from SoapNotes
   const petVisits = soapnotes.filter(s => s.petId ? s.petId === currentPet._id : (s.petName.toLowerCase() === currentPet.name.toLowerCase() && s.ownerName.toLowerCase() === ownerName.toLowerCase()));
-  
+
   // dynamic vaccinations
   const today = new Date().toISOString().split('T')[0];
   const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -2157,9 +2155,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return { ...v, displayStatus };
   });
 
-  const hasRecordedVax = petVax.some(v => 
-    String(v.status).toLowerCase().includes('completed') || 
-    String(v.status).toLowerCase().includes('waived') || 
+  const hasRecordedVax = petVax.some(v =>
+    String(v.status).toLowerCase().includes('completed') ||
+    String(v.status).toLowerCase().includes('waived') ||
     v.lastDate
   );
 
@@ -2208,11 +2206,11 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const calculatedAge = getAgeStr(currentPet.dateOfBirth || currentPet.dob) || currentPet.age || 'Not Provided';
 
   const petDetailsList = [];
-  
+
   if (currentPet.petId) {
     petDetailsList.push({ label: 'Pet ID', value: currentPet.petId });
   }
-  
+
   petDetailsList.push({ label: 'Date of Birth', value: currentPet.dateOfBirth ? formatDOB(currentPet.dateOfBirth) : 'Not Provided' });
 
   petDetailsList.push({ label: 'Microchip', value: (currentPet.microchip && currentPet.microchip.trim()) ? currentPet.microchip : 'Not Provided' });
@@ -2231,7 +2229,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       <span style={{ color: 'var(--text-2)' }}>{ownerName}</span>
       <span>›</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', color: 'var(--text)' }}>
-        🐕 {currentPet.name}
+        🐶 {currentPet.name}
       </span>
     </div>
   );
@@ -2311,10 +2309,10 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     <>
       <Screen title={breadcrumbs} sub="" action={actionButtons}>
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
-          
+
           {/* LEFT COLUMN: PET CARDS & DETAILS */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             {/* BLUE HERO CARD */}
             <div style={{
               background: 'var(--brand)',
@@ -2329,7 +2327,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
                 {ownerPets.length > 1 ? (
-                  <button 
+                  <button
                     type="button"
                     style={{
                       background: 'rgba(255,255,255,0.2)',
@@ -2351,27 +2349,27 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                     &lt;
                   </button>
                 ) : <div style={{ width: '28px' }} />}
-                
+
                 <div style={{ position: 'relative', fontSize: '48px', lineHeight: '1' }}>
                   {petEmoji(currentPet.species)}
-                  <div 
+                  <div
                     title={vaxIndicatorTooltip}
-                    style={{ 
-                      position: 'absolute', 
-                      bottom: '0', 
-                      right: '-4px', 
-                      width: '14px', 
-                      height: '14px', 
-                      borderRadius: '50%', 
+                    style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      right: '-4px',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
                       background: vaxIndicatorColor,
                       border: '2px solid var(--primary)',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} 
+                    }}
                   />
                 </div>
-                
+
                 {ownerPets.length > 1 ? (
-                  <button 
+                  <button
                     type="button"
                     style={{
                       background: 'rgba(255,255,255,0.2)',
@@ -2399,16 +2397,16 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>
                 {currentPet.breed || 'Mixed Breed'} - {currentPet.sex || 'Male'} - {currentPet.spayedNeutered === 'Yes' ? 'Neutered/Spayed' : 'Intact'}
               </div>
-              
+
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                  Age {calculatedAge}
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  ⏱️ {calculatedAge}
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                  Weight: {currentWeight}
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  ⚖️ {currentWeight}
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)' }}>
-                  Blood type: {currentPet.bloodType || '-'}
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  🩸 {currentPet.bloodType || '-'}
                 </span>
               </div>
             </div>
@@ -2419,14 +2417,14 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '800', letterSpacing: '.07em', textTransform: 'uppercase', margin: 0 }}>
                   PET DETAILS
                 </div>
-                <button 
-                  type="button" 
-                  style={{ 
-                    background: 'transparent', 
-                    border: 0, 
-                    color: 'var(--brand)', 
-                    fontSize: '11px', 
-                    fontWeight: '700', 
+                <button
+                  type="button"
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    color: 'var(--brand)',
+                    fontSize: '11px',
+                    fontWeight: '700',
                     cursor: 'pointer',
                     padding: '2px 4px',
                     transition: 'opacity 0.2s'
@@ -2441,7 +2439,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-3)' }}>{item.label}</span>
                     {item.isLink ? (
-                      <span 
+                      <span
                         style={{ color: 'var(--brand)', fontWeight: '700', cursor: 'pointer' }}
                         onClick={() => go('clients')}
                       >
@@ -2481,7 +2479,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
           {/* RIGHT COLUMN: TABS & TIMELINE CONTENT */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             {/* TAB HEADERS */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: '24px', paddingBottom: '4px' }}>
               {[
@@ -2490,8 +2488,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 ['Vaccinations', 'vaccines'],
                 ['Prescriptions', 'prescriptions']
               ].map(([label, id]) => (
-                <button 
-                  key={id} 
+                <button
+                  key={id}
                   style={{
                     border: 0,
                     borderBottom: activeTab === id ? '2px solid var(--brand)' : '2px solid transparent',
@@ -2511,7 +2509,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
 
             {/* TAB CONTENT PANEL */}
             <div style={{ minHeight: '400px' }}>
-              
+
               {/* VISIT HISTORY TIMELINE */}
               {activeTab === 'visits' && (
                 <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: '24px' }}>
@@ -2525,13 +2523,13 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                     background: 'var(--border)',
                     zIndex: '1'
                   }} />
-                  
+
                   {petVisits.length > 0 ? (
                     petVisits.map((visit, index) => {
                       const visitType = visit.assessment.includes('Vaccinations') ? 'Vaccination' : visit.assessment.includes('Gastro') ? 'Sick visit' : 'Annual Wellness';
                       const icon = visitType === 'Vaccination' ? '💉' : visitType === 'Sick visit' ? '💊' : '🩺';
                       const formattedDate = visit.createdAt ? new Date(visit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026';
-                      
+
                       return (
                         <div key={visit._id} style={{ display: 'flex', gap: '16px', marginBottom: '20px', position: 'relative' }}>
                           {/* Timeline node */}
@@ -2551,7 +2549,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           }}>
                             {icon}
                           </div>
-                          
+
                           {/* Timeline Card */}
                           <div className="panel" style={{ flex: 1, padding: '14px 18px', background: '#fff', borderRadius: '12px', border: '1px solid var(--border)' }}>
                             <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>
@@ -2566,8 +2564,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             {visit.tags && visit.tags.length > 0 && (
                               <div className="chips">
                                 {visit.tags.map(t => (
-                                  <span 
-                                    className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`} 
+                                  <span
+                                    className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`}
                                     key={t}
                                     style={{ fontSize: '11px', padding: '2px 8px' }}
                                   >
@@ -2590,19 +2588,19 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               {activeTab === 'weight' && (() => {
                 const sortedPetWeights = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
                 const hasWeights = sortedPetWeights.length > 0;
-                
+
                 const petSpecies = currentPet.species || 'Dog';
                 const petBreed = currentPet.breed || 'Golden Retriever';
-                
+
                 const parsedRange = parseWeightRange(currentPet.weightRange);
                 const idealRange = parsedRange || getIdealRange(petSpecies, petBreed);
                 const idealMin = idealRange.min;
                 const idealMax = idealRange.max;
-                
+
                 const currentWeightRecord = hasWeights ? sortedPetWeights[sortedPetWeights.length - 1] : null;
                 const currentWeight = currentWeightRecord ? currentWeightRecord.value : 0;
                 const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
-                
+
                 const previousWeightRecord = sortedPetWeights.length > 1 ? sortedPetWeights[sortedPetWeights.length - 2] : null;
                 const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
                 const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `(${lastDiff >= 0 ? '+' : ''}${lastDiff.toFixed(1)} lbs from previous visit)` : 'Initial weight visit';
@@ -2611,7 +2609,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
                 const sixMonthsAgo = new Date(latestWeightDate);
                 sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-                
+
                 let sixMonthWeight = currentWeightRecord;
                 for (let i = sortedPetWeights.length - 1; i >= 0; i--) {
                   if (new Date(sortedPetWeights[i].date) <= sixMonthsAgo) {
@@ -2620,21 +2618,21 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   }
                 }
                 if (!sixMonthWeight && sortedPetWeights.length > 0) sixMonthWeight = sortedPetWeights[0];
-                
+
                 const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
                 const sixMonthDiffStr = !hasWeights ? '—' : sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
-                
+
                 const initialWeight = currentWeight - sixMonthDiff;
                 const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
                 const isSignificant = hasWeights && Math.abs(pctChange) > 5;
-                
+
                 let sixMonthTrendStr = !hasWeights ? 'No weight history' : 'Stable weight trend';
                 let sixMonthDiffColor = 'var(--green)';
                 if (isSignificant) {
                   sixMonthTrendStr = '⚠ Dietary review recommended';
                   sixMonthDiffColor = 'var(--amber)';
                 }
-                
+
                 const isWithinRange = hasWeights && currentWeight >= idealMin && currentWeight <= idealMax;
                 const rangeColor = !hasWeights ? 'var(--text-3)' : isWithinRange ? 'var(--green)' : 'var(--amber)';
                 const rangeStr = !hasWeights ? 'Awaiting weight log' : isWithinRange ? '✓ Currently within range' : '⚠ Outside ideal range';
@@ -2642,7 +2640,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const logList = [...sortedPetWeights].reverse();
                 const now = new Date();
                 const twelveMonthsAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-                const chartData = weightTimeframe === '12months' 
+                const chartData = weightTimeframe === '12months'
                   ? sortedPetWeights.filter(w => new Date(w.date) >= twelveMonthsAgo)
                   : sortedPetWeights;
 
@@ -2650,7 +2648,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const weightValues = chartData.map(w => w.value);
                 let minWeight = Math.min(...weightValues, idealMin);
                 let maxWeight = Math.max(...weightValues, idealMax);
-                
+
                 const weightRangeDiff = maxWeight - minWeight;
                 const paddingVal = weightRangeDiff > 0 ? weightRangeDiff * 0.15 : 2;
                 minWeight = Math.max(0, minWeight - paddingVal);
@@ -2660,9 +2658,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const points = chartData.map((w, index) => {
                   let x = 44;
                   if (chartData.length > 1) {
-                     x = 44 + (446 / (chartData.length - 1)) * index;
+                    x = 44 + (446 / (chartData.length - 1)) * index;
                   } else {
-                     x = 267;
+                    x = 267;
                   }
                   let y = 124;
                   const diff = maxWeight - minWeight;
@@ -2695,7 +2693,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 if (idealYMin > 124) idealYMin = 124;
                 if (idealYMax < 16) idealYMax = 16;
                 if (idealYMax > 124) idealYMax = 124;
-                
+
                 const idealHeight = idealYMax - idealYMin;
                 const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
 
@@ -2736,7 +2734,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                       <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
                         <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
                         <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>
-                          {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
+                          {hasWeights ? currentWeight.toFixed(1) : '-'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
                         </div>
                         <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr}</div>
                       </div>
@@ -2764,38 +2762,38 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <span className={`badge ${weightTimeframe === 'alltime' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('alltime')}>All time</span>
                           </div>
                         </div>
-                        
+
                         <svg viewBox="0 0 500 150" style={{ width: '100%', height: '150px', display: 'block' }}>
                           <defs>
                             <linearGradient id="tabBg" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12"/>
-                              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+                              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12" />
+                              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
                             </linearGradient>
                           </defs>
-                          <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-                          <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-                          <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-                          <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-                          
+                          <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+                          <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+                          <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+                          <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+
                           <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(16)}</text>
                           <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(52)}</text>
                           <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(88)}</text>
                           <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(124)}</text>
-                          
+
                           {points.map(p => (
                             <text key={p.x} x={p.x} y="142" fontSize="9" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">
                               {formatMonthSafe(p.dateStr)}
                             </text>
                           ))}
 
-                          <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2"/>
-                          
+                          <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2" />
+
                           {points.length > 0 && (
                             <>
-                              <path d={`${pathD} L ${points[points.length-1].x},124 L ${points[0].x},124 Z`} fill="url(#tabBg)"/>
-                              <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d={`${pathD} L ${points[points.length - 1].x},124 L ${points[0].x},124 Z`} fill="url(#tabBg)" />
+                              <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                               {points.map((p, i) => (
-                                <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2"/>
+                                <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2" />
                               ))}
                             </>
                           )}
@@ -2805,7 +2803,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           )}
                         </svg>
                       </div>
-                      
+
                       <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
                         <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px', marginLeft: '4px' }}>Visit Log</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2814,7 +2812,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                               let diffStr = '—';
                               let diffColor = 'var(--text-3)';
                               if (i < logList.length - 1) {
-                                const diff = row.value - logList[i+1].value;
+                                const diff = row.value - logList[i + 1].value;
                                 if (diff > 0) {
                                   diffStr = `↑ +${diff.toFixed(1)}`;
                                   diffColor = 'var(--amber)';
@@ -2826,7 +2824,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                                   diffColor = 'var(--text-3)';
                                 }
                               }
-                              
+
                               return (
                                 <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                                   <div style={{ width: '90px' }}>
@@ -2890,7 +2888,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
                               ⚖️ Log New Weight
                             </h3>
-                            <button 
+                            <button
                               onClick={() => setIsWeightModalOpen(false)}
                               style={{
                                 background: 'transparent',
@@ -2916,7 +2914,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
                               Weight ({currentUnit}) <span style={{ color: 'red' }}>*</span>
                             </label>
-                            <input 
+                            <input
                               type="number"
                               step="0.1"
                               placeholder={`Enter weight in ${currentUnit} (e.g. 32.4)`}
@@ -2938,7 +2936,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
                               Notes (Optional)
                             </label>
-                            <input 
+                            <input
                               type="text"
                               placeholder="e.g. Routine checkup or post-diet review"
                               value={weightLogNote}
@@ -2954,15 +2952,15 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           </div>
 
                           <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                            <button 
-                              className="btn btn-outline" 
+                            <button
+                              className="btn btn-outline"
                               onClick={() => setIsWeightModalOpen(false)}
                               style={{ padding: '8px 16px', fontSize: '13px' }}
                             >
                               Cancel
                             </button>
-                            <button 
-                              className="btn btn-primary" 
+                            <button
+                              className="btn btn-primary"
                               onClick={handleSaveNewWeight}
                               style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '600' }}
                             >
@@ -3002,7 +3000,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <td>{v.dueDate}</td>
                             <td><Badge value={v.displayStatus} /></td>
                             <td style={{ textAlign: 'right', paddingRight: '14px' }}>
-                              <button 
+                              <button
                                 className="btn btn-outline"
                                 style={{ padding: '4px 8px', fontSize: '12px' }}
                                 onClick={() => setEditingVax(v)}
@@ -3085,11 +3083,11 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
         </div>
       </Screen>
       {isEditModalOpen && (
-        <PetEditModal 
-          pet={currentPet} 
-          owner={owner} 
-          onClose={() => setIsEditModalOpen(false)} 
-          onSave={handleSavePetDetails} 
+        <PetEditModal
+          pet={currentPet}
+          owner={owner}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleSavePetDetails}
         />
       )}
       {editingVax && (
@@ -3161,7 +3159,7 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
   };
 
   return (
-    <div 
+    <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -3179,7 +3177,7 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section 
+      <section
         className="modal client-modal-card"
         style={{
           width: 'min(480px, calc(100% - 32px))',
@@ -3197,8 +3195,8 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
           <h3>Edit Medical Profile</h3>
           <button type="button" className="modal-x" onClick={onClose}>×</button>
         </div>
-        
-        <form 
+
+        <form
           onSubmit={handleSubmit}
           style={{
             display: 'flex',
@@ -3207,47 +3205,47 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
             flex: 1
           }}
         >
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            marginBottom: '18px', 
-            maxHeight: 'calc(100vh - 220px)', 
-            overflowY: 'auto', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '18px',
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
             paddingRight: '6px',
             minHeight: 0,
             flex: 1
           }}>
-            
+
             <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginBottom: '8px' }}>
               Medical & Profile Extensions ({pet.name})
             </div>
 
             <label className="field-label">
               Microchip #
-              <input 
-                className="input" 
-                placeholder="Not Provided" 
-                value={microchip} 
-                onChange={e => setMicrochip(e.target.value)} 
+              <input
+                className="input"
+                placeholder="Not Provided"
+                value={microchip}
+                onChange={e => setMicrochip(e.target.value)}
               />
             </label>
 
             <label className="field-label">
               Insurance
-              <input 
-                className="input" 
-                placeholder="e.g. Nationwide, Trupanion" 
-                value={insurance} 
-                onChange={e => setInsurance(e.target.value)} 
+              <input
+                className="input"
+                placeholder="e.g. Nationwide, Trupanion"
+                value={insurance}
+                onChange={e => setInsurance(e.target.value)}
               />
             </label>
 
             <label className="field-label">
               Blood Group
-              <select 
-                className="input" 
-                value={bloodType} 
+              <select
+                className="input"
+                value={bloodType}
                 onChange={e => setBloodType(e.target.value)}
               >
                 <option value="">Not Provided</option>
@@ -3259,23 +3257,23 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
 
             <label className="field-label">
               Weight (lbs)
-              <input 
-                className="input" 
-                type="number" 
-                step="0.1" 
-                placeholder="Not Provided" 
-                value={weight} 
-                onChange={e => setWeight(e.target.value)} 
+              <input
+                className="input"
+                type="number"
+                step="0.1"
+                placeholder="Not Provided"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
               />
             </label>
 
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            justifyContent: 'flex-end', 
-            borderTop: '1px solid var(--border)', 
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'flex-end',
+            borderTop: '1px solid var(--border)',
             paddingTop: '14px',
             flexShrink: 0,
             flexWrap: 'wrap'
@@ -3331,15 +3329,15 @@ function Vaccinations({ rows, update, clients = [] }) {
   const getActionButtons = (row) => {
     const isUpToDate = String(row.status).toLowerCase().includes('up to date');
     const isNotSent = !row.reminderStatus || row.reminderStatus === 'Not sent';
-    
+
     if (isUpToDate) {
       return <button className="btn btn-outline btn-sm" onClick={() => setViewingVax(row)}>View</button>;
     }
-    
+
     if (isNotSent) {
       return <button className="btn btn-accent btn-sm" onClick={() => handleTriggerReminder(row._id)}>Notify Owner</button>;
     }
-    
+
     return <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => handleNotify(row, 'Resent just now')}>Resend</button>;
   };
 
@@ -3378,9 +3376,9 @@ function Vaccinations({ rows, update, clients = [] }) {
   };
 
   return (
-    <Screen 
-      title="Vaccination Tracker" 
-      sub="Clinic-wide • Auto-reminders enabled" 
+    <Screen
+      title="Vaccination Tracker"
+      sub="Clinic-wide • Auto-reminders enabled"
       action={<button className="btn btn-accent" onClick={handleBatch}>Send Reminder Batch</button>}
     >
       <div className="tracker-cards">
@@ -3426,7 +3424,7 @@ function Vaccinations({ rows, update, clients = [] }) {
           </tr>
         ))}
       </Table>
-      
+
       {viewingVax && (
         <div className="modal-wrap">
           <div className="modal">
@@ -3536,7 +3534,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     while (startHour < 18) {
       const sh = String(startHour).padStart(2, '0');
       const sm = String(startMin).padStart(2, '0');
-      
+
       let endMin = startMin + 30;
       let endHour = startHour;
       if (endMin >= 60) {
@@ -3545,9 +3543,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       }
       const eh = String(endHour).padStart(2, '0');
       const em = String(endMin).padStart(2, '0');
-      
+
       slots.push(`${sh}:${sm}-${eh}:${em}`);
-      
+
       startHour = endHour;
       startMin = endMin;
     }
@@ -3659,11 +3657,11 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
       const today = new Date();
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay());
-      startOfWeek.setHours(0,0,0,0);
+      startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(today);
       endOfWeek.setDate(today.getDate() - today.getDay() + 6);
-      endOfWeek.setHours(23,59,59,999);
-      
+      endOfWeek.setHours(23, 59, 59, 999);
+
       return appointments.filter(a => {
         const d = new Date(a.date);
         return d >= startOfWeek && d <= endOfWeek;
@@ -3688,9 +3686,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
 
   if (!isBookingFlow) {
     return (
-      <Screen 
-        title="Appointments" 
-        sub="Manage clinic appointments and schedule slots" 
+      <Screen
+        title="Appointments"
+        sub="Manage clinic appointments and schedule slots"
         action={
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn btn-outline" style={{ background: '#fff' }} onClick={() => setOpenRegisterModal(true)}>
@@ -3709,8 +3707,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             ['upcoming', 'Upcoming'],
             ['all', 'All Appointments']
           ].map(([id, label]) => (
-            <button 
-              key={id} 
+            <button
+              key={id}
               style={{
                 border: 0,
                 borderBottom: activeSubTab === id ? '2px solid var(--brand)' : '2px solid transparent',
@@ -3728,7 +3726,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
           ))}
         </div>
 
-        <section className="panel no-pad" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '12px' }}>
+        <section style={{ background: 'transparent', border: 'none' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -3777,8 +3775,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         </section>
 
         {openRegisterModal && (
-          <ClientModal 
-            onClose={() => setOpenRegisterModal(false)} 
+          <ClientModal
+            onClose={() => setOpenRegisterModal(false)}
             onSave={(body) => create('clients', body).then((createdClient) => {
               setBookingClient(createdClient);
               if (createdClient.pets && createdClient.pets.length > 0) {
@@ -3786,7 +3784,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               }
               setIsBookingFlow(true);
               setOpenRegisterModal(false);
-            }).catch(err => window.showToast(err.message, 'error'))} 
+            }).catch(err => window.showToast(err.message, 'error'))}
           />
         )}
       </Screen>
@@ -3798,8 +3796,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     const showRegister = isSearching && clientsFiltered.length === 0;
 
     return (
-      <Screen 
-        title="Book Appointment — Step 1 of 3" 
+      <Screen
+        title="Book Appointment — Step 1 of 3"
         sub="Find and select a client account to begin"
         action={
           <button className="btn btn-outline" style={{ background: '#fff' }} onClick={() => setIsBookingFlow(false)}>
@@ -3821,9 +3819,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             }}>
               🔍
             </span>
-            <input 
+            <input
               type="text"
-              placeholder="Search by Client Name, Pet Name or Pet ID..." 
+              placeholder="Search by Client Name, Pet Name or Pet ID..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -3892,11 +3890,11 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               </table>
             </section>
           )}
-          
+
           {showRegister && (
-            <button 
-              type="button" 
-              className="btn btn-outline" 
+            <button
+              type="button"
+              className="btn btn-outline"
               style={{
                 border: '1px dashed var(--brand)',
                 color: 'var(--brand)',
@@ -3915,8 +3913,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         </div>
 
         {openRegisterModal && (
-          <ClientModal 
-            onClose={() => setOpenRegisterModal(false)} 
+          <ClientModal
+            onClose={() => setOpenRegisterModal(false)}
             onSave={(body) => create('clients', body).then((createdClient) => {
               setBookingClient(createdClient);
               if (createdClient.pets && createdClient.pets.length > 0) {
@@ -3924,7 +3922,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               }
               setIsBookingFlow(true);
               setOpenRegisterModal(false);
-            }).catch(err => window.showToast(err.message, 'error'))} 
+            }).catch(err => window.showToast(err.message, 'error'))}
           />
         )}
       </Screen>
@@ -3932,8 +3930,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }
 
   return (
-    <Screen 
-      title="Book Appointment" 
+    <Screen
+      title="Book Appointment"
       sub="Step 3 of 3 — Select time slot & confirm"
     >
       <div className="steps" style={{ marginBottom: '20px' }}>
@@ -3959,9 +3957,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                 {bookingClient.name} · <span style={{ fontWeight: '500', color: 'var(--text-2)' }}>{bookingClient.email}</span>
               </strong>
             </div>
-            <button 
-              className="btn btn-outline btn-sm" 
-              style={{ color: 'var(--brand)', borderColor: 'var(--brand)' }} 
+            <button
+              className="btn btn-outline btn-sm"
+              style={{ color: 'var(--brand)', borderColor: 'var(--brand)' }}
               onClick={() => {
                 setBookingClient(null);
                 setBookingPet(null);
@@ -3976,22 +3974,22 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             <div className="card-label" style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '12px' }}>
               Select pet ({bookingClient.name} has {(bookingClient.pets || []).length} pets)
             </div>
-            
+
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {(bookingClient.pets || []).map((pet) => {
                 const isSelected = bookingPet && bookingPet.name === pet.name;
-                const petAppt = appointments.find(appt => 
-                  appt.date === selectedDate && 
-                  appt.status !== 'Cancelled' && 
+                const petAppt = appointments.find(appt =>
+                  appt.date === selectedDate &&
+                  appt.status !== 'Cancelled' &&
                   (
-                    (appt.petId && pet._id && String(appt.petId) === String(pet._id)) || 
-                    (appt.petName && pet.name && appt.petName.toLowerCase() === pet.name.toLowerCase() && 
-                     appt.ownerName && bookingClient.name && appt.ownerName.toLowerCase() === bookingClient.name.toLowerCase())
+                    (appt.petId && pet._id && String(appt.petId) === String(pet._id)) ||
+                    (appt.petName && pet.name && appt.petName.toLowerCase() === pet.name.toLowerCase() &&
+                      appt.ownerName && bookingClient.name && appt.ownerName.toLowerCase() === bookingClient.name.toLowerCase())
                   )
                 );
 
                 return (
-                  <div 
+                  <div
                     key={pet._id || pet.name}
                     style={{
                       border: isSelected ? '2px solid var(--brand)' : '1px solid var(--border)',
@@ -4019,10 +4017,10 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'}
                     </div>
                     {petAppt && (
-                      <div style={{ 
-                        fontSize: '11px', 
+                      <div style={{
+                        fontSize: '11px',
                         color: '#0369a1',
-                        fontWeight: '700', 
+                        fontWeight: '700',
                         marginTop: '8px',
                         background: '#e0f2fe',
                         padding: '4px 8px',
@@ -4039,30 +4037,30 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               })}
             </div>
 
-            
+
           </div>
 
           <div className="panel" style={{ background: '#fff', padding: '16px 18px', borderRadius: '12px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
               <label className="field-label">
                 Booking Date *
-                <input 
-                  className="input" 
-                  type="date" 
+                <input
+                  className="input"
+                  type="date"
                   min={getLocalDateString()}
-                  value={selectedDate} 
+                  value={selectedDate}
                   onChange={e => {
                     setSelectedDate(e.target.value);
                     setSelectedTime(null);
-                  }} 
+                  }}
                 />
               </label>
 
               <label className="field-label">
                 Veterinarian *
-                <select 
-                  className="input" 
-                  value={selectedVet ? selectedVet.name : ''} 
+                <select
+                  className="input"
+                  value={selectedVet ? selectedVet.name : ''}
                   onChange={e => {
                     const found = vets.find(v => v.name === e.target.value);
                     setSelectedVet(found || null);
@@ -4075,9 +4073,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
 
               <label className="field-label">
                 Visit type *
-                <select 
-                  className="input" 
-                  value={visitType} 
+                <select
+                  className="input"
+                  value={visitType}
                   onChange={e => setVisitType(e.target.value)}
                 >
                   <option value="Annual Wellness Exam">Annual Wellness Exam</option>
@@ -4103,7 +4101,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
               {allPossibleSlots.map((slot) => {
                 const status = getSlotStatus(slot);
                 const formattedTime = format12h(slot);
-                
+
                 let btnStyle = {
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
@@ -4139,8 +4137,8 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                 };
 
                 return (
-                  <button 
-                    key={slot} 
+                  <button
+                    key={slot}
                     type="button"
                     style={btnStyle}
                     onClick={handleClickSlot}
@@ -4206,9 +4204,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             </div>
           </div>
 
-          <button 
+          <button
             type="button"
-            className="btn btn-primary" 
+            className="btn btn-primary"
             style={{ width: '100%', padding: '12px', justifyContent: 'center', fontSize: '14px', background: 'var(--brand)', color: '#fff' }}
             onClick={handleConfirm}
             disabled={isBookedSuccess || isSubmitting}
@@ -4223,10 +4221,10 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
           )}
         </div>
       </div>
-      
+
       {openRegisterModal && (
-        <ClientModal 
-          onClose={() => setOpenRegisterModal(false)} 
+        <ClientModal
+          onClose={() => setOpenRegisterModal(false)}
           onSave={(body) => create('clients', body).then((createdClient) => {
             setBookingClient(createdClient);
             if (createdClient.pets && createdClient.pets.length > 0) {
@@ -4234,7 +4232,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             }
             setIsBookingFlow(true);
             setOpenRegisterModal(false);
-          }).catch(err => window.showToast(err.message, 'error'))} 
+          }).catch(err => window.showToast(err.message, 'error'))}
         />
       )}
     </Screen>
@@ -4353,7 +4351,7 @@ function LegacySoap({ note, create }) {
 
   return <Screen title="Veterinary AI Consultation" sub="Intelligent audio transcription & consultation modules">
     <div className="grid-two" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.2fr)', gap: '20px' }}>
-      
+
       {/* AI AUDIO & TRANSCRIPT PANEL */}
       <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div className="card-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4371,11 +4369,11 @@ function LegacySoap({ note, create }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
           <label className="sb-field-label" style={{ color: 'var(--text-2)' }}>Raw Dialogue / Audio Transcript</label>
-          <textarea 
-            className="input" 
-            style={{ flex: 1, minHeight: '160px', resize: 'vertical', fontFamily: 'inherit', fontSize: '13px', lineHeight: '1.5' }} 
-            placeholder="Type or paste doctor-owner dialogue here, or click Record to simulate audio transcript..." 
-            value={transcript} 
+          <textarea
+            className="input"
+            style={{ flex: 1, minHeight: '160px', resize: 'vertical', fontFamily: 'inherit', fontSize: '13px', lineHeight: '1.5' }}
+            placeholder="Type or paste doctor-owner dialogue here, or click Record to simulate audio transcript..."
+            value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
           />
         </div>
@@ -4414,26 +4412,26 @@ function LegacySoap({ note, create }) {
               <span style={{ fontSize: '10px', fontWeight: '800', color: 'var(--brand)', textTransform: 'uppercase' }}>
                 {field[0].toUpperCase()} · {field}
               </span>
-              <textarea 
-                style={{ width: '100%', minHeight: '60px', height: '65px', fontSize: '13px', padding: '4px 0', border: 0, resize: 'vertical' }} 
+              <textarea
+                style={{ width: '100%', minHeight: '60px', height: '65px', fontSize: '13px', padding: '4px 0', border: 0, resize: 'vertical' }}
                 placeholder={`Enter clinical ${field} data...`}
-                value={draft[field] || ''} 
-                onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} 
+                value={draft[field] || ''}
+                onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
               />
             </label>
           ))}
         </div>
 
-        <button 
-          className="btn btn-primary" 
-          style={{ width: '100%', padding: '10px', justifyContent: 'center' }} 
+        <button
+          className="btn btn-primary"
+          style={{ width: '100%', padding: '10px', justifyContent: 'center' }}
           onClick={() => {
             const { _id, createdAt, updatedAt, __v, clinic_id, ...rest } = draft;
-            create('soapnotes', { 
-              ...rest, 
-              petName: rest.petName || 'Buddy', 
-              ownerName: rest.ownerName || 'James Martinez', 
-              vetName: rest.vetName || 'Dr. Sarah Chen' 
+            create('soapnotes', {
+              ...rest,
+              petName: rest.petName || 'Buddy',
+              ownerName: rest.ownerName || 'James Martinez',
+              vetName: rest.vetName || 'Dr. Sarah Chen'
             }).then(() => {
               alert("Consultation Medical Note saved successfully!");
             });
@@ -4448,8 +4446,8 @@ function LegacySoap({ note, create }) {
 }
 
 function Weights({ weights, create, activePet, clients, go, doctorPatients, selectedDoctor, onPetSelect, role }) {
-  const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐕', age: '4 yrs' };
-  
+  const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐶', age: '4 yrs' };
+
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [weightLogVal, setWeightLogVal] = useState('');
   const [weightLogNote, setWeightLogNote] = useState('');
@@ -4483,7 +4481,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   const currentWeightRecord = hasWeights ? petWeights[petWeights.length - 1] : null;
   const currentWeight = currentWeightRecord ? currentWeightRecord.value : 0;
   const currentUnit = currentWeightRecord ? currentWeightRecord.unit : 'lbs';
-  
+
   const previousWeightRecord = petWeights.length > 1 ? petWeights[petWeights.length - 2] : null;
   const lastDiff = previousWeightRecord ? (currentWeight - previousWeightRecord.value) : 0;
   const lastDiffStr = !hasWeights ? 'No weight logged' : previousWeightRecord ? `${lastDiff > 0 ? '↑' : lastDiff < 0 ? '↓' : ''} ${Math.abs(lastDiff).toFixed(1)} lbs from last visit` : 'Initial weight visit';
@@ -4493,7 +4491,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   const latestWeightDate = currentWeightRecord ? new Date(currentWeightRecord.date) : new Date();
   const sixMonthsAgo = new Date(latestWeightDate);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  
+
   let sixMonthWeight = currentWeightRecord;
   for (let i = petWeights.length - 1; i >= 0; i--) {
     if (new Date(petWeights[i].date) <= sixMonthsAgo) {
@@ -4502,10 +4500,10 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
     }
   }
   if (!sixMonthWeight && petWeights.length > 0) sixMonthWeight = petWeights[0];
-  
+
   const sixMonthDiff = sixMonthWeight ? (currentWeight - sixMonthWeight.value) : 0;
   const sixMonthDiffStr = !hasWeights ? '—' : sixMonthDiff > 0 ? `+${sixMonthDiff.toFixed(1)}` : sixMonthDiff < 0 ? `${sixMonthDiff.toFixed(1)}` : '0.0';
-  
+
   // Calculate percentage-based clinical significance (species-aware!)
   const initialWeight = currentWeight - sixMonthDiff;
   const pctChange = initialWeight > 0 ? (sixMonthDiff / initialWeight) * 100 : 0;
@@ -4525,15 +4523,15 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   const logList = [...petWeights].reverse();
   const now = new Date();
   const twelveMonthsAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-  const chartData = weightTimeframe === '12months' 
+  const chartData = weightTimeframe === '12months'
     ? petWeights.filter(w => new Date(w.date) >= twelveMonthsAgo)
     : petWeights;
-  
+
   // Dynamic Weight Graph Scaling
   const weightValues = chartData.map(w => w.value);
   let minWeight = Math.min(...weightValues, idealMin);
   let maxWeight = Math.max(...weightValues, idealMax);
-  
+
   const weightRangeDiff = maxWeight - minWeight;
   const paddingVal = weightRangeDiff > 0 ? weightRangeDiff * 0.15 : 2;
   minWeight = Math.max(0, minWeight - paddingVal);
@@ -4543,9 +4541,9 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   const points = chartData.map((w, index) => {
     let x = 44;
     if (chartData.length > 1) {
-       x = 44 + (446 / (chartData.length - 1)) * index;
+      x = 44 + (446 / (chartData.length - 1)) * index;
     } else {
-       x = 267;
+      x = 267;
     }
     let y = 124;
     const diff = maxWeight - minWeight;
@@ -4578,7 +4576,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   if (idealYMin > 124) idealYMin = 124;
   if (idealYMax < 16) idealYMax = 16;
   if (idealYMax > 124) idealYMax = 124;
-  
+
   const idealHeight = idealYMax - idealYMin;
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
 
@@ -4593,13 +4591,13 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
       alert("Please enter a valid numeric weight.");
       return;
     }
-    create('weights', { 
-      petName: pet.name, 
-      ownerName: ownerName, 
-      value: Number(weightLogVal), 
-      unit: currentUnit, 
-      date: getLocalDateString(), 
-      note: weightLogNote || 'Manual entry' 
+    create('weights', {
+      petName: pet.name,
+      ownerName: ownerName,
+      value: Number(weightLogVal),
+      unit: currentUnit,
+      date: getLocalDateString(),
+      note: weightLogNote || 'Manual entry'
     }).then(() => {
       setIsWeightModalOpen(false);
       setWeightLogVal('');
@@ -4612,10 +4610,10 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   const getPetEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('cat')) return '🐈';
+    if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐇';
     if (s.includes('bird') || s.includes('parrot')) return '🦜';
-    return '🐕';
+    return '🐶';
   };
 
   const handlePrevPet = () => {
@@ -4665,7 +4663,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
         <div className="topbar">
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Weight Tracker — 
+              Weight Tracker —
               {hasMultiplePatients && (
                 <button className="btn" style={{ padding: '4px 8px', minWidth: 'auto', height: 'auto', fontSize: '16px', background: 'transparent', color: 'var(--text-2)', border: 'none' }} onClick={handlePrevPet}>
                   &lt;
@@ -4689,12 +4687,12 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleLogWeight}>+ Log Weight</button>
         </div>
-        
+
         <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '18px' }}>
           <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
             <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>
-              {hasWeights ? currentWeight.toFixed(1) : 'No Weight Logged'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
+              {hasWeights ? currentWeight.toFixed(1) : '-'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
             </div>
             <div style={{ fontSize: '11px', color: lastDiffColor, marginTop: '3px', fontWeight: '500' }}>{lastDiffStr}</div>
           </div>
@@ -4722,38 +4720,38 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
                 <span className={`badge ${weightTimeframe === 'alltime' ? 'b-blue' : 'b-gray'}`} style={{ cursor: 'pointer' }} onClick={() => setWeightTimeframe('alltime')}>All time</span>
               </div>
             </div>
-            
+
             <svg viewBox="0 0 500 150" style={{ width: '100%', height: '150px', display: 'block' }}>
               <defs>
                 <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12"/>
-                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-              <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-              <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-              <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"/>
-              
+              <line x1="44" y1="16" x2="490" y2="16" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="44" y1="52" x2="490" y2="52" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="44" y1="88" x2="490" y2="88" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+              <line x1="44" y1="124" x2="490" y2="124" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
+
               <text x="38" y="20" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(16)}</text>
               <text x="38" y="56" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(52)}</text>
               <text x="38" y="92" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(88)}</text>
               <text x="38" y="128" fontSize="9" fill="var(--text-3)" textAnchor="end" fontFamily="sans-serif">{getWeightAtY(124)}</text>
-              
+
               {points.map(p => (
                 <text key={p.x} x={p.x} y="142" fontSize="9" fill="var(--text-3)" textAnchor="middle" fontFamily="sans-serif">
                   {formatMonthSafe(p.dateStr)}
                 </text>
               ))}
 
-              <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2"/>
-              
+              <rect x="44" y={idealYMin} width="446" height={idealHeight > 0 ? idealHeight : 2} fill="#16A34A" fillOpacity="0.06" rx="2" />
+
               {points.length > 0 && (
                 <>
-                  <path d={`${pathD} L ${points[points.length-1].x},124 L ${points[0].x},124 Z`} fill="url(#bg2)"/>
-                  <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d={`${pathD} L ${points[points.length - 1].x},124 L ${points[0].x},124 Z`} fill="url(#bg2)" />
+                  <path d={pathD} fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   {points.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2"/>
+                    <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 4} fill={i === points.length - 1 ? "#F97316" : "#3B82F6"} stroke="var(--bg)" strokeWidth="2" />
                   ))}
                 </>
               )}
@@ -4763,7 +4761,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               )}
             </svg>
           </div>
-          
+
           <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
             <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px', marginLeft: '4px' }}>Visit Log</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -4772,7 +4770,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
                   let diffStr = '—';
                   let diffColor = 'var(--text-3)';
                   if (i < logList.length - 1) {
-                    const diff = row.value - logList[i+1].value;
+                    const diff = row.value - logList[i + 1].value;
                     if (diff > 0) {
                       diffStr = `↑ +${diff.toFixed(1)}`;
                       diffColor = 'var(--amber)';
@@ -4784,7 +4782,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
                       diffColor = 'var(--text-3)';
                     }
                   }
-                  
+
                   return (
                     <div key={row._id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                       <div style={{ width: '90px' }}>
@@ -4849,7 +4847,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
                 ⚖️ Log New Weight
               </h3>
-              <button 
+              <button
                 onClick={() => setIsWeightModalOpen(false)}
                 style={{
                   background: 'transparent',
@@ -4875,7 +4873,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
                 Weight ({currentUnit}) <span style={{ color: 'red' }}>*</span>
               </label>
-              <input 
+              <input
                 type="number"
                 step="0.1"
                 placeholder={`Enter weight in ${currentUnit} (e.g. 32.4)`}
@@ -4897,7 +4895,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>
                 Notes (Optional)
               </label>
-              <input 
+              <input
                 type="text"
                 placeholder="e.g. Routine checkup or post-diet review"
                 value={weightLogNote}
@@ -4913,15 +4911,15 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
-              <button 
-                className="btn btn-outline" 
+              <button
+                className="btn btn-outline"
                 onClick={() => setIsWeightModalOpen(false)}
                 style={{ padding: '8px 16px', fontSize: '13px' }}
               >
                 Cancel
               </button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={handleSaveNewWeight}
                 style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '600' }}
               >
@@ -4935,19 +4933,30 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   );
 }
 
-function FollowUps({ rows }) {
+function FollowUps({ rows, selectedClinic }) {
   const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length;
 
   const getPetIcon = (breed) => {
-    if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐈';
-    return '🐕';
+    if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐱';
+    return '🐶';
   };
 
   const format12h = (t) => {
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
+      const formatSingle = (singleT) => {
+        const trimmed = singleT.trim();
+        const hasPM = /PM/i.test(trimmed);
+        const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
+        const [h, m] = clean.split(':');
+        let hr = parseInt(h);
+        if (hasPM && hr < 12) hr += 12;
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const hr12 = hr % 12 || 12;
+        return `${hr12}:${m || '00'} ${ampm}`;
+      };
+      return `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
     }
     const trimmed = t.trim();
     const hasPM = /PM/i.test(trimmed);
@@ -4957,7 +4966,7 @@ function FollowUps({ rows }) {
     if (hasPM && hr < 12) hr += 12;
     const ampm = hr >= 12 ? 'PM' : 'AM';
     const hr12 = hr % 12 || 12;
-    return `${hr12}:${m} ${ampm}`;
+    return `${hr12}:${m || '00'} ${ampm}`;
   };
 
   const getDateStatus = (plan, confirmed) => {
@@ -4970,9 +4979,9 @@ function FollowUps({ rows }) {
   };
 
   return (
-    <Screen 
-      title="Follow-up Tracker" 
-      sub="Riverside Vet Clinic — planned vs confirmed dates"
+    <Screen
+      title="Follow-up Tracker"
+      sub={`${selectedClinic?.name || 'Clinic'} — planned vs confirmed dates`}
       action={
         <div style={{ padding: '6px 12px', background: '#0f172a', borderRadius: '8px', color: '#94a3b8', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="pulse-dot"></span> Watching {monitoringCount} patients
@@ -5069,7 +5078,7 @@ export function Screen({ title, sub, action, children }) {
 }
 
 function Table({ headers, children }) {
-  return <section className="panel no-pad"><table className="data-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
+  return <section style={{ background: 'transparent', border: 'none' }}><table className="data-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
 }
 
 function AppointmentList({ rows, clients = [] }) {
@@ -5086,9 +5095,9 @@ function AppointmentList({ rows, clients = [] }) {
         }
       }
     }
-    
+
     const searchString = (species || row.petBreed || row.breed || '').toLowerCase();
-    
+
     if (searchString.includes('dog') || searchString.includes('retriever') || searchString.includes('bulldog') || searchString.includes('pug') || searchString.includes('shih')) return { emoji: '🐶', bg: '#eff6ff', color: '#1d4ed8' };
     if (searchString.includes('cat') || searchString.includes('siamese') || searchString.includes('feline')) return { emoji: '🐱', bg: '#fce7f3', color: '#db2777' };
     if (searchString.includes('rabbit') || searchString.includes('lop') || searchString.includes('bunny')) return { emoji: '🐰', bg: '#fef3c7', color: '#d97706' };
@@ -5149,7 +5158,7 @@ function Badge({ value, tone }) {
   const isOverdue = String(value).includes('Overdue') || String(value).includes('alert') || String(value).includes('overdue');
   const isAvailable = String(value).includes('Available') || String(value).includes('Up to date') || String(value).includes('active');
   const isPending = String(value).includes('Pending') || String(value).includes('Due') || String(value).includes('soon') || String(value).includes('Consultation');
-  
+
   const color = tone || (isOverdue ? 'red' : isAvailable ? 'green' : isPending ? 'amber' : 'blue');
   return <span className={`badge b-${color}`}>{value}</span>;
 }
@@ -5182,7 +5191,7 @@ function VetModal({ vet, onClose, onSave }) {
       alert("Phone number must be exactly 10 digits (numeric only)!");
       return;
     }
-    
+
     onSave({
       name,
       email,
@@ -5210,36 +5219,36 @@ function VetModal({ vet, onClose, onSave }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
           <label className="field-label">
             Full Name *
-            <input 
-              className="input" 
-              required 
-              placeholder="e.g. Dr. Sarah Chen" 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
+            <input
+              className="input"
+              required
+              placeholder="e.g. Dr. Sarah Chen"
+              value={name}
+              onChange={e => setName(e.target.value)}
             />
           </label>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <label className="field-label">
               Email *
-              <input 
-                className="input" 
-                required 
-                type="email" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
+              <input
+                className="input"
+                required
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
               />
             </label>
             <label className="field-label">
               Phone *
-              <input 
-                className="input" 
-                required 
-                placeholder="10 digits" 
-                pattern="\d{10}" 
+              <input
+                className="input"
+                required
+                placeholder="10 digits"
+                pattern="\d{10}"
                 title="Phone number must be exactly 10 digits (numeric only)"
-                value={phone} 
-                onChange={e => setPhone(e.target.value)} 
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
               />
             </label>
           </div>
@@ -5247,9 +5256,9 @@ function VetModal({ vet, onClose, onSave }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <label className="field-label">
               Specialization *
-              <select 
-                className="input" 
-                value={specialization} 
+              <select
+                className="input"
+                value={specialization}
                 onChange={e => setSpecialization(e.target.value)}
               >
                 {specs.map(s => <option key={s} value={s}>{s}</option>)}
@@ -5257,10 +5266,10 @@ function VetModal({ vet, onClose, onSave }) {
             </label>
             <label className="field-label">
               License Number
-              <input 
-                className="input" 
-                value={license} 
-                onChange={e => setLicense(e.target.value)} 
+              <input
+                className="input"
+                value={license}
+                onChange={e => setLicense(e.target.value)}
               />
             </label>
           </div>
@@ -5268,20 +5277,20 @@ function VetModal({ vet, onClose, onSave }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <label className="field-label">
               Experience (years)
-              <input 
-                className="input" 
-                type="number" 
-                value={experienceYears} 
-                onChange={e => setExperienceYears(e.target.value)} 
+              <input
+                className="input"
+                type="number"
+                value={experienceYears}
+                onChange={e => setExperienceYears(e.target.value)}
               />
             </label>
             <label className="field-label">
               Consultation Fee ($)
-              <input 
-                className="input" 
-                type="number" 
-                value={consultationFee} 
-                onChange={e => setConsultationFee(e.target.value)} 
+              <input
+                className="input"
+                type="number"
+                value={consultationFee}
+                onChange={e => setConsultationFee(e.target.value)}
               />
             </label>
           </div>
@@ -5289,9 +5298,9 @@ function VetModal({ vet, onClose, onSave }) {
           {vet && (
             <label className="field-label">
               Status
-              <select 
-                className="input" 
-                value={status} 
+              <select
+                className="input"
+                value={status}
                 onChange={e => setStatus(e.target.value)}
               >
                 <option value="Available">Available</option>
@@ -5311,11 +5320,11 @@ function VetModal({ vet, onClose, onSave }) {
   );
 }
 
-function ClientModal({ onClose, onSave, client }) {
+function ClientModal({ onClose, onSave, client, onDeleteClient }) {
   const [ownerName, setOwnerName] = useState(client ? client.name : '');
   const [email, setEmail] = useState(client ? client.email : '');
   const [phone, setPhone] = useState(client ? client.phone : '');
-  
+
   const [pets, setPets] = useState(() => {
     if (client && client.pets && client.pets.length > 0) {
       return client.pets.map(p => ({
@@ -5429,7 +5438,7 @@ function ClientModal({ onClose, onSave, client }) {
   };
 
   return (
-    <div 
+    <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -5447,7 +5456,7 @@ function ClientModal({ onClose, onSave, client }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section 
+      <section
         className="modal client-modal-card"
         style={{
           width: 'min(560px, calc(100% - 32px))',
@@ -5465,8 +5474,8 @@ function ClientModal({ onClose, onSave, client }) {
           <h3>{client ? "Edit Client & Pets Details" : "Register New Client & Pets"}</h3>
           <button type="button" className="modal-x" onClick={onClose}>×</button>
         </div>
-        
-        <form 
+
+        <form
           onSubmit={handleSubmit}
           style={{
             display: 'flex',
@@ -5475,55 +5484,55 @@ function ClientModal({ onClose, onSave, client }) {
             flex: 1
           }}
         >
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            marginBottom: '18px', 
-            maxHeight: 'calc(100vh - 220px)', 
-            overflowY: 'auto', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '18px',
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
             paddingRight: '6px',
             minHeight: 0,
             flex: 1
           }}>
-            
+
             <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
               Step 1 — Owner details
             </div>
-            
+
             <label className="field-label">
               Owner Full Name *
-              <input 
-                className="input" 
-                required 
-                placeholder="e.g. James Martinez" 
-                value={ownerName} 
-                onChange={e => setOwnerName(e.target.value)} 
+              <input
+                className="input"
+                required
+                placeholder="e.g. James Martinez"
+                value={ownerName}
+                onChange={e => setOwnerName(e.target.value)}
               />
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <label className="field-label">
                 Email *
-                <input 
-                  className="input" 
-                  required 
-                  type="email" 
+                <input
+                  className="input"
+                  required
+                  type="email"
                   placeholder="e.g. james.m@email.com"
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)} 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </label>
               <label className="field-label">
                 Phone *
-                <input 
-                  className="input" 
-                  required 
-                  placeholder="10 digits" 
-                  pattern="\d{10}" 
+                <input
+                  className="input"
+                  required
+                  placeholder="10 digits"
+                  pattern="\d{10}"
                   title="Phone number must be exactly 10 digits (numeric only)"
-                  value={phone} 
-                  onChange={e => setPhone(e.target.value)} 
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
                 />
               </label>
             </div>
@@ -5544,8 +5553,8 @@ function ClientModal({ onClose, onSave, client }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <strong style={{ fontSize: '12px', color: 'var(--brand)' }}>Pet #{index + 1}</strong>
                   {pets.length > 1 && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       style={{
                         border: 0,
                         background: 'transparent',
@@ -5565,19 +5574,19 @@ function ClientModal({ onClose, onSave, client }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <label className="field-label">
                       Pet Name *
-                      <input 
-                        className="input" 
-                        required 
-                        placeholder="e.g. Buddy" 
-                        value={pet.name} 
-                        onChange={e => handleUpdatePetField(index, 'name', e.target.value)} 
+                      <input
+                        className="input"
+                        required
+                        placeholder="e.g. Buddy"
+                        value={pet.name}
+                        onChange={e => handleUpdatePetField(index, 'name', e.target.value)}
                       />
                     </label>
                     <label className="field-label">
                       Species *
-                      <select 
-                        className="input" 
-                        value={pet.species} 
+                      <select
+                        className="input"
+                        value={pet.species}
                         onChange={e => {
                           handleUpdatePetField(index, 'species', e.target.value);
                         }}
@@ -5590,9 +5599,9 @@ function ClientModal({ onClose, onSave, client }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
                     <label className="field-label">
                       Breed
-                      <select 
-                        className="input" 
-                        value={(pet.isCustomBreed || (pet.breed && !(breedOptions[pet.species] || ['Other']).includes(pet.breed))) ? 'Other' : pet.breed} 
+                      <select
+                        className="input"
+                        value={(pet.isCustomBreed || (pet.breed && !(breedOptions[pet.species] || ['Other']).includes(pet.breed))) ? 'Other' : pet.breed}
                         onChange={e => {
                           if (e.target.value === 'Other') {
                             handleUpdatePetField(index, 'isCustomBreed', true);
@@ -5611,8 +5620,8 @@ function ClientModal({ onClose, onSave, client }) {
                         ))}
                       </select>
                       {(pet.isCustomBreed || (pet.breed && !(breedOptions[pet.species] || ['Other']).includes(pet.breed))) && (
-                        <input 
-                          className="input" 
+                        <input
+                          className="input"
                           style={{ marginTop: '8px' }}
                           placeholder="Specify breed"
                           value={pet.breed === 'Other' ? '' : pet.breed}
@@ -5625,19 +5634,19 @@ function ClientModal({ onClose, onSave, client }) {
                     </label>
                     <label className="field-label">
                       Date of Birth
-                      <input 
-                        className="input" 
-                        type="date" 
+                      <input
+                        className="input"
+                        type="date"
                         max={new Date().toISOString().split('T')[0]}
-                        value={pet.dob} 
-                        onChange={e => handleUpdatePetField(index, 'dob', e.target.value)} 
+                        value={pet.dob}
+                        onChange={e => handleUpdatePetField(index, 'dob', e.target.value)}
                       />
                     </label>
                     <label className="field-label">
                       Sex
-                      <select 
-                        className="input" 
-                        value={pet.sex} 
+                      <select
+                        className="input"
+                        value={pet.sex}
                         onChange={e => handleUpdatePetField(index, 'sex', e.target.value)}
                       >
                         {sexOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -5648,18 +5657,18 @@ function ClientModal({ onClose, onSave, client }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <label className="field-label">
                       Microchip #
-                      <input 
-                        className="input" 
-                        placeholder="Optional" 
-                        value={pet.microchip} 
-                        onChange={e => handleUpdatePetField(index, 'microchip', e.target.value)} 
+                      <input
+                        className="input"
+                        placeholder="Optional"
+                        value={pet.microchip}
+                        onChange={e => handleUpdatePetField(index, 'microchip', e.target.value)}
                       />
                     </label>
                     <label className="field-label">
                       Spayed / Neutered
-                      <select 
-                        className="input" 
-                        value={pet.spayedNeutered} 
+                      <select
+                        className="input"
+                        value={pet.spayedNeutered}
                         onChange={e => handleUpdatePetField(index, 'spayedNeutered', e.target.value)}
                       >
                         {spayedOptions.map(s => <option key={s} value={s}>{s}</option>)}
@@ -5670,9 +5679,9 @@ function ClientModal({ onClose, onSave, client }) {
               </div>
             ))}
 
-            <button 
-              type="button" 
-              className="btn btn-outline" 
+            <button
+              type="button"
+              className="btn btn-outline"
               style={{
                 border: '1px dashed var(--brand)',
                 color: 'var(--brand)',
@@ -5689,17 +5698,33 @@ function ClientModal({ onClose, onSave, client }) {
 
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            justifyContent: 'flex-end', 
-            borderTop: '1px solid var(--border)', 
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTop: '1px solid var(--border)',
             paddingTop: '14px',
             flexShrink: 0,
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            width: '100%'
           }}>
-            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+            {client && onDeleteClient ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ color: 'var(--red)', border: '1px solid var(--red)' }}
+                onClick={onDeleteClient}
+              >
+                Delete Client
+              </button>
+            ) : (
+              <div />
+            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+            </div>
           </div>
         </form>
       </section>

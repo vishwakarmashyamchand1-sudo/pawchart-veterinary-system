@@ -2,6 +2,7 @@
   --brand:#2563eb;
   --brand-dark:#1d4ed8;
   --brand-light:#dbeafe;
+  --brand-pale:#eff6ff;
   --accent:#f97316;
   --sidebar-bg:#1e3a5f;
   --sidebar-text:#cbd5e1;
@@ -12,6 +13,7 @@
   --text-2:#475569;
   --text-3:#94a3b8;
   --border:#e2e8f0;
+  --border-2:#cbd5e1;
   --green:#16a34a;
   --green-pale:#dcfce7;
   --amber:#d97706;
@@ -81,12 +83,13 @@ button{cursor:pointer}
 .stat-change{font-size:11px;color:var(--green);margin-top:6px}
 .stat-change.danger{color:var(--red)}
 
-.data-table{width:100%;border-collapse:collapse}
-.data-table th{text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);padding:9px 12px;background:var(--surface-2);border-bottom:1px solid var(--border)}
-.data-table td{padding:12px;font-size:13px;color:var(--text-2);border-bottom:1px solid var(--border);vertical-align:middle}
-.data-table tbody tr:hover td{background:#eff6ff}
-.td-name{font-weight:700;color:var(--text)}
-.td-sub{font-size:11px;color:var(--text-3);margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.data-table td{padding:11px 12px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:middle;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tbody tr:hover td{background:var(--brand-pale);cursor:pointer;}
+.td-name{font-weight:600;color:var(--text);}
+.td-sub{font-size:11px;color:var(--text-3);margin-top:1px;}
 .badge{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
 .b-blue{background:var(--brand-light);color:var(--brand-dark)}
 .b-green{background:var(--green-pale);color:var(--green)}
@@ -97,6 +100,7 @@ button{cursor:pointer}
 
 .appointment-list{display:flex;flex-direction:column}
 .appt{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border)}
+.appt:last-child{border-bottom:none}
 .appt span,.alert-row span,.muted{display:block;color:var(--text-3);font-size:12px;margin-top:2px}
 .alert-row{padding:10px 0;border-bottom:1px solid var(--border)}
 .monitor-box{margin-top:14px;border-radius:8px;background:#0f172a;color:white;padding:12px;font-size:12px}
