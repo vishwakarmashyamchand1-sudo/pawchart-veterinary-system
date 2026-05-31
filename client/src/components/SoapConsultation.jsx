@@ -708,7 +708,7 @@ export function Soap({
                         const sortedWeights = [...petWeights].sort((a,b) => new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt));
                         const chartData = sortedWeights.map(w => ({
                           date: new Date(w.date || w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                          weight: w.weight
+                          weight: parseFloat(w.weight) || 0
                         }));
                         const currentWeight = chartData.length > 0 ? chartData[chartData.length - 1].weight : 0;
                         const firstWeight = chartData.length > 0 ? chartData[0].weight : 0;
