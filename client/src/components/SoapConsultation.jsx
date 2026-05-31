@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../main.jsx';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
 import { createSpeechRecognition } from '../utils/speech.js';
+import { format12h } from '../utils/dateUtils.js';
 
 // Centralized API Base URL
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -516,7 +517,7 @@ export function Soap({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>
-                      {activeAppointment.date} at {activeAppointment.time}
+                      {activeAppointment.date} at {format12h(activeAppointment.time)}
                     </h3>
                     <span className="badge b-blue" style={{ fontSize: '11px', fontWeight: '700', textTransform: 'lowercase', padding: '2px 8px' }}>
                       booked

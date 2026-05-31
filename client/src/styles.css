@@ -286,3 +286,39 @@ button{cursor:pointer}
   width: 48px;
   border-radius: 50%;
 }
+
+/* Vaccine Master Styling */
+.vm-tabs-bar { background: var(--color-background-primary, #fff); border-bottom: 0.5px solid var(--border); padding: 0 22px; display: flex; gap: 0; }
+.vm-tab { padding: 10px 16px; font-size: 13px; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.vm-tab:hover { color: var(--text); }
+.vm-tab.active { color: #2563EB; border-bottom-color: #2563EB; font-weight: 500; }
+.vm-tab .tab-count { font-size: 10px; font-weight: 500; background: #f1f5f9; color: var(--text-2); padding: 1px 7px; border-radius: 999px; }
+.vm-tab.active .tab-count { background: #DBEAFE; color: #1D4ED8; }
+.vm-content { flex: 1; padding: 18px 22px; overflow-y: auto; }
+.vm-banner { background: #EFF6FF; border: 0.5px solid #BFDBFE; border-radius: 6px; padding: 9px 13px; font-size: 12px; color: #1D4ED8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.vm-table-wrap { background: #fff; border: 0.5px solid var(--border); border-radius: 8px; overflow: hidden; }
+.vm-table { width: 100%; border-collapse: collapse; }
+.vm-table th { text-align: left; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); padding: 9px 14px; border-bottom: 0.5px solid var(--border); background: #f8fafc; }
+.vm-table td { padding: 11px 14px; font-size: 13px; border-bottom: 0.5px solid var(--border); vertical-align: middle; color: var(--text); }
+.vm-table tr:last-child td { border-bottom: none; }
+.vm-table tbody tr:hover td { background: #EFF6FF; cursor: pointer; }
+.vm-vax-name { font-weight: 500; }
+.vm-vax-desc { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.vm-age-pill { display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: var(--text-2); font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 0.5px solid var(--border); }
+.vm-mandatory-badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+.vm-mandatory-badge.yes { background: #DCFCE7; color: #166534; }
+.vm-mandatory-badge.no  { background: #f1f5f9; color: var(--text-2); }
+.vm-active-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.vm-toggle { width: 32px; height: 18px; border-radius: 999px; border: none; cursor: pointer; position: relative; transition: background 0.15s; }
+.vm-toggle.on  { background: #2563EB; }
+.vm-toggle.off { background: #CBD5E1; }
+.vm-toggle::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: #fff; position: absolute; top: 3px; transition: left 0.15s; }
+.vm-toggle.on::after  { left: 17px; }
+.vm-toggle.off::after { left: 3px; }
+.vm-row-actions { display: flex; gap: 6px; }
+.vm-icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 0.5px solid var(--border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-2); }
+.vm-icon-btn:hover { background: #f1f5f9; color: var(--text); }
+.vm-icon-btn.danger:hover { background: #FEE2E2; color: #991B1B; border-color: #FECACA; }
+.vm-empty { text-align: center; padding: 40px 20px; color: var(--text-2); }
+.vm-empty i { font-size: 32px; opacity: 0.4; margin-bottom: 10px; display: block; }
+.vm-empty p { font-size: 13px; }

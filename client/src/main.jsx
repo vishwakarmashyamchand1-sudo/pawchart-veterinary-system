@@ -5,7 +5,7 @@ import { API_BASE_URL as API_URL } from './services/api.js';
 import { DoctorDashboard } from './components/DoctorDashboard.jsx';
 import { Soap } from './components/SoapConsultation.jsx';
 
-import { formatDateClean, getCompactPurpose } from './utils/dateUtils.js';
+import { formatDateClean, getCompactPurpose, format12h } from './utils/dateUtils.js';
 
 const CLINIC_SPECIALTIES = [
   'Surgery',
@@ -622,21 +622,34 @@ function ClinicEditModal({ clinic, onClose, onSave }) {
   );
 }
 
-function VaccineModal({ initialData, onClose, onSave }) {
+function VaccineModal({ initialTab, initialData, onClose, onSave }) {
   const [name, setName] = useState(initialData?.name || '');
-  const [species, setSpecies] = useState(initialData?.species || 'Dog');
+  const [species, setSpecies] = useState(initialData?.species || initialTab || 'Dog');
   const [recommendedAge, setRecommendedAge] = useState(initialData?.recommendedAge || '');
+  const [desc, setDesc] = useState(initialData?.desc || '');
 
   return (
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{initialData ? 'Edit Vaccine' : 'Add Vaccine'}</h2>
         <Input label="Vaccine Name" value={name} onChange={setName} />
-        <Select label="Species" value={species} onChange={setSpecies} options={['Dog', 'Cat', 'Rabbit', 'Bird']} />
+        <Select label="Species" value={species} onChange={setSpecies} options={['Dog', 'Cat', 'Rabbit', 'Bird', 'Other']} />
         <Input label="Recommended Age" value={recommendedAge} onChange={setRecommendedAge} />
+        
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--text-2)', marginBottom: '8px' }}>Description</label>
+          <textarea 
+            className="input" 
+            style={{ width: '100%', minHeight: '64px', resize: 'vertical', fontFamily: 'inherit', padding: '10px 12px', fontSize: '14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-1)', color: 'var(--text)' }} 
+            value={desc} 
+            onChange={e => setDesc(e.target.value)} 
+            placeholder="e.g. Prevents fatal rabies infection."
+          />
+        </div>
+
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
           <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
+          <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge, desc })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
         </div>
       </div>
     </div>
@@ -687,36 +700,45 @@ function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
 
 function VaccinesConfig({ vaccines, create }) {
   const [showModal, setShowModal] = useState(false);
-  const [expanded, setExpanded] = useState({});
+  const [activeTab, setActiveTab] = useState('Dog');
 
   const handleSave = async (data) => {
-    if (!data.name || !data.recommendedAge) {
-      alert('Please fill in all fields (Vaccine Name and Recommended Age).');
+    if (!data.name || !data.recommendedAge || !data.desc || data.desc.trim() === '') {
+      alert('Please fill in all fields (Vaccine Name, Recommended Age, and Description).');
       return;
     }
     try {
       await create('vaccinemaster', data);
       setShowModal(false);
+      // Data is dynamically added, so it will update the table.
+      setActiveTab(data.species); // Switch to the tab where it was added
     } catch (err) {
       alert(err.message);
     }
   };
 
-  const toggle = (sp) => {
-    setExpanded(prev => ({ ...prev, [sp]: !prev[sp] }));
-  };
+  const SPECIES = ['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'];
+  const SPECIES_ICONS = { Dog: '🐕', Cat: '🐈', Rabbit: '🐇', Bird: '🦜', Other: '🐾' };
 
-  const grouped = vaccines.reduce((acc, v) => {
-    if (!acc[v.species]) acc[v.species] = [];
-    acc[v.species].push(v);
+  const hardcodedVaccines = [
+    { id: 'hc-1', name: 'Rabies', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
+    { id: 'hc-2', name: 'DHPP', species: 'Dog', recommendedAge: '8 weeks', desc: 'Protects against major canine viral diseases.', mandatory: true },
+    { id: 'hc-3', name: 'Bordetella', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents kennel cough infection.', mandatory: true },
+    { id: 'hc-7', name: 'Rabies', species: 'Cat', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
+    { id: 'hc-8', name: 'FVRCP', species: 'Cat', recommendedAge: '8 weeks', desc: 'Protects against core feline viral diseases.', mandatory: true },
+    { id: 'hc-11', name: 'RHDV2', species: 'Rabbit', recommendedAge: '6 weeks', desc: 'Protects against rabbit hemorrhagic disease.', mandatory: true },
+    { id: 'hc-14', name: 'Polyomavirus', species: 'Bird', recommendedAge: '4 weeks', desc: 'Protects against avian polyomavirus infection.', mandatory: true }
+  ];
+
+  // Filter out any incomplete records that lack a proper description
+  const combinedVaccines = [...hardcodedVaccines, ...vaccines].filter(v => v.desc && v.desc.trim() !== '' && v.desc !== '—');
+
+  const currentList = combinedVaccines.filter(v => v.species === activeTab);
+
+  const tabCounts = SPECIES.reduce((acc, s) => {
+    acc[s] = combinedVaccines.filter(v => v.species === s).length;
     return acc;
   }, {});
-
-  const baseSpecies = ['Dog', 'Cat', 'Rabbit', 'Bird'];
-  const speciesList = [...baseSpecies];
-  Object.keys(grouped).forEach(sp => {
-    if (!speciesList.includes(sp)) speciesList.push(sp);
-  });
 
   return (
     <div className="main-scroll">
@@ -729,48 +751,58 @@ function VaccinesConfig({ vaccines, create }) {
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Vaccine</button>
         </div>
 
-        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {speciesList.map(sp => (
-            <section key={sp} className="panel no-pad">
-              <button
-                onClick={() => toggle(sp)}
-                style={{ width: '100%', padding: '16px 20px', background: 'transparent', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontWeight: '600' }}
-              >
-                <span>{sp}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>{expanded[sp] ? '▲' : '▼'}</span>
-              </button>
-
-              {expanded[sp] && (
-                <div style={{ borderTop: '1px solid var(--border)' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Vaccine Name</th>
-                        <th>Recommended Age</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(grouped[sp] || []).map(v => (
-                        <tr key={v._id}>
-                          <td>{v.name}</td>
-                          <td>{v.recommendedAge}</td>
-                        </tr>
-                      ))}
-                      {(!grouped[sp] || grouped[sp].length === 0) && (
-                        <tr><td colSpan="2" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)' }}>No vaccines configured for this species.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+        {/* SPECIES TABS */}
+        <div className="vm-tabs-bar" style={{ marginTop: '16px' }}>
+          {SPECIES.map(sp => (
+            <div 
+              key={sp} 
+              className={`vm-tab ${activeTab === sp ? 'active' : ''}`}
+              onClick={() => setActiveTab(sp)}
+            >
+              {SPECIES_ICONS[sp] || '🐾'} {sp}
+              <span className="tab-count">{tabCounts[sp] || 0}</span>
+            </div>
           ))}
-          {vaccines.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-3)' }}>No vaccines found in master list.</div>
+        </div>
+
+        {/* CONTENT */}
+        <div className="vm-content" style={{ padding: '18px 0' }}>
+          {currentList.length === 0 ? (
+            <div className="vm-empty">
+              <i className="ti ti-vaccine"></i>
+              <p>No vaccines found for {activeTab}.</p>
+            </div>
+          ) : (
+            <div className="vm-table-wrap" style={{ marginBottom: '4px' }}>
+              <table className="vm-table" style={{ fontSize: '14px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '25%', padding: '12px 16px', fontSize: '11px' }}>Vaccine Name</th>
+                    <th style={{ width: '50%', padding: '12px 16px', fontSize: '11px' }}>Description</th>
+                    <th style={{ width: '25%', padding: '12px 16px', fontSize: '11px' }}>Recommended Age</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentList.map(v => (
+                    <tr key={v._id || v.id}>
+                      <td style={{ padding: '16px' }}>
+                        <div className="vm-vax-name" style={{ fontSize: '14px' }}>{v.name}</div>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <div className="vm-vax-desc" style={{ marginTop: 0, fontSize: '13px' }}>{v.desc || '—'}</div>
+                      </td>
+                      <td style={{ padding: '16px', fontSize: '14px' }}>
+                        {v.recommendedAge}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        {showModal && <VaccineModal onClose={() => setShowModal(false)} onSave={handleSave} />}
+        {showModal && <VaccineModal initialTab={activeTab} onClose={() => setShowModal(false)} onSave={handleSave} />}
       </div>
     </div>
   );
@@ -1717,7 +1749,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
           const hr12 = hr % 12 || 12;
           return `${hr12}:${m || '00'} ${ampm}`;
         };
-        timeStr = `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
+        timeStr = `${formatSingle(parts[0])}`;
       } else {
         const trimmed = next.time.trim();
         const hasPM = /PM/i.test(trimmed);
@@ -3622,7 +3654,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      return `${format12h(parts[0])} - ${format12h(parts[1])}`;
+      return `${format12h(parts[0])}`;
     }
     const trimmed = t.trim();
     const hasPM = /PM/i.test(trimmed);
@@ -4945,18 +4977,7 @@ function FollowUps({ rows, selectedClinic }) {
     if (!t) return '';
     if (t.includes('-')) {
       const parts = t.split('-');
-      const formatSingle = (singleT) => {
-        const trimmed = singleT.trim();
-        const hasPM = /PM/i.test(trimmed);
-        const clean = trimmed.replace(/\s*[AP]M\s*$/i, '').trim();
-        const [h, m] = clean.split(':');
-        let hr = parseInt(h);
-        if (hasPM && hr < 12) hr += 12;
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const hr12 = hr % 12 || 12;
-        return `${hr12}:${m || '00'} ${ampm}`;
-      };
-      return `${formatSingle(parts[0])} - ${formatSingle(parts[1])}`;
+      return `${format12h(parts[0])}`;
     }
     const trimmed = t.trim();
     const hasPM = /PM/i.test(trimmed);
@@ -5067,8 +5088,8 @@ function FollowUps({ rows, selectedClinic }) {
 function Calendar({ appointments, go }) {
   return <Screen title="Doctor Calendar" sub="Pet, owner, and reason visible in every slot">
     <div className="calendar-layout">
-      <aside className="queue"><div className="card-label">Today's Queue</div>{appointments.slice(0, 4).map((appt) => <button key={appt._id} onClick={() => go('soap')}><strong>{appt.petName}</strong><span>{appt.ownerName} · {appt.reason}</span><small>{appt.time}</small></button>)}</aside>
-      <section className="week-grid">{appointments.map((appt) => <button className={`cal-ev ${appt.status === 'Now' ? 'now' : ''}`} key={appt._id} onClick={() => go('soap')}><strong>{appt.time} · {appt.petName}</strong><span>{appt.ownerName}</span><small>{appt.reason}</small></button>)}</section>
+      <aside className="queue"><div className="card-label">Today's Queue</div>{appointments.slice(0, 4).map((appt) => <button key={appt._id} onClick={() => go('soap')}><strong>{appt.petName}</strong><span>{appt.ownerName} · {appt.reason}</span><small>{format12h(appt.time)}</small></button>)}</aside>
+      <section className="week-grid">{appointments.map((appt) => <button className={`cal-ev ${appt.status === 'Now' ? 'now' : ''}`} key={appt._id} onClick={() => go('soap')}><strong>{format12h(appt.time)} · {appt.petName}</strong><span>{appt.ownerName}</span><small>{appt.reason}</small></button>)}</section>
     </div>
   </Screen>;
 }
@@ -5129,7 +5150,7 @@ function AppointmentList({ rows, clients = [] }) {
                 </span>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text)' }}>{row.time}</strong>
+                <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text)' }}>{format12h(row.time)}</strong>
                 {badgeVal && (
                   <span className={`badge b-${badgeVal === 'Now' ? 'blue' : 'purple'}`} style={{ marginTop: '4px', fontSize: '10px', padding: '1px 6px' }}>
                     {badgeVal}
