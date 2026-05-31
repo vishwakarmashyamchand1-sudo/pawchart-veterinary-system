@@ -3,8 +3,7 @@ import { Screen } from '../main.jsx';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
 import { createSpeechRecognition } from '../utils/speech.js';
 import { format12h } from '../utils/dateUtils.js';
-
-// Centralized API Base URL
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';// Centralized API Base URL
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export function Soap({ 
@@ -705,17 +704,47 @@ export function Soap({
                 {historyTab === 'weight' && (
                   petWeights.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {petWeights.map((w, idx) => (
-                        <div key={w._id || idx} style={{ borderBottom: idx < petWeights.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <strong style={{ fontSize: '13px', color: 'var(--text)' }}>{w.weight} lbs</strong>
-                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>{(w.weight * 0.453592).toFixed(1)} kg</span>
-                          </div>
-                          <span style={{ fontSize: '12px', color: 'var(--text-2)', fontWeight: '600' }}>
-                            {new Date(w.date || w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        </div>
-                      ))}
+                      {(() => {
+                        const sortedWeights = [...petWeights].sort((a,b) => new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt));
+                        const chartData = sortedWeights.map(w => ({
+                          date: new Date(w.date || w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                          weight: w.weight
+                        }));
+                        const currentWeight = chartData.length > 0 ? chartData[chartData.length - 1].weight : 0;
+                        const firstWeight = chartData.length > 0 ? chartData[0].weight : 0;
+                        const diff = currentWeight - firstWeight;
+                        const diffColor = diff > 0 ? 'var(--amber)' : diff < 0 ? 'var(--green)' : 'var(--text-3)';
+                        
+                        return (
+                          <>
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
+                              <div style={{ flex: 1, padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Current Weight</div>
+                                <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>lbs</span></div>
+                              </div>
+                              <div style={{ flex: 1, padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Total Change</div>
+                                <div style={{ fontSize: '20px', fontWeight: '800', color: diffColor }}>{diff > 0 ? '+' : ''}{diff.toFixed(1)} <span style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>lbs</span></div>
+                              </div>
+                            </div>
+                            <div style={{ height: '180px', width: '100%', marginTop: '8px' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-3)' }} dy={5} />
+                                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
+                                  <Tooltip 
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    labelStyle={{ fontWeight: 'bold', color: 'var(--text)', marginBottom: '4px' }}
+                                    itemStyle={{ color: 'var(--brand)', fontWeight: '600' }}
+                                  />
+                                  <Line type="monotone" dataKey="weight" name="Weight (lbs)" stroke="var(--brand)" strokeWidth={3} dot={{ r: 4, fill: 'var(--surface)', stroke: 'var(--brand)', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: '12px' }}>
