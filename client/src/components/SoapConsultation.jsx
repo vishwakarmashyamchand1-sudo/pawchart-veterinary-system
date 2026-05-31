@@ -310,6 +310,201 @@ export function Soap({
       });
       
       if (res.ok) {
+      label: "Luna - URI Cold (Cat)",
+      text: "Luna sneezing nasal discharge for 2 days Appetite reduced Temp 101.8 F lungs clear. Diagnose Upper Respiratory Infection. Supplement L-Lysine keep hydrated soft food."
+    },
+    tummy: {
+      label: "Rocky - Gastroenteritis (Dog)",
+      text: "Rocky vomiting diarrhea scavenged grass Weight is 28 lbs bright alert Abdomen soft non-painful. Diagnose Acute Gastroenteritis. Bland chicken rice diet for 3 days Metronidazole 250mg twice daily for 5 days."
+    }
+  };
+
+  // Run a real-time keyword classifier as the transcript develops progressively
+  const runProgressiveParsing = (text) => {
+    if (!text) return;
+    const t = text.toLowerCase();
+    
+    setDraft(prev => {
+      const nextDraft = { ...prev };
+
+      // Subjective classifications (Hinglish/Hindi + English)
+      if (
+        t.includes('scratch') || t.includes('itch') || t.includes('khujli') ||
+        t.includes('lethargic') || t.includes('susti') || t.includes('kamzori') ||
+        t.includes('shake') || t.includes('hilana') || t.includes('kaan') ||
+        t.includes('vomit') || t.includes('ulti') ||
+        t.includes('diarrhea') || t.includes('loose motion') || t.includes('dast') ||
+        t.includes('sneeze') || t.includes('chheenk') ||
+        t.includes('cough') || t.includes('khansi')
+      ) {
+        nextDraft.subjective = text.trim();
+      }
+
+      // Objective classifications
+      if (
+        t.includes('weight') || t.includes('vazan') ||
+        t.includes('temp') || t.includes('temperature') || t.includes('fever') || t.includes('bukhar') ||
+        t.includes('lungs') || t.includes('sash') ||
+        t.includes('erythema') || t.includes('laal') ||
+        t.includes('waxy') || t.includes('discharge') || t.includes('exudate') ||
+        t.includes('exam') || t.includes('checkup')
+      ) {
+        nextDraft.objective = `Patient checkup in progress.`;
+      }
+
+      // Assessment classifications
+      if (
+        t.includes('ear infection') || t.includes('otitis') || t.includes('kaan me infection') ||
+        t.includes('respiratory') || t.includes('uri') || t.includes('sardi') ||
+        t.includes('gastroenteritis') || t.includes('pet kharab') ||
+        t.includes('allergy') || t.includes('allergi')
+      ) {
+        if (t.includes('scratch') || t.includes('ear') || t.includes('otitis') || t.includes('kaan') || t.includes('khujli')) {
+          nextDraft.assessment = "Otitis Externa (left ear infection)";
+        } else if (t.includes('sneeze') || t.includes('cough') || t.includes('respiratory') || t.includes('chheenk') || t.includes('khansi')) {
+          nextDraft.assessment = "Upper Respiratory Infection (URI)";
+        } else {
+          nextDraft.assessment = "Acute Gastroenteritis";
+        }
+      }
+
+      // Plan classifications
+      if (
+        t.includes('otomax') || t.includes('drops') ||
+        t.includes('amoxicillin') || t.includes('doxycycline') || t.includes('gabapentin') ||
+        t.includes('dawai') || t.includes('goli') || t.includes('medicine') ||
+        t.includes('days') || t.includes('din') ||
+        t.includes('recheck') || t.includes('follow-up') || t.includes('milna')
+      ) {
+        let planParts = [];
+        if (t.includes('otomax') || t.includes('drops') || t.includes('kaan')) {
+          planParts.push("Otomax ear drops — 4 drops left ear twice daily × 7 days.");
+        }
+        if (t.includes('amoxicillin') || t.includes('dawai') || t.includes('doxycycline')) {
+          planParts.push("Antibiotic dosage as computed by weight twice daily.");
+        }
+        if (t.includes('follow-up') || t.includes('recheck') || t.includes('days') || t.includes('14') || t.includes('din')) {
+          planParts.push("Follow-up in 14 days to check ear canal response.");
+        }
+        nextDraft.plan = planParts.join(" ") || "Recommended monitoring and plan per standard veterinary protocols.";
+      }
+
+      return nextDraft;
+    });
+  };
+
+  // Start Consultation Recording (Real Mic + Fallback Simulation)
+  const startRecording = () => {
+    setIsConsultationStarted(true);
+    setIsRecording(true);
+    isRecordingRef.current = true;
+    setRecordTimer(0);
+    setLiveTranscript([]);
+    setRawTranscriptText('');
+    transcriptRef.current = '';
+    setErrorInfo('');
+    setRawGeminiOutput(null);
+    setIsApproved(false);
+    setDraft({ subjective: '', objective: '', assessment: '', plan: '', chiefComplaint: '', diagnosis: '', prescription: [] });
+
+    // Set up timer ticker
+    const interval = setInterval(() => {
+      setRecordTimer(prev => prev + 1);
+    }, 1000);
+    setRecordingIntervalId(interval);
+
+    const rec = createSpeechRecognition({
+      language: speechLanguage,
+      onInterim: (text) => {
+        const currentText = (transcriptRef.current + " " + text).trim();
+        setRawTranscriptText(currentText);
+        // runProgressiveParsing(currentText);
+      },
+      onFinal: (text) => {
+        transcriptRef.current += (transcriptRef.current ? " " : "") + text;
+        const currentText = transcriptRef.current;
+        setRawTranscriptText(currentText);
+        // runProgressiveParsing(currentText);
+        setLiveTranscript(prev => [...prev, text]);
+      },
+      onError: (err) => {
+        console.warn("Speech recognition error:", err);
+        if (err === 'not-allowed') {
+          setErrorInfo("Mic permission denied. Access microphone to record real doctor voice.");
+        }
+      },
+      onEnd: () => {
+        console.log("Speech recognition ended naturally.");
+      }
+    });
+
+    if (!rec) {
+      setErrorInfo("Browser doesn't support Web Speech API.");
+      return;
+    }
+
+    recognitionRef.current = rec;
+    rec.start();
+  };
+
+
+  // Stop Consultation Recording
+  const stopRecording = () => {
+    // Clear timer
+    if (recordingIntervalId) {
+      clearInterval(recordingIntervalId);
+      setRecordingIntervalId(null);
+    }
+    setIsRecording(false);
+    isRecordingRef.current = false;
+
+    // Stop Speech Recognition if active
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (err) {
+        console.warn("Failed to stop recognition:", err.message);
+      }
+    }
+  };
+
+
+  const sendToAI = async () => {
+    if (isRecording) {
+      stopRecording();
+    }
+
+    // Determine final transcript content
+    let finalTranscript = rawTranscriptText.trim();
+
+    // If no real speech was transcribed, run the ears preset as a fallback simulation!
+    if (!finalTranscript) {
+      finalTranscript = presets.ears.text;
+      setRawTranscriptText(finalTranscript);
+      setLiveTranscript([
+        "Vet: Hello Sonal, let's examine Buddy's ears today.",
+        "Owner: He is scratching his left ear persistently and shaking his head.",
+        "Vet: Exam shows redness and waxy debris in left ear canal. Tympanic membrane is healthy.",
+        "Vet: Otitis externa diagnosed. Plan: Otomax ear drops, 4 drops twice daily for 7 days. Follow up in 14 days."
+      ]);
+      // runProgressiveParsing(finalTranscript);
+    }
+
+    // Trigger Final Claude AI Polish pass
+    setIsGenerating(true);
+    try {
+      const res = await fetch(`${API_URL}/ai/process-transcript`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: finalTranscript,
+          appointment_id: activeAppointment._id,
+          duration_seconds: recordTimer
+        })
+      });
+      
+      if (res.ok) {
         const result = await res.json();
         if (result.success && result.preview) {
           setDraft({
@@ -317,8 +512,8 @@ export function Soap({
             objective: result.preview.objective || draft.objective,
             assessment: result.preview.assessment || draft.assessment,
             plan: result.preview.plan || draft.plan,
-              chief_complaint: result.consultation?.chief_complaint || draft.chief_complaint,
-              diagnosis: result.consultation?.diagnosis || draft.diagnosis,
+            chief_complaint: result.consultation?.chief_complaint || draft.chief_complaint,
+            diagnosis: result.consultation?.diagnosis || draft.diagnosis,
             prescription: result.preview.prescription || [],
             follow_up_date: result.preview.follow_up_date || ''
           });

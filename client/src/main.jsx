@@ -1255,7 +1255,9 @@ function AlertCard({ type, petName, title, sub }) {
   const colors = {
     amber: { bg: '#fef3c7', border: '#fcd34d', text: '#b45309', subText: '#b45309' },
     purple: { bg: '#ede9fe', border: '#c084fc', text: '#6d28d9', subText: '#6d28d9' },
-    red: { bg: '#fee2e2', border: '#fca5a5', text: '#b91c1c', subText: '#b91c1c' }
+    red: { bg: '#fee2e2', border: '#fca5a5', text: '#b91c1c', subText: '#b91c1c' },
+    blue: { bg: '#dbeafe', border: '#bfdbfe', text: '#1d4ed8', subText: '#1d4ed8' },
+    green: { bg: '#dcfce7', border: '#bbf7d0', text: '#15803d', subText: '#15803d' }
   };
   const color = colors[type] || colors.amber;
   return (
@@ -1343,30 +1345,36 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
 
   // Get real alerts from vaccinations & follow-ups
   const alertsList = [];
+  const todayPetNames = new Set(todayAppts.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
   // 1. Process vaccinations as alerts
   if (data?.alerts && data.alerts.length > 0) {
     data.alerts.forEach((vax) => {
-      alertsList.push({
-        _id: vax._id,
-        type: vax.status === 'Overdue' ? 'red' : 'amber',
-        petName: vax.petName,
-        title: `${vax.vaccine} vaccine ${vax.status?.toLowerCase() || 'due'}`,
-        sub: `Due date: ${vax.dueDate} · Status: ${vax.status}`
-      });
+      if (todayPetNames.has(vax.petName?.toLowerCase())) {
+        if (vax.status === 'Completed' || vax.status === 'Waived' || vax.status === 'Up to date') return;
+        alertsList.push({
+          _id: vax._id,
+          type: vax.status === 'Overdue' ? 'red' : vax.status === 'Completed' ? 'blue' : 'amber',
+          petName: vax.petName,
+          title: `${vax.vaccine} vaccine ${vax.status?.toLowerCase() || 'due'}`,
+          sub: `Due date: ${vax.dueDate} · Status: ${vax.status}`
+        });
+      }
     });
   }
 
   // 2. Process monitoring followups as alerts
   if (data?.monitoring && data.monitoring.length > 0) {
     data.monitoring.forEach((follow) => {
-      alertsList.push({
-        _id: follow._id,
-        type: 'purple',
-        petName: follow.petName,
-        title: `Follow-up pending (${getCompactPurpose(follow.purpose)})`,
-        sub: `Planned for: ${formatDateClean(follow.planDate)} · Doctor: ${follow.vetName}`
-      });
+      if (todayPetNames.has(follow.petName?.toLowerCase())) {
+        alertsList.push({
+          _id: follow._id,
+          type: 'purple',
+          petName: follow.petName,
+          title: `Follow-up pending (${getCompactPurpose(follow.purpose)})`,
+          sub: `Planned for: ${formatDateClean(follow.planDate)} · Doctor: ${follow.vetName}`
+        });
+      }
     });
   }
 
@@ -1429,30 +1437,31 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
             ALERTS & REMINDERS
           </div>
           
-          {alertsList.length > 0 ? (
-            alertsList.slice(0, 4).map((alert) => (
-              <AlertCard 
-                key={alert._id || alert.title}
-                type={alert.type} 
-                petName={alert.petName} 
-                title={alert.title} 
-                sub={alert.sub} 
-              />
-            ))
-          ) : (
-            <div style={{
-              padding: '30px 16px',
-              textAlign: 'center',
-              color: 'var(--text-3)',
-              fontSize: '13px',
-              border: '1.5px dashed var(--border)',
-              borderRadius: '8px',
-              marginBottom: '12px',
-              fontStyle: 'italic'
-            }}>
-              No alerts or reminders
-            </div>
-          )}
+          <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
+            {alertsList.length > 0 ? (
+              alertsList.map((alert) => (
+                <AlertCard 
+                  key={alert._id || alert.title}
+                  type={alert.type} 
+                  petName={alert.petName} 
+                  title={alert.title} 
+                  sub={alert.sub} 
+                />
+              ))
+            ) : (
+              <div style={{
+                padding: '30px 16px',
+                textAlign: 'center',
+                color: 'var(--text-3)',
+                fontSize: '13px',
+                border: '1.5px dashed var(--border)',
+                borderRadius: '8px',
+                fontStyle: 'italic'
+              }}>
+                No alerts or reminders
+              </div>
+            )}
+          </div>
           
           <MonitoringBox count={stats.followUpsPending ?? 0} />
         </section>
@@ -1648,7 +1657,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       totalVaxes += petVaxes.length;
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
-        if (s.includes('completed') || s.includes('up to date') || v.lastDate) {
+        if (s.includes('completed') || s.includes('waived') || v.lastDate) {
           hasCompleted = true;
         }
         if (s.includes('overdue')) overdue++;
@@ -2148,10 +2157,19 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return { ...v, displayStatus };
   });
 
+  const hasRecordedVax = petVax.some(v => 
+    String(v.status).toLowerCase().includes('completed') || 
+    String(v.status).toLowerCase().includes('waived') || 
+    v.lastDate
+  );
+
   let vaxIndicatorColor = '#94a3b8'; // Grey
-  let vaxIndicatorTooltip = 'Vaccines Pending';
+  let vaxIndicatorTooltip = 'Not recorded';
   if (petVax.length > 0) {
-    if (petVax.some(v => v.displayStatus === 'Overdue')) {
+    if (!hasRecordedVax) {
+      vaxIndicatorColor = '#94a3b8'; // Grey
+      vaxIndicatorTooltip = 'Not recorded';
+    } else if (petVax.some(v => v.displayStatus === 'Overdue')) {
       vaxIndicatorColor = 'var(--red)';
       vaxIndicatorTooltip = 'Vaccines Overdue!';
     } else if (petVax.some(v => v.displayStatus === 'Due soon')) {
@@ -2447,7 +2465,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   petVax.map(v => (
                     <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : v.displayStatus === 'Upcoming' ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
+                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : (v.displayStatus === 'Upcoming' || v.displayStatus === 'Completed') ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
                         <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
                       </div>
                       <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>

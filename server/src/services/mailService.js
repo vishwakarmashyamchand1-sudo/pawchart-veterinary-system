@@ -760,9 +760,14 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
         client = await Client.findById(appt.clientId);
       }
       if (!client && appt.ownerName) {
-        client = await Client.findOne({ 
-          name: { $regex: new RegExp('^' + appt.ownerName.trim() + '$', 'i') } 
-        });
+        // First try exact match
+        client = await Client.findOne({ name: appt.ownerName });
+        if (!client) {
+          // Fallback to case-insensitive regex match, ignoring surrounding whitespace
+          client = await Client.findOne({ 
+            name: { $regex: new RegExp('^\\s*' + appt.ownerName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i') } 
+          });
+        }
       }
       const vet = await Vet.findOne({ name: appt.vetName });
       const clinic = clinicId ? await Clinic.findById(clinicId) : null;
@@ -775,10 +780,15 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
       }
     } else if (resource === 'soapnotes') {
       const soapNote = created;
-      // Case-insensitive regex match to resolve clients securely
-      const client = await Client.findOne({ 
-        name: { $regex: new RegExp('^' + soapNote.ownerName.trim() + '$', 'i') } 
-      });
+      // First try exact match since ownerName comes directly from the frontend
+      let client = await Client.findOne({ name: soapNote.ownerName });
+      
+      if (!client) {
+        // Fallback to case-insensitive regex match, ignoring surrounding whitespace
+        client = await Client.findOne({ 
+          name: { $regex: new RegExp('^\\s*' + (soapNote.ownerName || '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i') } 
+        });
+      }
       const vet = await Vet.findOne({ name: soapNote.vetName });
       const clinic = clinicId ? await Clinic.findById(clinicId) : null;
       

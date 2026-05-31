@@ -38,12 +38,15 @@ export const getDashboardStats = async (req, res, next) => {
     });
 
     // appointments comparison
-    const apptsToday = appointments.filter((item) => item.date === todayStr).length;
+    const todayAppointments = appointments.filter((item) => item.date === todayStr);
+    const apptsToday = todayAppointments.length;
     const apptsYesterday = appointments.filter((item) => item.date === yesterdayStr).length;
     const apptsDiff = apptsToday - apptsYesterday;
     const apptsHint = apptsDiff >= 0 
       ? `+${apptsDiff} appointments compared to yesterday` 
       : `${apptsDiff} appointments compared to yesterday`;
+
+    const todayPetNames = new Set(todayAppointments.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
     // Active patients comparison
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -88,8 +91,8 @@ export const getDashboardStats = async (req, res, next) => {
         veterinarianCount: vets.length
       },
       appointments: appointments.slice(0, 5),
-      alerts: vaccinations.filter((item) => item.status !== 'Up to date').slice(0, 4),
-      monitoring: followUps.filter((item) => item.monitoring)
+      alerts: vaccinations.filter((item) => item.status !== 'Up to date' && item.status !== 'Completed' && item.status !== 'Waived' && todayPetNames.has(item.petName?.toLowerCase())),
+      monitoring: followUps.filter((item) => item.monitoring && todayPetNames.has(item.petName?.toLowerCase()))
     });
   } catch (error) {
     next(error);
