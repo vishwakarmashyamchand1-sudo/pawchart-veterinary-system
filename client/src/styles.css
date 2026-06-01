@@ -96,6 +96,7 @@ button{cursor:pointer}
 .b-amber{background:var(--amber-pale);color:var(--amber)}
 .b-red{background:var(--red-pale);color:var(--red)}
 .b-purple{background:var(--purple-pale);color:var(--purple)}
+.b-gray{background:#e2e8f0;color:#475569}
 .card-label{font-size:10px;color:var(--text-3);font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
 
 .appointment-list{display:flex;flex-direction:column}

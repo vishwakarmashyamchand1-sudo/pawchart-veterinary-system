@@ -95,25 +95,23 @@ export const updateVaccination = async (req, res, next) => {
     
     // If it's being marked Completed right now
     if (updateData.status === 'Completed' && existing.status !== 'Completed') {
-      existing.status = 'Completed';
+      const isFirstVaccine = !existing.lastDate;
+      const baseDate = isFirstVaccine ? existing.dueDate : (updateData.lastDate || new Date().toISOString().split('T')[0]);
+      
+      Object.assign(existing, updateData);
       existing.lastDate = updateData.lastDate || new Date().toISOString().split('T')[0];
       
-      // Generate next round (default 1 year)
-      const nextDueDate = calculateDueDate(existing.lastDate, '1 year');
+      // Update due date in-place for the next cycle
+      const interval = isFirstVaccine ? '3 months' : '1 year';
+      
+      const nextDueDate = calculateDueDate(baseDate, interval);
       if (nextDueDate) {
-        await Vaccination.create({
-          petName: existing.petName,
-          ownerName: existing.ownerName,
-          breed: existing.breed,
-          vaccine: existing.vaccine,
-          dueDate: nextDueDate,
-          status: 'Pending',
-          clinic_id: existing.clinic_id
-        });
+        existing.dueDate = nextDueDate;
       }
     } else {
       Object.assign(existing, updateData);
     }
+    existing.isRecorded = true;
     
     await existing.save();
     res.json(existing);

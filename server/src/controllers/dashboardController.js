@@ -22,8 +22,21 @@ export const getDashboardStats = async (req, res, next) => {
     // Compute dynamic status for Vaccinations & FollowUps based on current date
     const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
+    const petVaxMap = {};
     vaccinations.forEach(v => {
-      if (v.status !== 'Completed' && v.status !== 'Waived' && v.dueDate) {
+      const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
+      if (!petVaxMap[key]) petVaxMap[key] = [];
+      petVaxMap[key].push(v);
+    });
+
+    vaccinations.forEach(v => {
+      const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
+      const petRecords = petVaxMap[key] || [];
+      const hasRecorded = petRecords.some(r => r.status === 'Completed' || r.status === 'Waived' || r.lastDate);
+
+      if (!hasRecorded && v.status === 'Pending') {
+        v.status = 'Not recorded';
+      } else if (v.status !== 'Completed' && v.status !== 'Waived' && v.status !== 'Not recorded' && v.dueDate) {
         if (v.dueDate < todayStr) v.status = 'Overdue';
         else if (v.dueDate <= next30Days) v.status = 'Due soon';
         else v.status = 'Up to date';
@@ -58,7 +71,7 @@ export const getDashboardStats = async (req, res, next) => {
     const patientsHint = `↑ ${newThisMonth} new this month`;
 
     // Vaccines comparison (overdue vaccines)
-    const vaxDue = vaccinations.filter((item) => item.status !== 'Up to date').length;
+    const vaxDue = vaccinations.filter((item) => item.status !== 'Up to date' && item.status !== 'Not recorded').length;
     const overdueCount = vaccinations.filter(v => v.status === 'Overdue').length;
     const vaxHint = `⚠ ${overdueCount} overdue`;
 

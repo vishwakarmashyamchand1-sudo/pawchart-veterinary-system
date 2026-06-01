@@ -82,11 +82,24 @@ function useApi(selectedClinicId) {
 
       const vaxIndex = names.indexOf('vaccinations');
       if (vaxIndex !== -1 && Array.isArray(results[vaxIndex])) {
+        const petVaxMap = {};
         results[vaxIndex].forEach(v => {
-          if (v.status !== 'Completed' && v.status !== 'Waived' && v.dueDate) {
-            if (v.dueDate < todayStr) v.status = 'Overdue';
-            else if (v.dueDate <= next30) v.status = 'Due soon';
-            else v.status = 'Up to date';
+          const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
+          if (!petVaxMap[key]) petVaxMap[key] = [];
+          petVaxMap[key].push(v);
+        });
+
+        results[vaxIndex].forEach(v => {
+          if (v.status === 'Pending') {
+            if (!v.isRecorded) {
+              v.status = 'Not recorded';
+            } else {
+              if (v.dueDate < todayStr) v.status = 'Overdue';
+              else if (v.dueDate <= next30) v.status = 'Due soon';
+              else v.status = 'Upcoming';
+            }
+          } else if (v.status === 'Completed') {
+            v.status = 'Done';
           }
         });
       }
@@ -656,42 +669,182 @@ function VaccineModal({ initialTab, initialData, onClose, onSave }) {
   );
 }
 
-function PetVaccinationEditModal({ vaccination, onClose, onSave }) {
-  const [status, setStatus] = useState(vaccination.status || 'Completed');
+function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
+  const isAlreadyGiven = vaccination.status === 'Completed' || vaccination.status === 'Up to date' || vaccination.status === 'Done';
+  const [status, setStatus] = useState(isAlreadyGiven ? 'Completed' : '');
   const [lastDate, setLastDate] = useState(vaccination.lastDate || new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(vaccination.dueDate || '');
   const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
   const [vetName, setVetName] = useState(vaccination.vetName || '');
   const [notes, setNotes] = useState(vaccination.notes || '');
 
+  // Calculate due date based on pet's date of birth
+  const getCalculatedDueDate = () => {
+    if (!pet) return dueDate || '';
+    const dobStr = pet.dateOfBirth || pet.dob;
+    if (!dobStr) return dueDate || '';
+    
+    const cleanVax = (vaccine || vaccination.vaccine || '').toLowerCase().trim();
+    let recAge = '12 weeks';
+    if (cleanVax.includes('rabies')) {
+      recAge = '12 weeks';
+    } else if (cleanVax.includes('dhpp')) {
+      recAge = '8 weeks';
+    } else if (cleanVax.includes('bordetella')) {
+      recAge = '12 weeks';
+    } else if (cleanVax.includes('fvrcp')) {
+      recAge = '8 weeks';
+    } else if (cleanVax.includes('rhdv2')) {
+      recAge = '6 weeks';
+    } else if (cleanVax.includes('polyomavirus')) {
+      recAge = '4 weeks';
+    } else if (cleanVax.includes('titer')) {
+      recAge = '1 year';
+    }
+    
+    try {
+      const dob = new Date(dobStr);
+      if (isNaN(dob.getTime())) return '';
+      
+      const match = recAge.match(/(\d+)/);
+      if (!match) return '';
+      const value = parseInt(match[1], 10);
+      const lowerStr = recAge.toLowerCase();
+      const calculated = new Date(dob);
+      
+      if (lowerStr.includes('week')) {
+        calculated.setDate(calculated.getDate() + (value * 7));
+      } else if (lowerStr.includes('month')) {
+        calculated.setMonth(calculated.getMonth() + value);
+      } else if (lowerStr.includes('year')) {
+        calculated.setFullYear(calculated.getFullYear() + value);
+      } else if (lowerStr.includes('day')) {
+        calculated.setDate(calculated.getDate() + value);
+      }
+      
+      const yyyy = calculated.getFullYear();
+      const mm = String(calculated.getMonth() + 1).padStart(2, '0');
+      const dd = String(calculated.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const computedDueDate = getCalculatedDueDate();
+
+  // Handle status toggle button clicks
+  // "Given" matches "Completed", "Not Given" matches "Pending"
+  const isGiven = status === 'Completed' || status === 'Up to date';
+  const isNotGiven = status === 'Pending' || status === 'Not recorded';
+
+  const handleStatusChange = (newStatus) => {
+    setStatus(newStatus);
+    if (newStatus === 'Completed') {
+      if (!lastDate) {
+        setLastDate(new Date().toISOString().split('T')[0]);
+      }
+    }
+  };
+
   return (
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}</h2>
+        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>
+          {vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}
+        </h2>
 
-        {vaccination.isNew ? (
-          <>
-            <Input label="Vaccine Name" value={vaccine} onChange={setVaccine} />
-            <Input label="Due Date" type="date" value={dueDate} onChange={setDueDate} />
-          </>
-        ) : (
-          <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
-            <strong>Vaccine:</strong> {vaccination.vaccine} <br />
-            <strong>Due Date:</strong> {vaccination.dueDate}
+        <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
+          <strong>Vaccine:</strong> {vaccination.isNew ? (
+            <input 
+              className="input" 
+              style={{ display: 'inline-block', width: 'auto', marginLeft: '8px', padding: '4px 8px' }} 
+              value={vaccine} 
+              onChange={(e) => setVaccine(e.target.value)} 
+              placeholder="e.g. Rabies"
+            />
+          ) : vaccination.vaccine}
+        </div>
+
+        {/* STATUS TOGGLE BUTTON GROUP */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+          <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>Status</label>
+          <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', width: 'fit-content' }}>
+            <button
+              type="button"
+              style={{
+                padding: '8px 20px',
+                border: 0,
+                background: isGiven ? '#22c55e' : '#fff',
+                color: isGiven ? '#fff' : 'var(--text-2)',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '13px',
+                transition: 'background 0.2s, color 0.2s'
+              }}
+              onClick={() => handleStatusChange('Completed')}
+            >
+              Given
+            </button>
+            <button
+              type="button"
+              style={{
+                padding: '8px 20px',
+                border: 0,
+                borderLeft: '1px solid #cbd5e1',
+                background: isNotGiven ? '#ef4444' : '#fff',
+                color: isNotGiven ? '#fff' : 'var(--text-2)',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '13px',
+                transition: 'background 0.2s, color 0.2s'
+              }}
+              onClick={() => handleStatusChange('Pending')}
+            >
+              Not Given
+            </button>
           </div>
-        )}
+        </div>
 
-        <Select label="Status" value={status} onChange={setStatus} options={['Pending', 'Completed', 'Up to date']} />
-        {(status === 'Completed' || status === 'Up to date') && (
+        {isGiven && (
           <>
             <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
             <Input label="Given By (Vet/Clinic)" value={vetName} onChange={setVetName} />
             <Input label="Batch Number / Notes" value={notes} onChange={setNotes} />
           </>
         )}
+
+        {isNotGiven && (
+          <div style={{ marginBottom: '16px', color: 'var(--text-2)', background: 'var(--bg)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            <strong>Due Date:</strong> {computedDueDate || 'Not Calculated'}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
           <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ ...vaccination, vaccine, dueDate, status, lastDate, vetName, notes })}>Save Record</button>
+          <button 
+            className="btn btn-primary" 
+            disabled={!status}
+            style={{
+              opacity: !status ? 0.6 : 1,
+              cursor: !status ? 'not-allowed' : 'pointer'
+            }}
+            onClick={() => {
+              if (!status) return;
+              onSave({ 
+                ...vaccination, 
+                vaccine: vaccination.isNew ? vaccine : vaccination.vaccine, 
+                dueDate: computedDueDate, 
+                status, 
+                lastDate: isGiven ? lastDate : '', 
+                vetName: isGiven ? vetName : '', 
+                notes: isGiven ? notes : '',
+                isRecorded: true
+              });
+            }}
+          >
+            Save Record
+          </button>
         </div>
       </div>
     </div>
@@ -718,7 +871,7 @@ function VaccinesConfig({ vaccines, create }) {
   };
 
   const SPECIES = ['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'];
-  const SPECIES_ICONS = { Dog: '🐕', Cat: '🐈', Rabbit: '🐇', Bird: '🦜', Other: '🐾' };
+  const SPECIES_ICONS = { Dog: '🐶', Cat: '🐱', Rabbit: '🐰', Bird: '🦜', Other: '🐾' };
 
   const hardcodedVaccines = [
     { id: 'hc-1', name: 'Rabies', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
@@ -1383,7 +1536,7 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
   if (data?.alerts && data.alerts.length > 0) {
     data.alerts.forEach((vax) => {
       if (todayPetNames.has(vax.petName?.toLowerCase())) {
-        if (vax.status === 'Completed' || vax.status === 'Waived' || vax.status === 'Up to date') return;
+        if (vax.status === 'Completed' || vax.status === 'Waived' || vax.status === 'Up to date' || vax.status === 'Done') return;
         alertsList.push({
           _id: vax._id,
           type: vax.status === 'Overdue' ? 'red' : vax.status === 'Completed' ? 'blue' : 'amber',
@@ -2167,6 +2320,13 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
   })();
 
+  const currentWeightSimple = (() => {
+    if (petWeights.length === 0) return '-';
+    const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const latest = sorted[sorted.length - 1];
+    return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
+  })();
+
   // dynamic timeline records (visits) from SoapNotes
   const petVisits = soapnotes.filter(s => s.petId ? s.petId === currentPet._id : (s.petName.toLowerCase() === currentPet.name.toLowerCase() && s.ownerName.toLowerCase() === ownerName.toLowerCase()));
 
@@ -2175,7 +2335,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const petVax = vaccinations.filter(v => v.petId ? v.petId === currentPet._id : (v.petName.toLowerCase() === currentPet.name.toLowerCase() && v.ownerName.toLowerCase() === ownerName.toLowerCase())).map(v => {
     let displayStatus = v.status;
-    if (displayStatus !== 'Completed' && displayStatus !== 'Up to date') {
+    if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
+      displayStatus = 'Done';
+    } else if (displayStatus !== 'Done' && displayStatus !== 'Not recorded') {
       if (v.dueDate < today) {
         displayStatus = 'Overdue';
       } else if (v.dueDate <= next30Days) {
@@ -2188,6 +2350,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   });
 
   const hasRecordedVax = petVax.some(v =>
+    v.isRecorded ||
+    String(v.status).toLowerCase().includes('done') ||
     String(v.status).toLowerCase().includes('completed') ||
     String(v.status).toLowerCase().includes('waived') ||
     v.lastDate
@@ -2205,9 +2369,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     } else if (petVax.some(v => v.displayStatus === 'Due soon')) {
       vaxIndicatorColor = 'var(--amber)';
       vaxIndicatorTooltip = 'Vaccines Due Soon';
-    } else if (petVax.some(v => v.displayStatus === 'Completed' || v.displayStatus === 'Up to date')) {
+    } else if (petVax.some(v => v.displayStatus === 'Done')) {
       vaxIndicatorColor = 'var(--green)';
-      vaxIndicatorTooltip = 'Vaccines Up to Date';
+      vaxIndicatorTooltip = 'Vaccines Done';
     } else {
       vaxIndicatorColor = '#94a3b8'; // Grey
       vaxIndicatorTooltip = 'Vaccines Pending';
@@ -2261,7 +2425,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       <span style={{ color: 'var(--text-2)' }}>{ownerName}</span>
       <span>›</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', color: 'var(--text)' }}>
-        🐶 {currentPet.name}
+        {petEmoji(currentPet.species)} {currentPet.name}
       </span>
     </div>
   );
@@ -2430,15 +2594,18 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 {currentPet.breed || 'Mixed Breed'} - {currentPet.sex || 'Male'} - {currentPet.spayedNeutered === 'Yes' ? 'Neutered/Spayed' : 'Intact'}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '20px', justifyContent: 'center', flexWrap: 'nowrap', width: '100%' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                   ⏱️ {calculatedAge}
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  ⚖️ {currentWeight}
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                  ⚖️ {currentWeightSimple}
                 </span>
-                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  🩸 {currentPet.bloodType || '-'}
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                  🩸 {(() => {
+                    const bt = currentPet.bloodType || '-';
+                    return bt.replace(/positive/i, 'Pos').replace(/negative/i, 'Neg');
+                  })()}
                 </span>
               </div>
             </div>
@@ -2495,10 +2662,10 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   petVax.map(v => (
                     <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : (v.displayStatus === 'Upcoming' || v.displayStatus === 'Completed') ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
+                        <span style={{ color: v.displayStatus === 'Overdue' ? 'var(--red)' : v.displayStatus === 'Due soon' ? 'var(--amber)' : v.displayStatus === 'Not recorded' ? 'var(--text-3)' : v.displayStatus === 'Upcoming' ? 'var(--blue)' : 'var(--green)', fontSize: '14px' }}>●</span>
                         <strong style={{ color: 'var(--text)' }}>{v.vaccine}</strong>
                       </div>
-                      <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{v.displayStatus === 'Not recorded' ? '-' : new Date(v.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                     </div>
                   ))
                 ) : (
@@ -3029,7 +3196,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           <tr key={v._id}>
                             <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
                             <td>{v.lastDate || 'N/A'}</td>
-                            <td>{v.dueDate}</td>
+                            <td>{v.displayStatus === 'Not recorded' ? 'N/A' : v.dueDate}</td>
                             <td><Badge value={v.displayStatus} /></td>
                             <td style={{ textAlign: 'right', paddingRight: '14px' }}>
                               <button
@@ -3125,6 +3292,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       {editingVax && (
         <PetVaccinationEditModal
           vaccination={editingVax}
+          pet={currentPet}
           onClose={() => setEditingVax(null)}
           onSave={(updated) => {
             if (updated.isNew) {
@@ -3331,9 +3499,34 @@ function Vaccinations({ rows, update, clients = [] }) {
     return '🐾';
   };
 
-  const upToDate = rows.filter(r => String(r.status).toLowerCase().includes('up to date')).length;
-  const overdue = rows.filter(r => String(r.status).toLowerCase().includes('overdue')).length;
-  const dueSoon = rows.filter(r => String(r.status).toLowerCase().includes('due in') || String(r.status).toLowerCase().includes('due soon') || String(r.status).toLowerCase().includes('pending')).length;
+  const mappedRows = React.useMemo(() => {
+    const petHistoryMap = {};
+    rows.forEach(r => {
+      const key = `${r.petName?.toLowerCase()}_${r.ownerName?.toLowerCase()}_${r.vaccine?.toLowerCase()}`;
+      if (!petHistoryMap[key]) {
+        petHistoryMap[key] = false;
+      }
+      if (String(r.status).toLowerCase().includes('completed') || String(r.status).toLowerCase().includes('done') || String(r.status).toLowerCase().includes('waived') || r.lastDate) {
+        petHistoryMap[key] = true;
+      }
+    });
+
+    return rows.map(r => {
+      const key = `${r.petName?.toLowerCase()}_${r.ownerName?.toLowerCase()}_${r.vaccine?.toLowerCase()}`;
+      const hasHistory = petHistoryMap[key];
+      let displayStatus = r.status;
+      if (!hasHistory && r.status === 'Pending') {
+        displayStatus = 'Not recorded';
+      } else if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
+        displayStatus = 'Done';
+      }
+      return { ...r, displayStatus };
+    });
+  }, [rows]);
+
+  const upToDate = mappedRows.filter(r => String(r.displayStatus).toLowerCase().includes('done')).length;
+  const overdue = mappedRows.filter(r => String(r.displayStatus).toLowerCase().includes('overdue')).length;
+  const dueSoon = mappedRows.filter(r => String(r.displayStatus).toLowerCase().includes('due in') || String(r.displayStatus).toLowerCase().includes('due soon') || (String(r.displayStatus).toLowerCase().includes('pending') && r.displayStatus !== 'Not recorded')).length;
 
   const getReminderStatusDisplay = (reminderStatus) => {
     if (!reminderStatus || reminderStatus === 'Not sent') return <span style={{ color: 'var(--text-3)' }}>Not sent</span>;
@@ -3354,12 +3547,11 @@ function Vaccinations({ rows, update, clients = [] }) {
       }
     } catch (err) {
       console.error("Reminder error:", err);
-
     }
   };
 
   const getActionButtons = (row) => {
-    const isUpToDate = String(row.status).toLowerCase().includes('up to date');
+    const isUpToDate = String(row.displayStatus).toLowerCase().includes('done');
     const isNotSent = !row.reminderStatus || row.reminderStatus === 'Not sent';
 
     if (isUpToDate) {
@@ -3390,6 +3582,7 @@ function Vaccinations({ rows, update, clients = [] }) {
   const getDueDateStyle = (status) => {
     if (String(status).toLowerCase().includes('overdue')) return { color: 'var(--red)', fontWeight: 600 };
     if (String(status).toLowerCase().includes('due in') || String(status).toLowerCase().includes('due soon') || String(status).toLowerCase().includes('pending')) return { color: 'var(--amber)', fontWeight: 600 };
+    if (String(status).toLowerCase().includes('not recorded')) return { color: 'var(--text-3)', fontWeight: 400 };
     return { color: 'var(--green)', fontWeight: 600 };
   };
 
@@ -3417,8 +3610,8 @@ function Vaccinations({ rows, update, clients = [] }) {
         <div className="tracker-card green">
           <div className="tracker-icon">✅</div>
           <div className="tracker-info">
-            <h3>{upToDate}</h3>
-            <p>Up to date</p>
+             <h3>{upToDate}</h3>
+            <p>Done</p>
           </div>
         </div>
         <div className="tracker-card yellow">
@@ -3438,7 +3631,7 @@ function Vaccinations({ rows, update, clients = [] }) {
       </div>
 
       <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', 'REMINDER SENT', '']}>
-        {rows.map((row) => (
+        {mappedRows.map((row) => (
           <tr key={row._id}>
             <td>
               <div className="pet-cell">
@@ -3449,8 +3642,8 @@ function Vaccinations({ rows, update, clients = [] }) {
             <td>{row.ownerName}</td>
             <td>{row.vaccine}</td>
             <td style={{ color: 'var(--text-3)' }}>{row.lastDate ? formatDateSafe(row.lastDate) : 'N/A'}</td>
-            <td style={getDueDateStyle(row.status)}>{row.dueDate}</td>
-            <td><Badge value={row.status} /></td>
+            <td style={getDueDateStyle(row.displayStatus)}>{row.displayStatus === 'Not recorded' ? 'N/A' : row.dueDate}</td>
+            <td><Badge value={row.displayStatus} /></td>
             <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
             <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
           </tr>
@@ -4642,10 +4835,11 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   const getPetEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
+    if (s.includes('dog')) return '🐶';
     if (s.includes('cat')) return '🐱';
-    if (s.includes('rabbit') || s.includes('lop')) return '🐇';
+    if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('bird') || s.includes('parrot')) return '🦜';
-    return '🐶';
+    return '🐾';
   };
 
   const handlePrevPet = () => {
@@ -4969,8 +5163,12 @@ function FollowUps({ rows, selectedClinic }) {
   const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length;
 
   const getPetIcon = (breed) => {
-    if (String(breed).toLowerCase().includes('cat') || String(breed).toLowerCase().includes('siamese')) return '🐱';
-    return '🐶';
+    const s = String(breed || '').toLowerCase();
+    if (s.includes('dog')) return '🐶';
+    if (s.includes('cat') || s.includes('siamese')) return '🐱';
+    if (s.includes('rabbit') || s.includes('lop') || s.includes('bunny')) return '🐰';
+    if (s.includes('parrot') || s.includes('bird')) return '🦜';
+    return '🐾';
   };
 
   const format12h = (t) => {
@@ -5177,10 +5375,11 @@ function Name({ title, sub }) {
 
 function Badge({ value, tone }) {
   const isOverdue = String(value).includes('Overdue') || String(value).includes('alert') || String(value).includes('overdue');
-  const isAvailable = String(value).includes('Available') || String(value).includes('Up to date') || String(value).includes('active');
+  const isAvailable = String(value).includes('Available') || String(value).includes('Up to date') || String(value).includes('active') || String(value).includes('Done');
   const isPending = String(value).includes('Pending') || String(value).includes('Due') || String(value).includes('soon') || String(value).includes('Consultation');
+  const isGray = String(value).includes('Not recorded');
 
-  const color = tone || (isOverdue ? 'red' : isAvailable ? 'green' : isPending ? 'amber' : 'blue');
+  const color = tone || (isOverdue ? 'red' : isAvailable ? 'green' : isPending ? 'amber' : isGray ? 'gray' : 'blue');
   return <span className={`badge b-${color}`}>{value}</span>;
 }
 

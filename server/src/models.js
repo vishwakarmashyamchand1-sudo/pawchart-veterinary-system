@@ -98,6 +98,7 @@ const vaccinationSchema = new Schema(
     reminderStatus: String,
     vetName: String,
     notes: String,
+    isRecorded: { type: Boolean, default: false },
     clinic_id: { type: Schema.Types.ObjectId, ref: 'Clinic' }
   },
   { timestamps: true }
