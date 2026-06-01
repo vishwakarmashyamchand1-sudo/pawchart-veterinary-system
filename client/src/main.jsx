@@ -28,7 +28,6 @@ const navByRole = {
   ],
   doctor: [
     ['Appointments', 'calendar', 'cal'],
-    ['Weight Records', 'weight', 'scale'],
     ['Follow-ups', 'followup', 'loop']
   ],
   superadmin: [
@@ -1289,7 +1288,7 @@ function App() {
         </aside>
 
         <main className="main">
-          {loading && <SkeletonLoader message={screen === 'dashboard' ? 'Loading dashboard data...' : screen === 'clients' ? 'Loading clients...' : screen === 'booking' ? 'Loading appointments...' : screen === 'vaccinemaster' ? 'Loading vaccines...' : `Loading ${screen}...`} />}
+          {loading && <SkeletonLoader message={screen === 'dashboard' ? 'Loading dashboard data...' : screen === 'clients' ? 'Loading clients...' : screen === 'booking' ? 'Loading appointments...' : screen === 'vaccinemaster' ? 'Loading vaccines...' : screen === 'soap' ? 'Loading consultation...' : `Loading ${screen}...`} />}
           {error && <Status message={`${error}. Start the API and seed MongoDB.`} tone="error" action={reload} />}
           {!loading && !error && (
             !selectedClinic && screen !== 'vaccinemaster' ? (

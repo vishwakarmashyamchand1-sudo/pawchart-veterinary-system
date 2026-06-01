@@ -192,25 +192,6 @@ export function WeeklyCalendar({
         </div>
       </div>
 
-      {/* Info notice bar */}
-      <div style={{
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        padding: '10px 14px',
-        fontSize: '12px',
-        color: '#1e40af',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        lineHeight: '1.4'
-      }}>
-        <span>📋</span>
-        <span>
-          <strong>Each calendar slot shows:</strong> Pet emoji - Pet name - Owner name - Reason — so vet always knows who is coming and who the owner is.
-        </span>
-      </div>
-
       {/* Grid Layout Container */}
       <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative' }}>
         <table style={{
