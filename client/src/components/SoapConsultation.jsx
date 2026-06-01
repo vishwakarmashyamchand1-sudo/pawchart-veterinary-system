@@ -492,11 +492,11 @@ export function Soap({
               fontSize: '22px',
               flexShrink: 0
             }}>
-              👤
+              {getSpeciesEmoji(activePet.species, activePet.breed)}
             </div>
             <div>
               <strong style={{ fontSize: '18px', color: 'var(--text)', display: 'block' }}>
-                {activeOwner.name} (Pet: {activePet.name})
+                {activePet.name} (Owner - {activeOwner.name})
               </strong>
               <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px', display: 'flex', gap: '14px' }}>
                 <span>{activePet.species || 'Dog'}</span>
@@ -508,7 +508,7 @@ export function Soap({
             </div>
           </div>
 
-          <div className="grid-two" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '22px' }}>
+          <div className="grid-two" style={{ gridTemplateColumns: '1fr 1.8fr', gap: '22px' }}>
             
             {/* LEFT COLUMN: ACTIVE CONSULTATION INITIATOR */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -518,8 +518,8 @@ export function Soap({
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>
                       {activeAppointment.date} at {format12h(activeAppointment.time)}
                     </h3>
-                    <span className="badge b-blue" style={{ fontSize: '11px', fontWeight: '700', textTransform: 'lowercase', padding: '2px 8px' }}>
-                      booked
+                    <span className={`badge ${activeAppointment.status === 'Completed' ? 'b-green' : 'b-blue'}`} style={{ fontSize: '11px', fontWeight: '700', textTransform: 'lowercase', padding: '2px 8px' }}>
+                      {activeAppointment.status === 'Completed' ? 'completed' : 'booked'}
                     </span>
                   </div>
                   <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)', lineHeight: '1.5' }}>
@@ -532,6 +532,7 @@ export function Soap({
                 <button 
                   className="btn btn-primary"
                   onClick={() => setIsConsultationStarted(true)}
+                  disabled={activeAppointment.status === 'Completed'}
                   style={{
                     padding: '16px 20px',
                     borderRadius: '8px',
@@ -541,8 +542,12 @@ export function Soap({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '10px',
-                    boxShadow: '0 4px 15px rgba(37,99,235,0.22)',
-                    width: '100%'
+                    boxShadow: activeAppointment.status === 'Completed' ? 'none' : '0 4px 15px rgba(37,99,235,0.22)',
+                    width: '100%',
+                    background: activeAppointment.status === 'Completed' ? '#cbd5e1' : undefined,
+                    cursor: activeAppointment.status === 'Completed' ? 'not-allowed' : undefined,
+                    color: activeAppointment.status === 'Completed' ? '#64748b' : undefined,
+                    borderColor: activeAppointment.status === 'Completed' ? '#cbd5e1' : undefined
                   }}
                 >
                   🎙️ Start Consultation Recording
@@ -595,7 +600,7 @@ export function Soap({
                 ))}
               </div>
 
-              <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ maxHeight: 'calc(100vh - 260px)', minHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
                 {historyTab === 'soap' && (
                   petHistory.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', paddingTop: '8px' }}>
@@ -760,10 +765,15 @@ export function Soap({
                         <div key={f._id || idx} style={{ borderBottom: idx < petFollowups.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: '10px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <strong style={{ fontSize: '13px', color: 'var(--text)' }}>Follow-up Checkup</strong>
-                            <span className="badge b-blue" style={{ fontSize: '10px' }}>{f.status}</span>
+                            <span className="badge b-blue" style={{ fontSize: '10px' }}>
+                              {(!f.date || isNaN(new Date(f.date).getTime())) ? f.status : (f.status === 'Completed' ? 'Completed' : 'Scheduled')}
+                            </span>
                           </div>
                           <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '4px' }}>
-                            Scheduled: {new Date(f.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {f.time || 'N/A'}
+                            {(!f.date || isNaN(new Date(f.date).getTime())) 
+                              ? 'Scheduled for follow up soon' 
+                              : `Scheduled follow up on ${new Date(f.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${f.time || 'N/A'}`
+                            }
                           </span>
                         </div>
                       ))}
