@@ -13,6 +13,19 @@ export const getDashboardStats = async (req, res, next) => {
 
     // Compute dynamic status for Vaccinations & FollowUps based on current date
     const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Fetch dashboard raw data
+    const [appointments, vaccinations, followUps, vetCount] = await Promise.all([
+      Appointment.find(filter).lean(),
+      Vaccination.find(filter).lean(),
+      FollowUp.find(filter).lean(),
+      Vet.countDocuments(filter)
+    ]);
+
+    const upcomingAppointments = appointments.filter(a => {
+      return a.status !== 'Completed' && a.status !== 'Cancelled' && a.date >= todayStr;
+    });
+
     const petVaxMap = {};
     vaccinations.forEach(v => {
       const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
@@ -51,8 +64,8 @@ export const getDashboardStats = async (req, res, next) => {
       : `${apptsDiff} appointments compared to yesterday`;
 
     // We need today's appointments for alerts and monitoring filters
-    const todayAppointments = await Appointment.find({ ...filter, date: todayStr }).select('petName').lean();
-    const todayPetNames = new Set(todayAppointments.map(a => a.petName?.toLowerCase()).filter(Boolean));
+    const todayApptsDb = await Appointment.find({ ...filter, date: todayStr }).select('petName').lean();
+    const todayPetNames = new Set(todayApptsDb.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
     // Active patients comparison (new this month)
     const startOfMonth = new Date();

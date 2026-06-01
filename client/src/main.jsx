@@ -90,16 +90,16 @@ function useApi(selectedClinicId) {
       
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const vaxIndex = names.indexOf('vaccinations');
-      if (vaxIndex !== -1 && Array.isArray(results[vaxIndex])) {
+      const vaxIndex = secondaryNames.indexOf('vaccinations');
+      if (vaxIndex !== -1 && Array.isArray(secondaryResults[vaxIndex])) {
         const petVaxMap = {};
-        results[vaxIndex].forEach(v => {
+        secondaryResults[vaxIndex].forEach(v => {
           const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
           if (!petVaxMap[key]) petVaxMap[key] = [];
           petVaxMap[key].push(v);
         });
 
-        results[vaxIndex].forEach(v => {
+        secondaryResults[vaxIndex].forEach(v => {
           if (v.status === 'Pending') {
             if (!v.isRecorded) {
               v.status = 'Not recorded';
