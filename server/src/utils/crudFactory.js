@@ -103,14 +103,13 @@ export const createCrudHandlers = (Model, resourceName) => {
 
         const created = await Model.create(body);
 
-        // Trigger dynamic mail notification flows based on resourceName
+        // Trigger dynamic mail notification flows based on resourceName in the background (non-blocking)
         if (resourceName === 'Appointment' || resourceName === 'SoapNote') {
           const resourceLower = resourceName === 'Appointment' ? 'appointments' : 'soapnotes';
-          try {
-            await triggerMailFlows(resourceLower, created, clinicId, req.headers.host);
-          } catch (err) {
-            console.error(`❌ Error executing triggerMailFlows for ${resourceName}:`, err.message);
-          }
+          triggerMailFlows(resourceLower, created, clinicId, req.headers.host)
+            .catch((err) => {
+              console.error(`❌ Error executing triggerMailFlows for ${resourceName}:`, err.message);
+            });
         }
 
         res.status(201).json(created);
