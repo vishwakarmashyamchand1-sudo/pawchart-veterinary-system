@@ -316,7 +316,10 @@ export function WeeklyCalendar({
                                 e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.03)';
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+                              <div style={{ color: card.color, fontSize: '11px', opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px', paddingLeft: '1px' }}>
+                                {appt.ownerName}
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
                                   <span style={{ fontSize: '13px', flexShrink: 0 }}>
                                     {getSpeciesEmoji(appt.species, appt.breed)}
@@ -337,9 +340,6 @@ export function WeeklyCalendar({
                                 }}>
                                   {card.badge.text}
                                 </span>
-                              </div>
-                              <div style={{ color: card.color, fontSize: '11px', opacity: 0.8, paddingLeft: '20px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {appt.ownerName}
                               </div>
                             </div>
                           );
