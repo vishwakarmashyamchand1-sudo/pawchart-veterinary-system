@@ -371,6 +371,10 @@ router.post('/:id/save', optionalAuth, async (req, res, next) => {
       objective,
       assessment,
       plan,
+      chiefComplaint: req.body.chiefComplaint || req.body.chief_complaint || aiConsultation.chief_complaint,
+      diagnosis: req.body.diagnosis || aiConsultation.diagnosis,
+      prescription: req.body.prescription || aiConsultation.prescription_data || [],
+      follow_up_date: req.body.follow_up_date || req.body.followUpDate || (aiConsultation.follow_up_date ? aiConsultation.follow_up_date.toISOString().split('T')[0] : ''),
       tags: tags || [],
       clinic_id: aiConsultation.clinic_id
     });

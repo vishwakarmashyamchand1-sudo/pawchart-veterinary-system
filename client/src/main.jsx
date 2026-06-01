@@ -2268,6 +2268,14 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const [weightLogNote, setWeightLogNote] = useState('');
   const [weightTimeframe, setWeightTimeframe] = useState('12months');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [expandedVisits, setExpandedVisits] = useState({});
+
+  const toggleVisitExpand = (id) => {
+    setExpandedVisits(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   useEffect(() => {
     setCurrentPet(pet);
@@ -2763,9 +2771,50 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             <h4 style={{ fontSize: '15px', margin: '0 0 8px 0', fontWeight: '800', color: 'var(--text)' }}>
                               {visit.assessment.split('.')[0]}
                             </h4>
-                            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
-                              {visit.subjective} {visit.objective} {visit.plan}
-                            </p>
+                            {(() => {
+                              const fullText = `${visit.subjective || ''} ${visit.objective || ''} ${visit.plan || ''}`.trim();
+                              const isExpanded = !!expandedVisits[visit._id || index];
+                              const isLong = fullText.length > 250;
+
+                              return (
+                                <>
+                                  <p 
+                                    style={{ 
+                                      fontSize: '13px', 
+                                      color: 'var(--text-2)', 
+                                      margin: '0 0 8px 0', 
+                                      lineHeight: '1.45',
+                                      display: isExpanded ? 'block' : '-webkit-box',
+                                      WebkitLineClamp: isExpanded ? 'none' : 4,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: isExpanded ? 'visible' : 'hidden'
+                                    }}
+                                  >
+                                    {fullText}
+                                  </p>
+                                  {isLong && (
+                                    <button
+                                      type="button"
+                                      style={{
+                                        background: 'transparent',
+                                        border: 0,
+                                        color: 'var(--brand)',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        padding: '0 0 8px 0',
+                                        display: 'block',
+                                        outline: 'none',
+                                        textAlign: 'left'
+                                      }}
+                                      onClick={() => toggleVisitExpand(visit._id || index)}
+                                    >
+                                      {isExpanded ? 'Show Less ▴' : 'Read More ▾'}
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            })()}
                             {visit.tags && visit.tags.length > 0 && (
                               <div className="chips">
                                 {visit.tags.map(t => (
@@ -3240,42 +3289,103 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                       </tr>
                     </thead>
                     <tbody>
-                      {petVisits.flatMap(v => {
-                        const list = [];
-                        if (v.plan.includes('Otomax')) {
-                          list.push({ id: v._id + '1', drug: 'Otomax ear drops', instruction: 'Apply Otomax ointment twice daily for 7 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026', status: 'Active' });
-                        }
-                        if (v.plan.includes('Metronidazole')) {
-                          list.push({ id: v._id + '2', drug: 'Metronidazole 250mg', instruction: 'Take twice daily for 5 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025', status: 'Completed' });
-                        }
-                        return list;
-                      }).length > 0 ? (
-                        petVisits.flatMap(v => {
+                      {(() => {
+                        const prescriptionList = petVisits.flatMap(v => {
                           const list = [];
-                          if (v.plan.includes('Otomax')) {
-                            list.push({ id: v._id + '1', drug: 'Otomax ear drops', instruction: 'Apply Otomax ointment twice daily for 7 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026', status: 'Active' });
-                          }
-                          if (v.plan.includes('Metronidazole')) {
-                            list.push({ id: v._id + '2', drug: 'Metronidazole 250mg', instruction: 'Take twice daily for 5 days', date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025', status: 'Completed' });
+                          
+                          if (Array.isArray(v.prescription) && v.prescription.length > 0) {
+                            v.prescription.forEach((rx, idx) => {
+                              if (rx && rx.medicine_name) {
+                                const parts = [];
+                                if (rx.dosage) parts.push(rx.dosage);
+                                if (rx.frequency) parts.push(rx.frequency);
+                                if (rx.duration) parts.push(rx.duration);
+                                let instructionStr = parts.join(' — ');
+                                if (rx.instructions) {
+                                  instructionStr += instructionStr ? ` (${rx.instructions})` : rx.instructions;
+                                }
+
+                                let rxStatus = 'Completed';
+                                if (v.createdAt) {
+                                  const visitDate = new Date(v.createdAt);
+                                  const now = new Date();
+                                  const diffTime = Math.abs(now - visitDate);
+                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                  
+                                  let durationDays = 7;
+                                  if (rx.duration) {
+                                    const match = rx.duration.match(/(\d+)\s*day/i);
+                                    if (match) {
+                                      durationDays = parseInt(match[1]);
+                                    } else {
+                                      const anyNumMatch = rx.duration.match(/(\d+)/);
+                                      if (anyNumMatch) {
+                                        durationDays = parseInt(anyNumMatch[1]);
+                                      }
+                                    }
+                                  }
+                                  if (diffDays <= durationDays) {
+                                    rxStatus = 'Active';
+                                  }
+                                } else {
+                                  rxStatus = 'Active';
+                                }
+
+                                list.push({
+                                  id: `${v._id || 'v'}-${idx}`,
+                                  drug: rx.medicine_name,
+                                  instruction: instructionStr || 'Use as directed',
+                                  date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Jun 1, 2026',
+                                  status: rxStatus
+                                });
+                              }
+                            });
+                          } else {
+                            if (v.plan && typeof v.plan === 'string') {
+                              if (v.plan.includes('Otomax')) {
+                                list.push({
+                                  id: v._id + '1',
+                                  drug: 'Otomax ear drops',
+                                  instruction: 'Apply Otomax ointment twice daily for 7 days',
+                                  date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'May 19, 2026',
+                                  status: 'Active'
+                                });
+                              }
+                              if (v.plan.includes('Metronidazole')) {
+                                list.push({
+                                  id: v._id + '2',
+                                  drug: 'Metronidazole 250mg',
+                                  instruction: 'Take twice daily for 5 days',
+                                  date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 12, 2025',
+                                  status: 'Completed'
+                                });
+                              }
+                            }
                           }
                           return list;
-                        }).map(p => (
-                          <tr key={p.id}>
-                            <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{p.drug}</td>
-                            <td>{p.instruction}</td>
-                            <td>{p.date}</td>
-                            <td>
-                              <span className={`badge b-${p.status === 'Active' ? 'blue' : 'green'}`}>{p.status}</span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
-                            No active or completed prescriptions logged
-                          </td>
-                        </tr>
-                      )}
+                        });
+
+                        if (prescriptionList.length > 0) {
+                          return prescriptionList.map(p => (
+                            <tr key={p.id}>
+                              <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{p.drug}</td>
+                              <td>{p.instruction}</td>
+                              <td>{p.date}</td>
+                              <td>
+                                <span className={`badge b-${p.status === 'Active' ? 'blue' : 'green'}`}>{p.status}</span>
+                              </td>
+                            </tr>
+                          ));
+                        } else {
+                          return (
+                            <tr>
+                              <td colSpan="4" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)' }}>
+                                No active or completed prescriptions logged
+                              </td>
+                            </tr>
+                          );
+                        }
+                      })()}
                     </tbody>
                   </table>
                 </section>

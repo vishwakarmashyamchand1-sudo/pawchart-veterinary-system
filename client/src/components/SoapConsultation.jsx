@@ -52,18 +52,52 @@ export function Soap({
     weightRange: '32.4 lbs'
   };
 
+  const ownerNameLower = activeAppointment.ownerName?.toLowerCase();
+  const petNameLower = activeAppointment.petName?.toLowerCase();
+
   // Calculate historical SOAP notes for this specific pet
-  const petHistory = soapNotes.filter(n => n.petName.toLowerCase() === activeAppointment.petName.toLowerCase())
+  const petHistory = soapNotes.filter(n => n.petName?.toLowerCase() === petNameLower && n.ownerName?.toLowerCase() === ownerNameLower)
     .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
 
-  const petVax = vaccinations.filter(v => v.petName?.toLowerCase() === activeAppointment.petName?.toLowerCase())
-    .sort((a, b) => new Date(b.dueDate || b.date) - new Date(a.dueDate || a.date));
+  const today = new Date().toISOString().split('T')[0];
+  const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const petVax = vaccinations.filter(v => v.petName?.toLowerCase() === petNameLower && v.ownerName?.toLowerCase() === ownerNameLower)
+    .sort((a, b) => new Date(b.dueDate || b.date) - new Date(a.dueDate || a.date))
+    .map(v => {
+      let displayStatus = v.status;
+      if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
+        displayStatus = 'Done';
+      } else if (displayStatus !== 'Done' && displayStatus !== 'Not recorded') {
+        if (!v.isRecorded) {
+          displayStatus = 'Not recorded';
+        } else {
+          if (v.dueDate < today) {
+            displayStatus = 'Overdue';
+          } else if (v.dueDate <= next30Days) {
+            displayStatus = 'Due soon';
+          } else {
+            displayStatus = 'Upcoming';
+          }
+        }
+      }
+      return { ...v, displayStatus };
+    });
   
-  const petWeights = weights.filter(w => w.petName?.toLowerCase() === activeAppointment.petName?.toLowerCase())
+  const petWeights = weights.filter(w => w.petName?.toLowerCase() === petNameLower && w.ownerName?.toLowerCase() === ownerNameLower)
     .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
 
-  const petFollowups = followups.filter(f => f.petName?.toLowerCase() === activeAppointment.petName?.toLowerCase())
+  const petFollowups = followups.filter(f => f.petName?.toLowerCase() === petNameLower && f.ownerName?.toLowerCase() === ownerNameLower)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const getBadgeColor = (status) => {
+    const s = String(status);
+    if (s.includes('Overdue') || s.includes('overdue')) return 'red';
+    if (s.includes('Done') || s.includes('Completed') || s.includes('Up to date')) return 'green';
+    if (s.includes('Not recorded')) return 'gray';
+    if (s.includes('Upcoming')) return 'blue';
+    return 'amber';
+  };
 
   // Consultation workflow states
   const [isConsultationStarted, setIsConsultationStarted] = useState(false);
@@ -691,11 +725,11 @@ export function Soap({
                         <div key={v._id || idx} style={{ borderBottom: idx < petVax.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <strong style={{ fontSize: '13px', color: 'var(--text)' }}>{v.vaccine || v.name}</strong>
-                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Due: {v.dueDate || v.date}</span>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Due: {v.displayStatus === 'Not recorded' ? '-' : (v.dueDate || v.date)}</span>
                           </div>
-                          <span className={`badge b-${v.status === 'Overdue' ? 'red' : v.status === 'Completed' ? 'green' : 'amber'}`} style={{ fontSize: '10px' }}>
-                            {v.status || 'Due'}
-                          </span>
+                           <span className={`badge b-${getBadgeColor(v.displayStatus)}`} style={{ fontSize: '10px' }}>
+                             {v.displayStatus || 'Due'}
+                           </span>
                         </div>
                       ))}
                     </div>
