@@ -5,16 +5,14 @@ export const getDashboardStats = async (req, res, next) => {
   try {
     const filter = getQueryFilter(req);
     
-    // Compute dynamic today's & yesterday's date strings
-    const todayStr = new Date().toISOString().split('T')[0]; // e.g. '2026-05-23'
+    const todayStr = new Date().toISOString().split('T')[0]; 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0]; // e.g. '2026-05-22'
+    const yesterdayStr = yesterday.toISOString().split('T')[0]; 
 
-    // Compute dynamic status for Vaccinations & FollowUps based on current date
     const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // 1. Fetch appointments using Count and limited Find for extreme performance
+    // 1. Appointments (Fast DB Counts)
     const [apptsToday, apptsYesterday, vetCount] = await Promise.all([
       Appointment.countDocuments({ ...filter, date: todayStr }),
       Appointment.countDocuments({ ...filter, date: yesterdayStr }),
@@ -26,18 +24,16 @@ export const getDashboardStats = async (req, res, next) => {
       ? `+${apptsDiff} appointments compared to yesterday` 
       : `${apptsDiff} appointments compared to yesterday`;
 
-    // Only get the upcoming appointments for the dashboard list
     const upcomingAppointments = await Appointment.find({
       ...filter,
       status: { $nin: ['Completed', 'Cancelled'] },
       date: { $gte: todayStr }
     }).sort({ date: 1, time: 1 }).limit(30).lean();
 
-    // We need today's appointments for alerts and monitoring filters
     const todayApptsDb = await Appointment.find({ ...filter, date: todayStr }).select('petName').lean();
     const todayPetNames = new Set(todayApptsDb.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
-    // 2. Active patients comparison
+    // 2. Active patients (DB Size Aggregation)
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0,0,0,0);
@@ -59,7 +55,7 @@ export const getDashboardStats = async (req, res, next) => {
     const newThisMonth = newThisMonthAgg.length > 0 ? newThisMonthAgg[0].total : 0;
     const patientsHint = `+ ${newThisMonth} new this month`;
 
-    // 3. Follow ups pending comparison
+    // 3. Follow ups (Fast DB Counts)
     const followBaseQuery = {
       ...filter,
       status: { $nin: ['Completed', 'Scheduled', 'Cancelled'] },
@@ -75,40 +71,40 @@ export const getDashboardStats = async (req, res, next) => {
     const followDiff = followPendingToday - followPendingYesterday;
     const followHint = followDiff >= 0 
       ? `+ ${followDiff} from yesterday` 
-      : `+ ${Math.abs(followDiff)} from yesterday`; // Kept the math.abs since original logic used it for visual minus handling in frontend
+      : `+ ${Math.abs(followDiff)} from yesterday`;
 
-    // 4. Vaccines comparison (overdue vaccines) & Alerts 
-    // Fetch ONLY the small projection to avoid pulling huge documents into memory
-    const vaccinations = await Vaccination.find(filter)
-      .select('petName ownerName vaccine status dueDate lastDate clientId')
-      .lean();
-
-    const petVaxMap = {};
-    vaccinations.forEach(v => {
-      const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
-      if (!petVaxMap[key]) petVaxMap[key] = [];
-      petVaxMap[key].push(v);
-    });
+    // 4. Vaccines (EXTREME OPTIMIZATION: Process grouping entirely in MongoDB C++ Engine)
+    const vaxAgg = await Vaccination.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: { petName: { $toLower: "$petName" }, ownerName: { $toLower: "$ownerName" }, vaccine: { $toLower: "$vaccine" } },
+          hasPending: { $max: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+          hasCompleted: { $max: { $cond: [{ $in: ["$status", ["Completed", "Waived"]] }, 1, { $cond: [{ $ne: ["$lastDate", null] }, 1, 0] }] } },
+          dueDate: { $min: { $cond: [{ $eq: ["$status", "Pending"] }, "$dueDate", null] } },
+          petName: { $first: "$petName" },
+          ownerName: { $first: "$ownerName" },
+          vaccine: { $first: "$vaccine" },
+          docId: { $first: "$_id" }
+        }
+      },
+      { $match: { hasPending: 1 } }
+    ]);
 
     let vaxDue = 0;
     let overdueCount = 0;
     let alerts = [];
 
-    vaccinations.forEach(v => {
-      const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
-      const petRecords = petVaxMap[key] || [];
-      const hasRecorded = petRecords.some(r => r.status === 'Completed' || r.status === 'Waived' || r.lastDate);
-
-      let currentStatus = v.status;
-      if (!hasRecorded && currentStatus === 'Pending') {
+    vaxAgg.forEach(v => {
+      let currentStatus = 'Pending';
+      if (!v.hasCompleted) {
         currentStatus = 'Not recorded';
-      } else if (currentStatus !== 'Completed' && currentStatus !== 'Waived' && currentStatus !== 'Not recorded' && v.dueDate) {
+      } else if (v.dueDate) {
         if (v.dueDate < todayStr) currentStatus = 'Overdue';
         else if (v.dueDate <= next30Days) currentStatus = 'Due soon';
         else currentStatus = 'Up to date';
       }
 
-      // Calculate totals for dashboard
       if (currentStatus !== 'Up to date' && currentStatus !== 'Not recorded') {
         vaxDue++;
       }
@@ -116,11 +112,16 @@ export const getDashboardStats = async (req, res, next) => {
         overdueCount++;
       }
 
-      // Check if it should be an alert (pet has appointment today)
       if (todayPetNames.has(v.petName?.toLowerCase())) {
-         if (currentStatus !== 'Up to date' && currentStatus !== 'Completed' && currentStatus !== 'Waived') {
-            v.status = currentStatus; // assign dynamic status
-            alerts.push(v);
+         if (currentStatus !== 'Up to date' && currentStatus !== 'Not recorded') {
+            alerts.push({
+               _id: v.docId,
+               petName: v.petName,
+               ownerName: v.ownerName,
+               vaccine: v.vaccine,
+               status: currentStatus,
+               dueDate: v.dueDate
+            });
          }
       }
     });
