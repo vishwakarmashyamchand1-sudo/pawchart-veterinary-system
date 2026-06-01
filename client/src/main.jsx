@@ -414,8 +414,8 @@ function ClinicSelector({ clinics, onSelect, onCreate, onEdit, onDelete }) {
                         {c.name}
                       </button>
                     </td>
-                    <td style={{ color: 'var(--text-2)' }}>{c.address?.city || 'N/A'}</td>
-                    <td style={{ color: 'var(--text-2)' }}>{c.contact?.phone || 'N/A'}</td>
+                    <td style={{ color: 'var(--text-2)' }}>{c.address?.city || '-'}</td>
+                    <td style={{ color: 'var(--text-2)' }}>{c.contact?.phone || '-'}</td>
                     <td>
                       <span className={`badge b-${c.status === 'inactive' ? 'red' : 'green'}`} style={{ textTransform: 'capitalize', fontSize: '11px', padding: '2px 8px' }}>
                         {c.status || 'active'}
@@ -1756,8 +1756,8 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                       <div className="td-sub">{vet.email}</div>
                     </td>
                     <td>{vet.specialization || 'General Practice'}</td>
-                    <td>{vet.experienceYears ? `${vet.experienceYears} yrs` : 'N/A'}</td>
-                    <td>{vet.consultationFee ? `$${vet.consultationFee}` : 'N/A'}</td>
+                    <td>{vet.experienceYears ? `${vet.experienceYears} yrs` : '-'}</td>
+                    <td>{vet.consultationFee ? `$${vet.consultationFee}` : '-'}</td>
                     <td>
                       <Badge value={displayStatus} />
                     </td>
@@ -3201,8 +3201,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                         petVax.map(v => (
                           <tr key={v._id}>
                             <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
-                            <td>{v.lastDate || 'N/A'}</td>
-                            <td>{v.displayStatus === 'Not recorded' ? 'N/A' : v.dueDate}</td>
+                            <td>{v.lastDate || '-'}</td>
+                            <td>{v.displayStatus === 'Not recorded' ? '-' : v.dueDate}</td>
                             <td><Badge value={v.displayStatus} /></td>
                             <td style={{ textAlign: 'right', paddingRight: '14px' }}>
                               <button
@@ -3647,8 +3647,8 @@ function Vaccinations({ rows, update, clients = [] }) {
             </td>
             <td>{row.ownerName}</td>
             <td>{row.vaccine}</td>
-            <td style={{ color: 'var(--text-3)' }}>{row.lastDate ? formatDateSafe(row.lastDate) : 'N/A'}</td>
-            <td style={getDueDateStyle(row.displayStatus)}>{row.displayStatus === 'Not recorded' ? 'N/A' : row.dueDate}</td>
+            <td style={{ color: 'var(--text-3)' }}>{row.lastDate ? formatDateSafe(row.lastDate) : '-'}</td>
+            <td style={getDueDateStyle(row.displayStatus)}>{row.displayStatus === 'Not recorded' ? '-' : row.dueDate}</td>
             <td><Badge value={row.displayStatus} /></td>
             <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
             <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
@@ -3682,7 +3682,7 @@ function Vaccinations({ rows, update, clients = [] }) {
               </div>
               <div>
                 <label className="field-label">Last Given</label>
-                <div style={{ padding: '8px 0' }}>{viewingVax.lastDate ? formatDateSafe(viewingVax.lastDate) : 'N/A'}</div>
+                <div style={{ padding: '8px 0' }}>{viewingVax.lastDate ? formatDateSafe(viewingVax.lastDate) : '-'}</div>
               </div>
               <div>
                 <label className="field-label">Next Due</label>
@@ -4245,7 +4245,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       )}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-                      {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'}
+                      {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || '-'}
                     </div>
                     {petAppt && (
                       <div style={{
@@ -4914,7 +4914,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               )}
             </h2>
             <div className="sub" style={{ fontSize: '13px', color: 'var(--text-2)' }}>
-              {petBreed} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || 'N/A'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
+              {petBreed} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || '-'} · Healthy range: {idealMin}–{idealMax} {currentUnit}
             </div>
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleLogWeight}>+ Log Weight</button>

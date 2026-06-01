@@ -772,7 +772,7 @@ export function Soap({
                           <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '4px' }}>
                             {(!f.date || isNaN(new Date(f.date).getTime())) 
                               ? 'Scheduled for follow up soon' 
-                              : `Scheduled follow up on ${new Date(f.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${f.time || 'N/A'}`
+                              : `Scheduled follow up on ${new Date(f.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${f.time || '-'}`
                             }
                           </span>
                         </div>
