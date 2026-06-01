@@ -68,18 +68,28 @@ function useApi(selectedClinicId) {
     setLoading(true);
     setError('');
     try {
-      const names = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
-      const results = await Promise.all(names.map((name) => fetch(`${API_URL}/${name}?page=1&limit=50`, { headers }).then(async (res) => {
+      const fetchResource = async (name) => {
+        const res = await fetch(`${API_URL}/${name}?page=1&limit=50`, { headers });
         if (!res.ok) throw new Error(`API request failed: ${name}`);
         const data = await res.json();
         return (data && data.data && Array.isArray(data.data)) ? data.data : data;
-      })));
+      };
 
-      // Make statuses fully dynamic by computing them against the current time
+      // 1. Critical endpoints first
+      const criticalNames = ['dashboard', 'vets', 'clients', 'appointments'];
+      const criticalResults = await Promise.all(criticalNames.map(fetchResource));
+      const newCriticalData = Object.fromEntries(criticalNames.map((name, i) => [name, criticalResults[i]]));
+      
+      setData(prev => ({ ...prev, ...newCriticalData }));
+      setLoading(false); // Unblock UI early
+
+      // 2. Secondary endpoints lazy loaded
+      const secondaryNames = ['vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
+      const secondaryResults = await Promise.all(secondaryNames.map(fetchResource));
+      
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
       const vaxIndex = names.indexOf('vaccinations');
       if (vaxIndex !== -1 && Array.isArray(results[vaxIndex])) {
         const petVaxMap = {};
@@ -104,9 +114,9 @@ function useApi(selectedClinicId) {
         });
       }
 
-      const followIndex = names.indexOf('followups');
-      if (followIndex !== -1 && Array.isArray(results[followIndex])) {
-        results[followIndex].forEach(f => {
+      const followIndex = secondaryNames.indexOf('followups');
+      if (followIndex !== -1 && Array.isArray(secondaryResults[followIndex])) {
+        secondaryResults[followIndex].forEach(f => {
           if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
             if (f.planDate < todayStr) f.status = 'Overdue';
             else f.status = 'Pending';
@@ -114,10 +124,10 @@ function useApi(selectedClinicId) {
         });
       }
 
-      setData(Object.fromEntries(names.map((name, index) => [name, results[index]])));
+      const newSecondaryData = Object.fromEntries(secondaryNames.map((name, i) => [name, secondaryResults[i]]));
+      setData(prev => ({ ...prev, ...newSecondaryData }));
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   }
@@ -2164,27 +2174,15 @@ const getAgeStr = (dobStr) => {
 
     if (days < 0) {
       months--;
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-      days += prevMonth.getDate();
     }
 
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
+    
+    let totalMonths = (years * 12) + months;
+    if (totalMonths < 0) totalMonths = 0;
+    
+    return `${totalMonths}M`;
+  } catch (err) {
 
-    if (years > 0) {
-      if (months > 0) {
-        return `${years} yr${years > 1 ? 's' : ''} ${months} mo${months > 1 ? 's' : ''}`;
-      }
-      return `${years} yr${years > 1 ? 's' : ''}`;
-    } else {
-      if (months > 0) {
-        return `${months} mo${months > 1 ? 's' : ''}`;
-      }
-      return `${days} day${days !== 1 ? 's' : ''}`;
-    }
-  } catch (e) {
     return dobStr;
   }
 };

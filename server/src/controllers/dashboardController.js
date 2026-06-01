@@ -4,15 +4,7 @@ import { getQueryFilter } from '../middleware/auth.js';
 export const getDashboardStats = async (req, res, next) => {
   try {
     const filter = getQueryFilter(req);
-    const [appointments, clients, vaccinations, followUps, vets] = await Promise.all([
-      Appointment.find(filter).sort({ date: 1, time: 1 }).lean(),
-      Client.find(filter).lean(),
-      Vaccination.find(filter).lean(),
-      FollowUp.find(filter).lean(),
-      Vet.find(filter).lean()
-    ]);
-    const activePatients = clients.reduce((total, client) => total + client.pets.length, 0);
-
+    
     // Compute dynamic today's & yesterday's date strings
     const todayStr = new Date().toISOString().split('T')[0]; // '2026-05-23'
     const yesterday = new Date();
@@ -21,7 +13,6 @@ export const getDashboardStats = async (req, res, next) => {
 
     // Compute dynamic status for Vaccinations & FollowUps based on current date
     const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
     const petVaxMap = {};
     vaccinations.forEach(v => {
       const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
@@ -59,15 +50,30 @@ export const getDashboardStats = async (req, res, next) => {
       ? `+${apptsDiff} appointments compared to yesterday` 
       : `${apptsDiff} appointments compared to yesterday`;
 
+    // We need today's appointments for alerts and monitoring filters
+    const todayAppointments = await Appointment.find({ ...filter, date: todayStr }).select('petName').lean();
     const todayPetNames = new Set(todayAppointments.map(a => a.petName?.toLowerCase()).filter(Boolean));
 
     // Active patients comparison (new this month)
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0,0,0,0);
-    const newThisMonth = clients
-      .filter(c => new Date(c.createdAt) >= startOfMonth)
-      .reduce((sum, c) => sum + (c.pets || []).length, 0);
+
+    const [totalPetsAgg, newThisMonthAgg] = await Promise.all([
+      Client.aggregate([
+        { $match: filter },
+        { $project: { petCount: { $size: { $ifNull: ["$pets", []] } } } },
+        { $group: { _id: null, total: { $sum: "$petCount" } } }
+      ]),
+      Client.aggregate([
+        { $match: { ...filter, createdAt: { $gte: startOfMonth } } },
+        { $project: { petCount: { $size: { $ifNull: ["$pets", []] } } } },
+        { $group: { _id: null, total: { $sum: "$petCount" } } }
+      ])
+    ]);
+    
+    const activePatients = totalPetsAgg.length > 0 ? totalPetsAgg[0].total : 0;
+    const newThisMonth = newThisMonthAgg.length > 0 ? newThisMonthAgg[0].total : 0;
     const patientsHint = `↑ ${newThisMonth} new this month`;
 
     // Vaccines comparison (overdue vaccines)
@@ -76,13 +82,52 @@ export const getDashboardStats = async (req, res, next) => {
     const vaxHint = `⚠ ${overdueCount} overdue`;
 
     // Follow ups pending comparison
-    const followPending = followUps.filter((item) => item.status === 'Pending').length;
-    const followPendingToday = followUps.filter(f => f.planDate <= todayStr && f.status === 'Pending').length;
-    const followPendingYesterday = followUps.filter(f => f.planDate <= yesterdayStr && f.status === 'Pending').length;
+    const followBaseQuery = {
+      ...filter,
+      status: { $nin: ['Completed', 'Scheduled', 'Cancelled'] },
+      planDate: { $ne: null }
+    };
+    
+    const [followPending, followPendingToday, followPendingYesterday] = await Promise.all([
+      FollowUp.countDocuments({ ...followBaseQuery, planDate: { $gte: todayStr } }),
+      FollowUp.countDocuments({ ...followBaseQuery, planDate: todayStr }),
+      FollowUp.countDocuments({ ...followBaseQuery, planDate: { $gte: todayStr, $lte: yesterdayStr } }) // 0
+    ]);
+    
     const followDiff = followPendingToday - followPendingYesterday;
     const followHint = followDiff >= 0 
       ? `↑ ${followDiff} from yesterday` 
       : `↓ ${Math.abs(followDiff)} from yesterday`;
+
+    // Alerts & Monitoring
+    let alerts = [];
+    let monitoring = [];
+    
+    if (todayPetNames.size > 0) {
+      const petNamesRegex = Array.from(todayPetNames).map(name => new RegExp(`^${name}$`, 'i'));
+      
+      const [rawAlerts, rawMonitoring] = await Promise.all([
+        Vaccination.find({ ...filter, petName: { $in: petNamesRegex } }).lean(),
+        FollowUp.find({ ...filter, monitoring: true, petName: { $in: petNamesRegex } }).lean()
+      ]);
+      
+      rawAlerts.forEach(v => {
+        if (v.status !== 'Completed' && v.status !== 'Waived' && v.dueDate) {
+          if (v.dueDate < todayStr) v.status = 'Overdue';
+          else if (v.dueDate <= next30Days) v.status = 'Due soon';
+          else v.status = 'Up to date';
+        }
+      });
+      alerts = rawAlerts.filter(item => item.status !== 'Up to date' && item.status !== 'Completed' && item.status !== 'Waived');
+      
+      rawMonitoring.forEach(f => {
+        if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
+          if (f.planDate < todayStr) f.status = 'Overdue';
+          else f.status = 'Pending';
+        }
+      });
+      monitoring = rawMonitoring;
+    }
 
     res.json({
       stats: {
@@ -94,11 +139,11 @@ export const getDashboardStats = async (req, res, next) => {
         vaccinesDueHint: vaxHint,
         followUpsPending: followPending,
         followUpsPendingHint: followHint,
-        veterinarianCount: vets.length
+        veterinarianCount: vetCount
       },
-      appointments: appointments.slice(0, 5),
-      alerts: vaccinations.filter((item) => item.status !== 'Up to date' && item.status !== 'Completed' && item.status !== 'Waived' && todayPetNames.has(item.petName?.toLowerCase())),
-      monitoring: followUps.filter((item) => item.monitoring && todayPetNames.has(item.petName?.toLowerCase()))
+      appointments: upcomingAppointments,
+      alerts,
+      monitoring
     });
   } catch (error) {
     next(error);
