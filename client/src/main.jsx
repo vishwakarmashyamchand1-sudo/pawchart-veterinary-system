@@ -4443,7 +4443,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
             onClick={handleConfirm}
             disabled={isBookedSuccess || isSubmitting}
           >
-            Confirm Appointment
+            {isSubmitting ? 'Creating Appointment...' : 'Confirm Appointment'}
           </button>
 
           {isBookedSuccess && (
