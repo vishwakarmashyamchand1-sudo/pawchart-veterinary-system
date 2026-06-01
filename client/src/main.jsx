@@ -1000,7 +1000,16 @@ function App() {
     };
 
     window.alert = (msg) => {
-      window.showToast?.(msg, 'error');
+      const lower = String(msg).toLowerCase();
+      const isError = lower.includes('fail') || 
+                      lower.includes('error') || 
+                      lower.includes('invalid') || 
+                      lower.includes('cannot') || 
+                      lower.includes('could not') || 
+                      lower.includes('please') || 
+                      lower.includes('empty') || 
+                      lower.includes('must be');
+      window.showToast?.(msg, isError ? 'error' : 'info');
     };
   }, []);
 
@@ -1400,7 +1409,7 @@ function App() {
           gap: '8px',
           animation: 'slideIn 0.3s ease'
         }}>
-          <span>{toast.type === 'error' ? '⚠️' : '✓'}</span>
+          <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? 'ℹ️' : '✓'}</span>
           {toast.message}
         </div>
       )}
@@ -3829,7 +3838,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     setIsSubmitting(true);
     create('appointments', appointmentBody).then(() => {
       setIsBookedSuccess(true);
-      alert(`Appointment successfully booked for ${bookingPet.name} with ${selectedVet.name} at ${selectedTime}!`);
+      window.showToast?.(`Appointment successfully booked for ${bookingPet.name} with ${selectedVet.name} at ${selectedTime}!`, 'info');
       setBookingClient(null);
       setBookingPet(null);
       setSelectedTime(null);
