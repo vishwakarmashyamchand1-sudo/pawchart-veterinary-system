@@ -687,8 +687,22 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   const [vetName, setVetName] = useState(vaccination.vetName || '');
   const [notes, setNotes] = useState(vaccination.notes || '');
 
-  // Calculate due date based on pet's date of birth
+  // Calculate due date based on pet's date of birth or last given date
   const getCalculatedDueDate = () => {
+    const isGivenCheck = status === 'Completed' || status === 'Up to date';
+    if (isGivenCheck && lastDate) {
+      try {
+        const ld = new Date(lastDate);
+        if (!isNaN(ld.getTime())) {
+          ld.setFullYear(ld.getFullYear() + 1);
+          const yyyy = ld.getFullYear();
+          const mm = String(ld.getMonth() + 1).padStart(2, '0');
+          const dd = String(ld.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      } catch (e) {}
+    }
+
     if (!pet) return dueDate || '';
     const dobStr = pet.dateOfBirth || pet.dob;
     if (!dobStr) return dueDate || '';
@@ -776,51 +790,48 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
         </div>
 
         {/* STATUS TOGGLE BUTTON GROUP */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-          <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-2)' }}>Status</label>
-          <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', width: 'fit-content' }}>
-            <button
-              type="button"
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <strong style={{ color: 'var(--text-2)' }}>Status:</strong>
+          
+          <div 
+            style={{ 
+              position: 'relative', 
+              display: 'flex', 
+              background: '#e2e8f0', 
+              borderRadius: '30px', 
+              width: '220px', 
+              height: '40px', 
+              padding: '4px',
+              cursor: 'pointer'
+            }}
+            onClick={() => handleStatusChange(isGiven ? 'Pending' : 'Completed')}
+          >
+            {/* Sliding Background */}
+            <div 
               style={{
-                padding: '8px 20px',
-                border: 0,
-                background: isGiven ? '#22c55e' : '#fff',
-                color: isGiven ? '#fff' : 'var(--text-2)',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontSize: '13px',
-                transition: 'background 0.2s, color 0.2s'
+                position: 'absolute',
+                top: '4px',
+                left: isGiven ? '4px' : '110px',
+                width: '106px',
+                height: '32px',
+                borderRadius: '26px',
+                background: isGiven ? '#22c55e' : '#ef4444',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
               }}
-              onClick={() => handleStatusChange('Completed')}
-            >
+            />
+            {/* Labels */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s' }}>
               Given
-            </button>
-            <button
-              type="button"
-              style={{
-                padding: '8px 20px',
-                border: 0,
-                borderLeft: '1px solid #cbd5e1',
-                background: isNotGiven ? '#ef4444' : '#fff',
-                color: isNotGiven ? '#fff' : 'var(--text-2)',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontSize: '13px',
-                transition: 'background 0.2s, color 0.2s'
-              }}
-              onClick={() => handleStatusChange('Pending')}
-            >
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: !isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s' }}>
               Not Given
-            </button>
+            </div>
           </div>
         </div>
 
         {isGiven && (
-          <>
-            <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
-            <Input label="Given By (Vet/Clinic)" value={vetName} onChange={setVetName} />
-            <Input label="Batch Number / Notes" value={notes} onChange={setNotes} />
-          </>
+          <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
         )}
 
         {isNotGiven && (
@@ -1276,8 +1287,6 @@ function App() {
                 setScreen(id);
               }}>
                 <span className="ni">{icons[icon]}</span>{label}
-                {label === 'Vaccinations' && <span className="nav-badge">{data.dashboard?.stats?.vaccinesDue ?? 0}</span>}
-                {label === 'Follow-ups' && <span className="nav-badge">{data.dashboard?.stats?.followUpsPending ?? 0}</span>}
               </button>
             ))}
           </nav>
@@ -1408,7 +1417,7 @@ function App() {
           gap: '8px',
           animation: 'slideIn 0.3s ease'
         }}>
-          <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? 'ℹ️' : '✓'}</span>
+          <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? '' : '✓'}</span>
           {toast.message}
         </div>
       )}
@@ -1937,7 +1946,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
     let prefix = next.date === todayStr ? 'Today ' : `${new Date(next.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} `;
 
     let badgeColor = 'blue';
-    if (next.petName === 'Luna') {
+    if (next.type === 'Follow-up' || next.type === 'Follow Up' || next.reason?.toLowerCase().includes('follow')) {
       prefix = 'Follow-up ';
       badgeColor = 'purple';
     } else if (next.date !== todayStr) {
@@ -3250,8 +3259,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                         petVax.map(v => (
                           <tr key={v._id}>
                             <td style={{ paddingLeft: '14px', fontWeight: '700', color: 'var(--text)' }}>{v.vaccine}</td>
-                            <td>{v.lastDate || '-'}</td>
-                            <td>{v.displayStatus === 'Not recorded' ? '-' : v.dueDate}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>{v.lastDate ? formatDateSafe(v.lastDate) : '-'}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>{v.displayStatus === 'Not recorded' ? '-' : formatDateSafe(v.dueDate)}</td>
                             <td><Badge value={v.displayStatus} /></td>
                             <td style={{ textAlign: 'right', paddingRight: '14px' }}>
                               <button
@@ -3757,8 +3766,8 @@ function Vaccinations({ rows, update, clients = [] }) {
             </td>
             <td>{row.ownerName}</td>
             <td>{row.vaccine}</td>
-            <td style={{ color: 'var(--text-3)' }}>{row.lastDate ? formatDateSafe(row.lastDate) : '-'}</td>
-            <td style={getDueDateStyle(row.displayStatus)}>{row.displayStatus === 'Not recorded' ? '-' : row.dueDate}</td>
+            <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{row.lastDate ? formatDateSafe(row.lastDate) : '-'}</td>
+            <td style={{ ...getDueDateStyle(row.displayStatus), whiteSpace: 'nowrap' }}>{row.displayStatus === 'Not recorded' ? '-' : formatDateSafe(row.dueDate)}</td>
             <td><Badge value={row.displayStatus} /></td>
             <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
             <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
@@ -3947,7 +3956,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     setIsSubmitting(true);
     create('appointments', appointmentBody).then(() => {
       setIsBookedSuccess(true);
-      window.showToast?.(`Appointment successfully booked for ${bookingPet.name} with ${selectedVet.name} at ${selectedTime}!`, 'info');
+      window.showToast?.(`Appointment successfully booked for ${bookingPet.name} with ${selectedVet.name} at ${selectedTime}`, 'info');
       setBookingClient(null);
       setBookingPet(null);
       setSelectedTime(null);
@@ -3997,10 +4006,9 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
     if (activeSubTab === 'week') {
       const today = new Date();
       const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(today);
-      endOfWeek.setDate(today.getDate() - today.getDay() + 6);
+      endOfWeek.setDate(today.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
       return appointments.filter(a => {
