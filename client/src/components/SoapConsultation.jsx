@@ -1108,7 +1108,7 @@ export function Soap({
         {/* Review Form */}
         <div className="panel" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '24px', borderRadius: '12px' }}>
           <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
-            {isGenerating ? "⚡ Processing AI Polishing..." : "Review AI-Generated Consultation"}
+            Review AI-Generated Consultation
           </h2>
           <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#64748b' }}>
             Review and edit the AI-generated data below before saving.
@@ -1345,6 +1345,34 @@ export function Soap({
         </div>
 
       </div>
+
+      {isGenerating && (
+        <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999, background: 'rgba(15, 23, 42, 0.75)', alignItems: 'center', justifyItems: 'center' }}>
+          <div className="modal" style={{ 
+            width: '400px', 
+            background: '#ffffff', 
+            color: '#334155', 
+            border: '1px solid #e2e8f0',
+            padding: '32px',
+            borderRadius: '16px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            margin: 'auto'
+          }}>
+            <div style={{ fontSize: '48px', animation: 'pulse 1.5s infinite' }}>🧠</div>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
+              Processing with AI...
+            </h3>
+            <p style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: '1.5' }}>
+              Please wait while we analyze the consultation transcript and generate structured SOAP notes.
+            </p>
+          </div>
+        </div>
+      )}
 
       {showSendModal && (
         <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999 }}>
