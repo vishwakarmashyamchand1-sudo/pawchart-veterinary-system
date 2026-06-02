@@ -1,0 +1,226 @@
+﻿
+> client\src\main.jsx:2262:function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, 
+onSetBookingClient, onSetBookingPet, update, create }) {
+  client\src\main.jsx:2263:  const [currentPet, setCurrentPet] = useState(pet);
+  client\src\main.jsx:2264:  const [activeTab, setActiveTab] = useState('visits');
+  client\src\main.jsx:2265:  const [editingVax, setEditingVax] = useState(null);
+  client\src\main.jsx:2266:  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+  client\src\main.jsx:2267:  const [weightLogVal, setWeightLogVal] = useState('');
+  client\src\main.jsx:2268:  const [weightLogNote, setWeightLogNote] = useState('');
+  client\src\main.jsx:2269:  const [weightTimeframe, setWeightTimeframe] = useState('12months');
+  client\src\main.jsx:2270:  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  client\src\main.jsx:2271:  const [expandedVisits, setExpandedVisits] = useState({});
+  client\src\main.jsx:2272:
+  client\src\main.jsx:2273:  const toggleVisitExpand = (id) => {
+  client\src\main.jsx:2274:    setExpandedVisits(prev => ({
+  client\src\main.jsx:2275:      ...prev,
+  client\src\main.jsx:2276:      [id]: !prev[id]
+  client\src\main.jsx:2277:    }));
+  client\src\main.jsx:2278:  };
+  client\src\main.jsx:2279:
+  client\src\main.jsx:2280:  useEffect(() => {
+  client\src\main.jsx:2281:    setCurrentPet(pet);
+  client\src\main.jsx:2282:  }, [pet]);
+  client\src\main.jsx:2283:
+  client\src\main.jsx:2284:  if (!currentPet) return <Status message="Select a pet to view profile." />;
+  client\src\main.jsx:2285:
+  client\src\main.jsx:2286:  const owner = clients.find(c => (c.pets || []).some(p => p._id === currentPet._id));
+  client\src\main.jsx:2287:  const ownerName = owner ? owner.name : (currentPet.ownerName || 'James Martinez');
+  client\src\main.jsx:2288:  const ownerEmail = owner ? owner.email : (currentPet.email || 'james.m@email.com');
+  client\src\main.jsx:2289:  const ownerPhone = owner ? owner.phone : (currentPet.phone || '(555) 824-3901');
+  client\src\main.jsx:2290:
+  client\src\main.jsx:2291:  // Implicit booking state update removed to prevent leaking state to global appointments 
+tab
+  client\src\main.jsx:2292:
+  client\src\main.jsx:2293:  const ownerPets = owner ? (owner.pets || []) : [currentPet];
+  client\src\main.jsx:2294:
+  client\src\main.jsx:2295:  const handlePrevPet = () => {
+  client\src\main.jsx:2296:    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id);
+  client\src\main.jsx:2297:    if (currentIndex !== -1) {
+  client\src\main.jsx:2298:      const prevIndex = (currentIndex - 1 + ownerPets.length) % ownerPets.length;
+  client\src\main.jsx:2299:      setCurrentPet(ownerPets[prevIndex]);
+  client\src\main.jsx:2300:    }
+  client\src\main.jsx:2301:  };
+  client\src\main.jsx:2302:
+  client\src\main.jsx:2303:  const handleNextPet = () => {
+  client\src\main.jsx:2304:    const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id || 
+p.name.toLowerCase() === currentPet.name.toLowerCase());
+  client\src\main.jsx:2305:    if (currentIndex !== -1) {
+  client\src\main.jsx:2306:      const nextIndex = (currentIndex + 1) % ownerPets.length;
+  client\src\main.jsx:2307:      setCurrentPet(ownerPets[nextIndex]);
+  client\src\main.jsx:2308:    }
+  client\src\main.jsx:2309:  };
+  client\src\main.jsx:2310:
+  client\src\main.jsx:2311:  const petEmoji = (species = '') => {
+  client\src\main.jsx:2312:    const s = (species || '').toLowerCase();
+  client\src\main.jsx:2313:    if (s.includes('dog')) return '🐶';
+  client\src\main.jsx:2314:    if (s.includes('cat')) return '🐱';
+  client\src\main.jsx:2315:    if (s.includes('rabbit') || s.includes('lop')) return '🐰';
+  client\src\main.jsx:2316:    if (s.includes('parrot') || s.includes('bird')) return '🦜';
+  client\src\main.jsx:2317:    return '🐾';
+  client\src\main.jsx:2318:  };
+  client\src\main.jsx:2319:
+  client\src\main.jsx:2320:  const petWeights = weights.filter(w =>
+  client\src\main.jsx:2321:    w.petName.toLowerCase() === currentPet.name.toLowerCase() &&
+  client\src\main.jsx:2322:    w.ownerName.toLowerCase() === ownerName.toLowerCase()
+  client\src\main.jsx:2323:  );
+  client\src\main.jsx:2324:  const latestWeightLog = [...petWeights].sort((a, b) => new Date(b.date) - new 
+Date(a.date))[0];
+  client\src\main.jsx:2325:  const currentWeight = (() => {
+  client\src\main.jsx:2326:    if (petWeights.length === 0) return '-';
+  client\src\main.jsx:2327:    const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+  client\src\main.jsx:2328:    const latest = sorted[sorted.length - 1];
+  client\src\main.jsx:2329:    const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+  client\src\main.jsx:2330:    if (prev) {
+  client\src\main.jsx:2331:      const diff = latest.value - prev.value;
+  client\src\main.jsx:2332:      return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'} (${diff >= 0 ? '+' : 
+''}${diff.toFixed(1)} lbs)`;
+  client\src\main.jsx:2333:    }
+  client\src\main.jsx:2334:    return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
+  client\src\main.jsx:2335:  })();
+  client\src\main.jsx:2336:
+  client\src\main.jsx:2337:  const currentWeightSimple = (() => {
+  client\src\main.jsx:2338:    if (petWeights.length === 0) return '-';
+  client\src\main.jsx:2339:    const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
+  client\src\main.jsx:2340:    const latest = sorted[sorted.length - 1];
+  client\src\main.jsx:2341:    return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
+  client\src\main.jsx:2342:  })();
+  client\src\main.jsx:2343:
+  client\src\main.jsx:2344:  // dynamic timeline records (visits) from SoapNotes
+  client\src\main.jsx:2345:  const petVisits = soapnotes.filter(s => s.petId ? s.petId === currentPet._id : 
+(s.petName.toLowerCase() === currentPet.name.toLowerCase() && s.ownerName.toLowerCase() === ownerName.toLowerCase()));
+  client\src\main.jsx:2346:
+  client\src\main.jsx:2347:  // dynamic vaccinations
+  client\src\main.jsx:2348:  const today = new Date().toISOString().split('T')[0];
+  client\src\main.jsx:2349:  const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 
+1000).toISOString().split('T')[0];
+  client\src\main.jsx:2350:  const petVax = vaccinations.filter(v => v.petId ? v.petId === currentPet._id : 
+(v.petName.toLowerCase() === currentPet.name.toLowerCase() && v.ownerName.toLowerCase() === 
+ownerName.toLowerCase())).map(v => {
+  client\src\main.jsx:2351:    let displayStatus = v.status;
+  client\src\main.jsx:2352:    if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
+  client\src\main.jsx:2353:      displayStatus = 'Done';
+  client\src\main.jsx:2354:    } else if (displayStatus !== 'Done' && displayStatus !== 'Not recorded') {
+  client\src\main.jsx:2355:      if (v.dueDate < today) {
+  client\src\main.jsx:2356:        displayStatus = 'Overdue';
+  client\src\main.jsx:2357:      } else if (v.dueDate <= next30Days) {
+  client\src\main.jsx:2358:        displayStatus = 'Due soon';
+  client\src\main.jsx:2359:      } else {
+  client\src\main.jsx:2360:        displayStatus = 'Upcoming';
+  client\src\main.jsx:2361:      }
+  client\src\main.jsx:2362:    }
+  client\src\main.jsx:2363:    return { ...v, displayStatus };
+  client\src\main.jsx:2364:  });
+  client\src\main.jsx:2365:
+  client\src\main.jsx:2366:  const hasRecordedVax = petVax.some(v =>
+  client\src\main.jsx:2367:    v.isRecorded ||
+  client\src\main.jsx:2368:    String(v.status).toLowerCase().includes('done') ||
+  client\src\main.jsx:2369:    String(v.status).toLowerCase().includes('completed') ||
+  client\src\main.jsx:2370:    String(v.status).toLowerCase().includes('waived') ||
+  client\src\main.jsx:2371:    v.lastDate
+  client\src\main.jsx:2372:  );
+  client\src\main.jsx:2373:
+  client\src\main.jsx:2374:  let vaxIndicatorColor = '#94a3b8'; // Grey
+  client\src\main.jsx:2375:  let vaxIndicatorTooltip = 'Not recorded';
+  client\src\main.jsx:2376:  if (petVax.length > 0) {
+  client\src\main.jsx:2377:    if (!hasRecordedVax) {
+  client\src\main.jsx:2378:      vaxIndicatorColor = '#94a3b8'; // Grey
+  client\src\main.jsx:2379:      vaxIndicatorTooltip = 'Not recorded';
+  client\src\main.jsx:2380:    } else if (petVax.some(v => v.displayStatus === 'Overdue')) {
+  client\src\main.jsx:2381:      vaxIndicatorColor = 'var(--red)';
+  client\src\main.jsx:2382:      vaxIndicatorTooltip = 'Vaccines Overdue!';
+  client\src\main.jsx:2383:    } else if (petVax.some(v => v.displayStatus === 'Due soon')) {
+  client\src\main.jsx:2384:      vaxIndicatorColor = 'var(--amber)';
+  client\src\main.jsx:2385:      vaxIndicatorTooltip = 'Vaccines Due Soon';
+  client\src\main.jsx:2386:    } else if (petVax.some(v => v.displayStatus === 'Done')) {
+  client\src\main.jsx:2387:      vaxIndicatorColor = 'var(--green)';
+  client\src\main.jsx:2388:      vaxIndicatorTooltip = 'Vaccines Done';
+  client\src\main.jsx:2389:    } else {
+  client\src\main.jsx:2390:      vaxIndicatorColor = '#94a3b8'; // Grey
+  client\src\main.jsx:2391:      vaxIndicatorTooltip = 'Vaccines Pending';
+  client\src\main.jsx:2392:    }
+  client\src\main.jsx:2393:  }
+  client\src\main.jsx:2394:
+  client\src\main.jsx:2395:  // Find the first assigned vet name from the appointments
+  client\src\main.jsx:2396:  const petAppts = appointments.filter(a => a.petId ? a.petId === currentPet._id : 
+(a.petName.toLowerCase() === currentPet.name.toLowerCase() && a.ownerName.toLowerCase() === ownerName.toLowerCase()));
+  client\src\main.jsx:2397:  const assignedVetAppt = petAppts.find(a => a.vetName);
+  client\src\main.jsx:2398:  const primaryVetName = assignedVetAppt ? assignedVetAppt.vetName : null;
+  client\src\main.jsx:2399:
+  client\src\main.jsx:2400:  const handleBookAppointment = () => {
+  client\src\main.jsx:2401:    onSetBookingClient(owner);
+  client\src\main.jsx:2402:    onSetBookingPet(currentPet);
+  client\src\main.jsx:2403:    go('booking');
+  client\src\main.jsx:2404:  };
+  client\src\main.jsx:2405:
+  client\src\main.jsx:2406:  const formatDOB = (dobStr) => {
+  client\src\main.jsx:2407:    if (!dobStr) return '';
+  client\src\main.jsx:2408:    try {
+  client\src\main.jsx:2409:      const d = new Date(dobStr);
+  client\src\main.jsx:2410:      if (isNaN(d.getTime())) return dobStr;
+  client\src\main.jsx:2411:      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 
+'numeric' });
+  client\src\main.jsx:2412:    } catch (e) {
+  client\src\main.jsx:2413:      return dobStr;
+  client\src\main.jsx:2414:    }
+  client\src\main.jsx:2415:  };
+  client\src\main.jsx:2416:  const calculatedAge = getAgeStr(currentPet.dateOfBirth || currentPet.dob) || 
+currentPet.age || 'Not Provided';
+  client\src\main.jsx:2417:
+  client\src\main.jsx:2418:  const petDetailsList = [];
+  client\src\main.jsx:2419:
+  client\src\main.jsx:2420:  if (currentPet.petId) {
+  client\src\main.jsx:2421:    petDetailsList.push({ label: 'Pet ID', value: currentPet.petId });
+  client\src\main.jsx:2422:  }
+  client\src\main.jsx:2423:
+  client\src\main.jsx:2424:  petDetailsList.push({ label: 'Date of Birth', value: currentPet.dateOfBirth ? 
+formatDOB(currentPet.dateOfBirth) : 'Not Provided' });
+  client\src\main.jsx:2425:
+  client\src\main.jsx:2426:  petDetailsList.push({ label: 'Microchip', value: (currentPet.microchip && 
+currentPet.microchip.trim()) ? currentPet.microchip : 'Not Provided' });
+  client\src\main.jsx:2427:
+  client\src\main.jsx:2428:  petDetailsList.push({ label: 'Insurance', value: (currentPet.insurance && 
+currentPet.insurance.trim() && currentPet.insurance !== 'None') ? currentPet.insurance : 'Not Provided' });
+  client\src\main.jsx:2429:
+  client\src\main.jsx:2430:  petDetailsList.push({ label: 'Blood Group', value: currentPet.bloodType || 'Not Provided' 
+});
+  client\src\main.jsx:2431:
+  client\src\main.jsx:2432:  petDetailsList.push({ label: 'Primary Vet', value: primaryVetName || 'Not Assigned' });
+  client\src\main.jsx:2433:  petDetailsList.push({ label: 'Owner', value: ownerName, isLink: true });
+  client\src\main.jsx:2434:
+  client\src\main.jsx:2435:  const breadcrumbs = (
+  client\src\main.jsx:2436:    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', 
+color: 'var(--text-3)' }}>
+  client\src\main.jsx:2437:      <span style={{ cursor: 'pointer', color: 'var(--brand)', textDecoration: 'none' }} 
+onClick={() => go('clients')}>Clients & Pets</span>
+  client\src\main.jsx:2438:      <span>›</span>
+  client\src\main.jsx:2439:      <span style={{ color: 'var(--text-2)' }}>{ownerName}</span>
+  client\src\main.jsx:2440:      <span>›</span>
+  client\src\main.jsx:2441:      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', 
+color: 'var(--text)' }}>
+  client\src\main.jsx:2442:        {petEmoji(currentPet.species)} {currentPet.name}
+  client\src\main.jsx:2443:      </span>
+  client\src\main.jsx:2444:    </div>
+  client\src\main.jsx:2445:  );
+  client\src\main.jsx:2446:
+  client\src\main.jsx:2447:  const actionButtons = (
+  client\src\main.jsx:2448:    <div style={{ display: 'flex', gap: '8px' }}>
+  client\src\main.jsx:2449:      <button className="btn btn-outline" style={{ background: '#fff' }} 
+onClick={handleBookAppointment}>+ Book Appointment</button>
+  client\src\main.jsx:2450:    </div>
+  client\src\main.jsx:2451:  );
+  client\src\main.jsx:2452:
+  client\src\main.jsx:2453:  const handleSavePetDetails = async (updatedPetFields) => {
+  client\src\main.jsx:2454:    try {
+  client\src\main.jsx:2455:      const ownerClient = clients.find(c => (c.pets || []).some(p => p._id === 
+currentPet._id));
+  client\src\main.jsx:2456:      if (!ownerClient) {
+  client\src\main.jsx:2457:        alert("Parent client account not found!");
+  client\src\main.jsx:2458:        return;
+  client\src\main.jsx:2459:      }
+  client\src\main.jsx:2460:
+  client\src\main.jsx:2461:      // If weight was modified, let's also create a weight log so it syncs with the weight 
+chart and lists!
+  client\src\main.jsx:2462:      const oldWeight = String(currentPet.weightRange || '').trim();
+
+

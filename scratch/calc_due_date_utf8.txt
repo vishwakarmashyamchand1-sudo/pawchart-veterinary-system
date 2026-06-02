@@ -1,0 +1,59 @@
+﻿
+> client\src\main.jsx:691:  const getCalculatedDueDate = () => {
+  client\src\main.jsx:692:    if (!pet) return dueDate || '';
+  client\src\main.jsx:693:    const dobStr = pet.dateOfBirth || pet.dob;
+  client\src\main.jsx:694:    if (!dobStr) return dueDate || '';
+  client\src\main.jsx:695:    
+  client\src\main.jsx:696:    const cleanVax = (vaccine || vaccination.vaccine || '').toLowerCase().trim();
+  client\src\main.jsx:697:    let recAge = '12 weeks';
+  client\src\main.jsx:698:    if (cleanVax.includes('rabies')) {
+  client\src\main.jsx:699:      recAge = '12 weeks';
+  client\src\main.jsx:700:    } else if (cleanVax.includes('dhpp')) {
+  client\src\main.jsx:701:      recAge = '8 weeks';
+  client\src\main.jsx:702:    } else if (cleanVax.includes('bordetella')) {
+  client\src\main.jsx:703:      recAge = '12 weeks';
+  client\src\main.jsx:704:    } else if (cleanVax.includes('fvrcp')) {
+  client\src\main.jsx:705:      recAge = '8 weeks';
+  client\src\main.jsx:706:    } else if (cleanVax.includes('rhdv2')) {
+  client\src\main.jsx:707:      recAge = '6 weeks';
+  client\src\main.jsx:708:    } else if (cleanVax.includes('polyomavirus')) {
+  client\src\main.jsx:709:      recAge = '4 weeks';
+  client\src\main.jsx:710:    } else if (cleanVax.includes('titer')) {
+  client\src\main.jsx:711:      recAge = '1 year';
+  client\src\main.jsx:712:    }
+  client\src\main.jsx:713:    
+  client\src\main.jsx:714:    try {
+  client\src\main.jsx:715:      const dob = new Date(dobStr);
+  client\src\main.jsx:716:      if (isNaN(dob.getTime())) return '';
+  client\src\main.jsx:717:      
+  client\src\main.jsx:718:      const match = recAge.match(/(\d+)/);
+  client\src\main.jsx:719:      if (!match) return '';
+  client\src\main.jsx:720:      const value = parseInt(match[1], 10);
+  client\src\main.jsx:721:      const lowerStr = recAge.toLowerCase();
+  client\src\main.jsx:722:      const calculated = new Date(dob);
+  client\src\main.jsx:723:      
+  client\src\main.jsx:724:      if (lowerStr.includes('week')) {
+  client\src\main.jsx:725:        calculated.setDate(calculated.getDate() + (value * 7));
+  client\src\main.jsx:726:      } else if (lowerStr.includes('month')) {
+  client\src\main.jsx:727:        calculated.setMonth(calculated.getMonth() + value);
+  client\src\main.jsx:728:      } else if (lowerStr.includes('year')) {
+  client\src\main.jsx:729:        calculated.setFullYear(calculated.getFullYear() + value);
+  client\src\main.jsx:730:      } else if (lowerStr.includes('day')) {
+  client\src\main.jsx:731:        calculated.setDate(calculated.getDate() + value);
+  client\src\main.jsx:732:      }
+  client\src\main.jsx:733:      
+  client\src\main.jsx:734:      const yyyy = calculated.getFullYear();
+  client\src\main.jsx:735:      const mm = String(calculated.getMonth() + 1).padStart(2, '0');
+  client\src\main.jsx:736:      const dd = String(calculated.getDate()).padStart(2, '0');
+  client\src\main.jsx:737:      return `${yyyy}-${mm}-${dd}`;
+  client\src\main.jsx:738:    } catch (e) {
+  client\src\main.jsx:739:      return '';
+  client\src\main.jsx:740:    }
+  client\src\main.jsx:741:  };
+  client\src\main.jsx:742:
+  client\src\main.jsx:743:  const computedDueDate = getCalculatedDueDate();
+  client\src\main.jsx:744:
+  client\src\main.jsx:745:  // Handle status toggle button clicks
+  client\src\main.jsx:746:  // "Given" matches "Completed", "Not Given" matches "Pending"
+
+
