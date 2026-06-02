@@ -48,7 +48,7 @@ const icons = {
   clinic: '🏥'
 };
 
-function useApi(selectedClinicId) {
+function useApi(selectedClinicId, role, screen) {
   const [data, setData] = useState({
     dashboard: null,
     vets: [],
@@ -75,30 +75,54 @@ function useApi(selectedClinicId) {
         return (data && data.data && Array.isArray(data.data)) ? data.data : data;
       };
 
-      // 1. Critical endpoints first
-      const criticalNames = ['dashboard', 'vets', 'clients', 'appointments'];
-      const criticalResults = await Promise.all(criticalNames.map(fetchResource));
-      const newCriticalData = Object.fromEntries(criticalNames.map((name, i) => [name, criticalResults[i]]));
-      
-      setData(prev => ({ ...prev, ...newCriticalData }));
-      setLoading(false); // Unblock UI early
+      // Define required endpoints per role and screen
+      const screenConfigs = {
+        admin: {
+          dashboard: ['dashboard', 'appointments', 'clients'],
+          vets: ['vets', 'appointments'],
+          clients: ['clients', 'vaccinations', 'weights', 'followups', 'soapnotes', 'appointments'],
+          petprofile: ['clients', 'appointments', 'vaccinations', 'soapnotes', 'weights'],
+          booking: ['appointments', 'clients', 'vets'],
+          vax: ['vaccinations', 'vaccinemaster', 'clients'],
+          followup: ['followups', 'clients', 'vets'],
+          weight: ['weights', 'clients']
+        },
+        doctor: {
+          calendar: ['appointments', 'clients', 'vets'],
+          soap: ['appointments', 'clients', 'soapnotes', 'vets', 'vaccinations', 'weights', 'followups'],
+          followup: ['followups', 'clients', 'vets'],
+          petprofile: ['clients', 'appointments', 'vaccinations', 'soapnotes', 'weights'],
+          weight: ['weights', 'clients', 'appointments']
+        },
+        superadmin: {
+          dashboard: [],
+          vaccinemaster: ['vaccinemaster']
+        }
+      };
 
-      // 2. Secondary endpoints lazy loaded
-      const secondaryNames = ['vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
-      const secondaryResults = await Promise.all(secondaryNames.map(fetchResource));
+      let requiredResources = [];
+      if (screenConfigs[role] && screenConfigs[role][screen]) {
+        requiredResources = screenConfigs[role][screen];
+      } else {
+        // Fallback for safety if screen is unknown
+        requiredResources = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
+      }
+
+      const results = await Promise.all(requiredResources.map(fetchResource));
+      const newData = Object.fromEntries(requiredResources.map((name, i) => [name, results[i]]));
       
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const vaxIndex = secondaryNames.indexOf('vaccinations');
-      if (vaxIndex !== -1 && Array.isArray(secondaryResults[vaxIndex])) {
+      
+      if (newData.vaccinations) {
         const petVaxMap = {};
-        secondaryResults[vaxIndex].forEach(v => {
+        newData.vaccinations.forEach(v => {
           const key = `${v.petName?.toLowerCase()}_${v.ownerName?.toLowerCase()}_${v.vaccine?.toLowerCase()}`;
           if (!petVaxMap[key]) petVaxMap[key] = [];
           petVaxMap[key].push(v);
         });
 
-        secondaryResults[vaxIndex].forEach(v => {
+        newData.vaccinations.forEach(v => {
           if (v.status === 'Pending') {
             if (!v.isRecorded) {
               v.status = 'Not recorded';
@@ -113,9 +137,8 @@ function useApi(selectedClinicId) {
         });
       }
 
-      const followIndex = secondaryNames.indexOf('followups');
-      if (followIndex !== -1 && Array.isArray(secondaryResults[followIndex])) {
-        secondaryResults[followIndex].forEach(f => {
+      if (newData.followups) {
+        newData.followups.forEach(f => {
           if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
             if (f.planDate < todayStr) f.status = 'Overdue';
             else f.status = 'Pending';
@@ -123,8 +146,8 @@ function useApi(selectedClinicId) {
         });
       }
 
-      const newSecondaryData = Object.fromEntries(secondaryNames.map((name, i) => [name, secondaryResults[i]]));
-      setData(prev => ({ ...prev, ...newSecondaryData }));
+      setData(prev => ({ ...prev, ...newData }));
+      setLoading(false);
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -182,7 +205,7 @@ function useApi(selectedClinicId) {
 
   useEffect(() => {
     load();
-  }, [selectedClinicId]);
+  }, [selectedClinicId, role, screen]);
 
   return { data, loading, error, create, update, remove, reload: load };
 }
@@ -1023,9 +1046,9 @@ function App() {
     };
   }, []);
 
-  const { data, loading, error, create, update, remove, reload } = useApi(selectedClinic?._id);
   const [screen, setScreen] = useState('dashboard');
   const [role, setRole] = useState('admin');
+  const { data, loading, error, create, update, remove, reload } = useApi(selectedClinic?._id, role, screen);
 
   async function loadClinics() {
     setClinicsLoading(true);
@@ -1045,7 +1068,9 @@ function App() {
   }
 
   useEffect(() => {
-    loadClinics();
+    if (clinics.length === 0 || role === 'superadmin') {
+      loadClinics();
+    }
   }, [role]);
 
   const selectClinic = (clinic) => {
