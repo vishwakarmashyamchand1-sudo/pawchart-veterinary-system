@@ -92,4 +92,4 @@ server/   Express API, Mongoose models, seed data
 
 - If `net start MongoDB` says access is denied, run the terminal as administrator.
 - If `net start MongoDB` says the service name is invalid, MongoDB may not be installed as a Windows service. Open MongoDB Compass or start your installed MongoDB server another way.
-- If `npm run seed` cannot connect to `127.0.0.1:27017`, MongoDB is not running or `MONGO_URI` points to the wrong location.
+- If `npm run seed` cannot connect to `127.0.0.1:27017`, MongoDB is not running or `MONGO_URI` points to the wrong location .
