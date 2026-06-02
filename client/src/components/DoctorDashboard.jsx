@@ -15,7 +15,7 @@ export function DoctorDashboard({
   onStartConsultation
 }) {
   const [currentDate, setCurrentDate] = useState(getTodayDate());
-  const [viewMode, onViewModeChange] = useState('Week');
+  const [viewMode, onViewModeChange] = useState('Work week');
 
   // Helper to dynamically attach species/breed if missing on appointment
   const mapPetDetails = (appt) => {
@@ -96,26 +96,14 @@ export function DoctorDashboard({
   };
 
   return (
-    <div className="main-scroll">
-      <div className="main-pad" style={{ padding: '20px 24px' }}>
-        {/* Main Title Row */}
-        <div className="topbar" style={{ marginBottom: '16px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>
-              Appointments Screen
-            </h2>
-            <div className="sub" style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-              {selectedDoctor ? `Viewing working dashboard for ${selectedDoctor.name}` : 'Viewing all clinic schedule grids'}
-            </div>
-          </div>
-        </div>
-
+    <div className="main-scroll" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div className="main-pad" style={{ padding: '8px 12px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* Modular Grid Layout */}
         <div style={{
           display: 'flex',
-          gap: '20px',
-          height: 'calc(100vh - 140px)',
-          minHeight: '520px',
+          gap: '8px',
+          flex: 1,
+          minHeight: 0,
           alignItems: 'stretch'
         }}>
           {/* LEFT COLUMN: Queue Manager */}
