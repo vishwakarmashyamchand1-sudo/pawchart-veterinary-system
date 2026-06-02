@@ -931,6 +931,7 @@ function VaccinesConfig({ vaccines, create }) {
               key={sp} 
               className={`vm-tab ${activeTab === sp ? 'active' : ''}`}
               onClick={() => setActiveTab(sp)}
+              style={{ fontWeight: '600' }}
             >
               {SPECIES_ICONS[sp] || '🐾'} {sp}
               <span className="tab-count">{tabCounts[sp] || 0}</span>
