@@ -62,8 +62,6 @@ export function WeeklyCalendar({
       const matchesDate = (apptDateOnly === dateStr);
       if (!matchesDate) return false;
       
-      if (appt.time === slot.dbFormat) return true;
-      
       const parts = appt.time.split(/-|:/);
       if (parts.length < 2) return false;
       
@@ -160,7 +158,7 @@ export function WeeklyCalendar({
         
         {/* Toggle Controls */}
         <div style={{ display: 'flex', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '2px' }}>
-          {['Today', 'Day', 'Work week', 'Week'].map(mode => {
+          {['Today', 'Work week', 'Week'].map(mode => {
             const isActive = viewMode === mode;
             return (
               <button
@@ -168,7 +166,7 @@ export function WeeklyCalendar({
                 onClick={() => {
                   if (mode === 'Today') {
                     onDateChange(new Date());
-                    onViewModeChange('Day');
+                    onViewModeChange('Today');
                   } else {
                     onViewModeChange(mode);
                   }
@@ -196,7 +194,8 @@ export function WeeklyCalendar({
       <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative' }}>
         <table style={{
           width: '100%',
-          borderCollapse: 'collapse',
+          borderCollapse: 'separate',
+          borderSpacing: 0,
           tableLayout: 'fixed',
           minWidth: viewMode === 'Week' ? '1200px' : 'auto'
         }}>
@@ -245,7 +244,7 @@ export function WeeklyCalendar({
           
           <tbody>
             {HALF_HOUR_SLOTS.map(slot => (
-              <tr key={slot.label} style={{ minHeight: '80px' }}>
+              <tr key={slot.label} style={{ height: '52px' }}>
                 {/* Hour label */}
                 <td style={{
                   padding: '12px 6px',
@@ -298,11 +297,11 @@ export function WeeklyCalendar({
                                 border: card.border,
                                 borderLeft: card.borderLeft,
                                 borderRadius: '6px',
-                                padding: '8px',
+                                padding: '4px 6px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '4px',
+                                gap: '2px',
                                 transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
                                 overflow: 'hidden'
