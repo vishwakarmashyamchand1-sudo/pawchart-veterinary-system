@@ -63,8 +63,17 @@ function useApi(selectedClinicId, role, screen) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function load() {
-    setLoading(true);
+  // Track which resources have been fetched for the current clinic
+  const loadedRef = React.useRef(new Set());
+  const clinicRef = React.useRef(selectedClinicId);
+
+  // Reset cache when clinic changes
+  if (clinicRef.current !== selectedClinicId) {
+    clinicRef.current = selectedClinicId;
+    loadedRef.current = new Set();
+  }
+
+  async function load(forceRefresh = false) {
     setError('');
     try {
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
@@ -108,8 +117,21 @@ function useApi(selectedClinicId, role, screen) {
         requiredResources = ['dashboard', 'vets', 'clients', 'appointments', 'vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
       }
 
-      const results = await Promise.all(requiredResources.map(fetchResource));
-      const newData = Object.fromEntries(requiredResources.map((name, i) => [name, results[i]]));
+      // Only fetch resources we haven't loaded yet (unless force refresh)
+      const toFetch = forceRefresh
+        ? requiredResources
+        : requiredResources.filter(r => !loadedRef.current.has(r));
+
+      if (toFetch.length === 0) {
+        // Everything is already cached, no network calls needed
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const results = await Promise.all(toFetch.map(fetchResource));
+      const newData = Object.fromEntries(toFetch.map((name, i) => [name, results[i]]));
       
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -146,6 +168,9 @@ function useApi(selectedClinicId, role, screen) {
         });
       }
 
+      // Mark these resources as loaded
+      toFetch.forEach(r => loadedRef.current.add(r));
+
       setData(prev => ({ ...prev, ...newData }));
       setLoading(false);
     } catch (err) {
@@ -169,7 +194,7 @@ function useApi(selectedClinicId, role, screen) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    await load();
+    await load(true);
     return createdObj;
   }
 
@@ -187,7 +212,7 @@ function useApi(selectedClinicId, role, screen) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.message || `Could not update ${resource}`);
     }
-    await load();
+    await load(true);
   }
 
   async function remove(resource, id) {
@@ -200,14 +225,14 @@ function useApi(selectedClinicId, role, screen) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    await load();
+    await load(true);
   }
 
   useEffect(() => {
     load();
   }, [selectedClinicId, role, screen]);
 
-  return { data, loading, error, create, update, remove, reload: load };
+  return { data, loading, error, create, update, remove, reload: () => load(true) };
 }
 
 function ClinicCreateModal({ onClose, onSave }) {
