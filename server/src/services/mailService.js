@@ -156,11 +156,11 @@ export async function sendClientAppointmentConfirmationMail(client, appt, vet, c
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `📅 Appointment Confirmed: ${appt.petName}'s Visit on ${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      subject: `Appointment Confirmed: ${appt.petName}'s Visit on ${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #0d9488; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">📅 Appointment Confirmed!</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Appointment Confirmed!</h2>
           </div>
           <div style="padding: 24px; background: #fff;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
@@ -225,11 +225,11 @@ export async function sendConsultationSummaryMail(client, soapNote, vet, clinic)
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `🩺 Consultation Summary: ${soapNote.petName}'s Visit Today`,
+      subject: `Consultation Summary: ${soapNote.petName}'s Visit Today`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #2563eb; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">🩺 Clinical Consultation Summary</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Clinical Consultation Summary</h2>
             <div style="font-size: 12.5px; opacity: 0.85; margin-top: 4px;">Patient: ${soapNote.petName} · Practitioner: Dr. ${vet ? vet.name : soapNote.vetName}</div>
           </div>
           <div style="padding: 24px; background: #fff;">
@@ -238,7 +238,7 @@ export async function sendConsultationSummaryMail(client, soapNote, vet, clinic)
             
             <div style="margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
               <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 13.5px; color: #1e293b;">
-                📋 Consultation Medical Records
+                Consultation Medical Records
               </div>
               <div style="padding: 16px; font-size: 13px;">
                 ${soapNote.chiefComplaint ? `
@@ -276,6 +276,11 @@ export async function sendConsultationSummaryMail(client, soapNote, vet, clinic)
                     <em style="font-size: 12px;">${rx.instructions || ''}</em>
                   </div>
                   `).join('')}
+                </div>` : ''}
+                ${soapNote.follow_up_date ? `
+                <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                  <strong style="color: #2563eb; text-transform: uppercase; font-size: 11px; display: block;">Follow-Up Date:</strong>
+                  <div style="color: #1e293b; font-weight: 700; margin-top: 2px;">${soapNote.follow_up_date}</div>
                 </div>` : ''}
               </div>
             </div>
@@ -416,11 +421,11 @@ export async function sendFollowUpRecommendationMail(client, soapNote, vet, clin
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `⚡ Follow-up Recommended: Book ${soapNote.petName}'s Next Visit`,
+      subject: `Follow-up Recommended: Book ${soapNote.petName}'s Next Visit`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #ea580c; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">⚡ Follow-up Recommended</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Follow-up Recommended</h2>
             <div style="font-size: 12.5px; opacity: 0.9; margin-top: 4px;">Patient: ${soapNote.petName} · Veterinary Surgeon: Dr. ${vet ? vet.name : soapNote.vetName}</div>
           </div>
           <div style="padding: 24px; background: #fff;">
@@ -428,7 +433,7 @@ export async function sendFollowUpRecommendationMail(client, soapNote, vet, clin
             <p style="font-size: 14px;">Following today's consultation, Dr. <strong>${vet ? vet.name : soapNote.vetName}</strong> has recommended a follow-up visit for <strong>${soapNote.petName}</strong> to monitor their recovery.</p>
             
             <div style="background: #f8fafc; border-left: 4px solid #ea580c; padding: 18px; margin: 20px 0; border-radius: 6px;">
-              <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #1e293b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">🐾 Consultation Summary</h3>
+              <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #1e293b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Consultation Summary</h3>
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.6;">
                 <tr>
                   <td style="padding: 4px 0; color: #64748b; font-weight: 600; width: 110px;">Patient Pet:</td>
@@ -450,7 +455,7 @@ export async function sendFollowUpRecommendationMail(client, soapNote, vet, clin
             </div>
 
             <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 13px; color: #b45309; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Target Follow-Up Date</span>
+              <span style="font-size: 13px; color: #b45309; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Planned Follow-Up Date</span>
               <strong style="font-size: 20px; color: #78350f; font-weight: 800;">${formattedDate}</strong>
             </div>
 
@@ -490,15 +495,15 @@ export async function sendAppointmentReminderMail(client, appt, vet, clinic) {
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `🔔 Reminder: ${appt.petName}'s Appointment Tomorrow`,
+      subject: `Reminder: ${appt.petName}'s Appointment Tomorrow`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #4f46e5; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">🔔 Upcoming Appointment Reminder</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Upcoming Appointment Reminder</h2>
           </div>
           <div style="padding: 24px; background: #fff;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
-            <p style="font-size: 14px;">This is a friendly reminder that <strong>${appt.petName}</strong> has an appointment scheduled for tomorrow at <strong>${clinic ? clinic.name : 'our clinic'}</strong>.</p>
+            <p style="font-size: 14px;">This is a reminder that <strong>${appt.petName}</strong> has an appointment scheduled for tomorrow at <strong>${clinic ? clinic.name : 'our clinic'}</strong>.</p>
             
             <div style="background: #eef2ff; border-left: 4px solid #4f46e5; padding: 16px; margin: 20px 0; border-radius: 4px;">
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
@@ -553,11 +558,11 @@ export async function sendMissedAppointmentAlertMail(client, appt, vet, clinic) 
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `⚠️ Missed Appointment: ${appt.petName}'s Visit on ${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      subject: `Missed Appointment: ${appt.petName}'s Visit on ${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #475569; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">⚠️ Missed Appointment Notification</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Missed Appointment Notification</h2>
           </div>
           <div style="padding: 24px; background: #fff;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
@@ -682,11 +687,11 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `🔔 Pending Follow-up Action Required for ${followUp.petName}`,
+      subject: `Pending Follow-up Action Required for ${followUp.petName}`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #ea580c; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">🔔 Follow-up Action Required</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Follow-up Action Required</h2>
             <div style="font-size: 12.5px; opacity: 0.9; margin-top: 4px;">Patient: ${followUp.petName} · Practitioner: ${followUp.vetName || 'Assigned Veterinarian'}</div>
           </div>
           <div style="padding: 24px; background: #fff;">
@@ -694,7 +699,7 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
             <p style="font-size: 14px;">We noticed that the recommended follow-up visit for <strong>${followUp.petName}</strong> is still pending.</p>
             
             <div style="background: #f8fafc; border-left: 4px solid #ea580c; padding: 18px; margin: 20px 0; border-radius: 6px;">
-              <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #1e293b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">🐾 Follow-Up Summary</h3>
+              <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #1e293b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Follow-Up Summary</h3>
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.6;">
                 <tr>
                   <td style="padding: 4px 0; color: #64748b; font-weight: 600; width: 110px;">Patient Pet:</td>
@@ -720,7 +725,7 @@ export async function sendPendingFollowUpReminderMail(client, followUp, clinic, 
             </div>
 
             <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 13px; color: #b45309; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Target Follow-Up Date</span>
+              <span style="font-size: 13px; color: #b45309; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Planned Follow-Up Date</span>
               <strong style="font-size: 20px; color: #78350f; font-weight: 800;">${formattedDate}</strong>
             </div>
 
@@ -865,18 +870,32 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
 export async function sendVaccinationReminderMail(client, petName, vaccine, dueDate, clinic) {
   try {
     const transport = await getTransporter();
+    
+    // Determine status text based on dueDate vs today
+    const now = new Date();
+    const due = new Date(dueDate);
+    now.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    
+    let statusText = "is due soon for";
+    if (now > due) {
+      statusText = "is overdue for";
+    } else if (now.getTime() === due.getTime()) {
+      statusText = "is due today for";
+    }
+
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || (etherealAccount ? etherealAccount.user : 'noreply@pawchart.com'),
       to: client.email || 'client@pawchart.com',
-      subject: `💉 Vaccination Due: ${petName}'s ${vaccine} Vaccine`,
+      subject: `Vaccination Reminder: ${petName}'s ${vaccine} Vaccine`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="background: #10b981; color: #fff; padding: 24px; text-align: center;">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">💉 Vaccination Reminder</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Vaccination Reminder</h2>
           </div>
           <div style="padding: 24px; background: #fff;">
             <p style="font-size: 15px; margin-top: 0;">Hi <strong>${client.name}</strong>,</p>
-            <p style="font-size: 14px;">This is a friendly reminder that <strong>${petName}</strong> is due for their <strong>${vaccine}</strong> vaccination.</p>
+            <p style="font-size: 14px;">This is a reminder that <strong>${petName}</strong> ${statusText} their <strong>${vaccine}</strong> vaccination.</p>
             
             <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">

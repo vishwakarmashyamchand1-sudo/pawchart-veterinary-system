@@ -674,30 +674,43 @@ function VaccineModal({ initialTab, initialData, onClose, onSave }) {
   const [desc, setDesc] = useState(initialData?.desc || '');
 
   return (
-    <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{initialData ? 'Edit Vaccine' : 'Add Vaccine'}</h2>
-        <Input label="Vaccine Name" value={name} onChange={setName} />
-        <Select label="Species" value={species} onChange={setSpecies} options={['Dog', 'Cat', 'Rabbit', 'Bird', 'Other']} />
-        <Input label="Recommended Age" value={recommendedAge} onChange={setRecommendedAge} />
+    <Modal title={initialData ? 'Edit Vaccine' : 'Add Vaccine'} onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+        <label className="field-label">
+          Vaccine Name
+          <input className="input" value={name} onChange={e => setName(e.target.value)} />
+        </label>
         
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--text-2)', marginBottom: '8px' }}>Description</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <label className="field-label">
+            Species
+            <select className="input" value={species} onChange={e => setSpecies(e.target.value)}>
+              {['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </label>
+          <label className="field-label">
+            Recommended Age
+            <input className="input" value={recommendedAge} onChange={e => setRecommendedAge(e.target.value)} />
+          </label>
+        </div>
+
+        <label className="field-label">
+          Description
           <textarea 
             className="input" 
-            style={{ width: '100%', minHeight: '64px', resize: 'vertical', fontFamily: 'inherit', padding: '10px 12px', fontSize: '14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-1)', color: 'var(--text)' }} 
+            style={{ width: '100%', minHeight: '64px', resize: 'vertical' }} 
             value={desc} 
             onChange={e => setDesc(e.target.value)} 
             placeholder="e.g. Prevents fatal rabies infection."
           />
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge, desc })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
-        </div>
+        </label>
       </div>
-    </div>
+
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
+        <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge, desc })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
+      </div>
+    </Modal>
   );
 }
 
@@ -1286,13 +1299,15 @@ function App() {
                       setSelectedDoctor(d || null);
                     }
                   }}
-                  disabled={loading}
+                  disabled={!selectedClinic || loading}
                 >
                   <option value="">{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
-                  {loading ? (
-                    <option value="loading" disabled>Loading doctors...</option>
-                  ) : (
-                    data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)
+                  {selectedClinic && (
+                    loading ? (
+                      <option value="loading" disabled>Loading doctors...</option>
+                    ) : (
+                      data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)
+                    )
                   )}
                 </select>
               </>
@@ -1392,6 +1407,7 @@ function App() {
                     go={setScreen}
                     setBookingClient={setBookingClient}
                     setBookingPet={setBookingPet}
+                    reload={reload}
                   />
                 )}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} doctorPatients={doctorPatients} selectedDoctor={selectedDoctor} onPetSelect={setSelectedPet} role={role} />}
@@ -1644,7 +1660,7 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
           _id: follow._id,
           type: 'purple',
           petName: follow.petName,
-          title: `Follow-up pending (${getCompactPurpose(follow.purpose)})`,
+          title: `Follow-up pending (${follow.purpose || 'Recommended Follow-up'})`,
           sub: `Planned for: ${formatDateClean(follow.planDate)} · Doctor: ${follow.vetName}`
         });
       }
@@ -1756,9 +1772,24 @@ function Stat({ label, value, hint, primary, danger }) {
 function Vets({ vets, appointments = [], create, update, onDelete, selectedClinic }) {
   const [openOnboard, setOpenOnboard] = useState(false);
   const [editingVet, setEditingVet] = useState(null);
+  const [deletingVetId, setDeletingVetId] = useState(null);
 
   return (
-    <Screen
+    <>
+      {deletingVetId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🗑️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Deleting Veterinarian...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we remove this veterinarian from the clinic.
+            </p>
+          </div>
+        </div>
+      )}
+      <Screen
       title="Veterinarians"
       sub={`${selectedClinic?.name || 'Clinic'} · ${vets.length} vets on staff`}
       action={<button className="btn btn-primary" onClick={() => setOpenOnboard(true)}>+ Onboard Vet</button>}
@@ -1845,9 +1876,11 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                           style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
                           onClick={() => {
                             window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
-                              onDelete('vets', vet._id);
+                              setDeletingVetId(vet._id);
+                              Promise.resolve(onDelete('vets', vet._id)).finally(() => setDeletingVetId(null));
                             });
                           }}
+                          disabled={deletingVetId === vet._id}
                         >
                           🗑️
                         </button>
@@ -1894,6 +1927,7 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
         />
       )}
     </Screen>
+    </>
   );
 }
 
@@ -3864,7 +3898,7 @@ function Vaccinations({ rows, update, clients = [] }) {
           </div>
         </div>
       </div>
-
+      
       <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', 'REMINDER SENT', '']}>
         {mappedRows.map((row) => (
           <tr key={row._id}>
@@ -4389,10 +4423,24 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }
 
   return (
-    <Screen
-      title="Book Appointment"
-      sub="Step 3 of 3 — Select time slot & confirm"
-    >
+    <>
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>📅</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Booking Appointment...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we secure this time slot.
+            </p>
+          </div>
+        </div>
+      )}
+      <Screen
+        title="Book Appointment"
+        sub="Step 3 of 3 — Select time slot & confirm"
+      >
       <div className="steps" style={{ marginBottom: '20px' }}>
         <span className="step done" style={{ cursor: 'pointer', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBookingClient(null)}>
           ✓
@@ -4695,6 +4743,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         />
       )}
     </Screen>
+    </>
   );
 }
 
@@ -5462,7 +5511,7 @@ function FollowUps({ rows, selectedClinic }) {
                 </div>
               </td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text)' }}>{row.vetName}</td>
-              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{getCompactPurpose(row.purpose)}</td>
+              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{row.purpose || 'Recommended Follow-up'}</td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateClean(row.planDate)}</td>
               <td>
                 {row.confirmedDate ? (
@@ -5531,7 +5580,7 @@ export function Screen({ title, sub, action, children }) {
 }
 
 function Table({ headers, children }) {
-  return <section style={{ background: 'transparent', border: 'none' }}><table className="data-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
+  return <section style={{ background: 'transparent', border: 'none' }}><table className="data-table"><thead><tr>{headers.map((header, i) => <th key={i}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
 }
 
 function AppointmentList({ rows, clients = [] }) {
@@ -5634,6 +5683,7 @@ function VetModal({ vet, onClose, onSave }) {
   const [experienceYears, setExperienceYears] = useState(vet?.experienceYears || '');
   const [consultationFee, setConsultationFee] = useState(vet?.consultationFee || '');
   const [status, setStatus] = useState(vet?.status || 'Available');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -5646,7 +5696,8 @@ function VetModal({ vet, onClose, onSave }) {
       return;
     }
 
-    onSave({
+    setIsSubmitting(true);
+    Promise.resolve(onSave({
       name,
       email,
       phone,
@@ -5655,6 +5706,8 @@ function VetModal({ vet, onClose, onSave }) {
       experienceYears: experienceYears ? Number(experienceYears) : undefined,
       consultationFee: consultationFee ? Number(consultationFee) : undefined,
       status
+    })).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -5668,7 +5721,21 @@ function VetModal({ vet, onClose, onSave }) {
   ];
 
   return (
-    <Modal title={vet ? "Edit Veterinarian Details" : "Onboard Veterinarian"} onClose={onClose}>
+    <>
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🩺</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              {vet ? 'Saving Changes...' : 'Onboarding Veterinarian...'}
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we {vet ? 'update the veterinarian details' : 'register the new veterinarian'}.
+            </p>
+          </div>
+        </div>
+      )}
+      <Modal title={vet ? "Edit Veterinarian Details" : "Onboard Veterinarian"} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
           <label className="field-label">
@@ -5766,11 +5833,14 @@ function VetModal({ vet, onClose, onSave }) {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">{vet ? "Save Changes" : "Onboard"}</button>
+          <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? (vet ? "Saving..." : "Onboarding...") : (vet ? "Save Changes" : "Onboard")}
+          </button>
         </div>
       </form>
     </Modal>
+    </>
   );
 }
 
@@ -5798,6 +5868,8 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
       { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes', petId: '' }
     ];
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const wrapRef = useRef(null);
 
@@ -5871,11 +5943,14 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
       alerts: p.alerts || []
     }));
 
-    onSave({
+    setIsSubmitting(true);
+    Promise.resolve(onSave({
       name: ownerName,
       email,
       phone,
       pets: savedPets
+    })).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -5892,7 +5967,34 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
   };
 
   return (
-    <div
+    <>
+      {isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🗑️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Deleting Client...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we remove this client and all associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
+      {isSubmitting && !isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>{client ? '💾' : '📝'}</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              {client ? 'Saving Changes...' : 'Registering Client...'}
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we {client ? 'update' : 'create'} the client profile and associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
+      <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -6168,21 +6270,30 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
                 type="button"
                 className="btn btn-outline"
                 style={{ color: 'var(--red)', border: '1px solid var(--red)' }}
-                onClick={onDeleteClient}
+                onClick={() => {
+                  window.showConfirm(`Are you sure you want to delete ${client.name} and all their pets?`, () => {
+                    setIsDeleting(true);
+                    Promise.resolve(onDeleteClient()).finally(() => setIsDeleting(false));
+                  });
+                }}
+                disabled={isSubmitting || isDeleting}
               >
-                Delete Client
+                {isDeleting ? "Deleting..." : "Delete Client"}
               </button>
             ) : (
               <div />
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+              <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting || isDeleting}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting || isDeleting}>
+                {isSubmitting ? (client ? "Saving..." : "Registering...") : (client ? "Save Changes" : "Create & Continue")}
+              </button>
             </div>
           </div>
         </form>
       </section>
     </div>
+    </>
   );
 }
 
