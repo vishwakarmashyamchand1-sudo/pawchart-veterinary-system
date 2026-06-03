@@ -2052,6 +2052,8 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                 const pets = client.pets && client.pets.length > 0 ? client.pets : [null];
                 const isExpanded = expandedClients[client._id];
                 const visiblePets = isExpanded ? pets : [pets[0]];
+                // If collapsed, we analyze ALL pets. If expanded, we analyze just the individual pet for that row.
+                const petsToAnalyze = (!isExpanded && pets.length > 1 && pets[0] !== null) ? pets : null;
 
                 return visiblePets.map((pet, idx) => (
                   <tr key={`${client._id}-${pet ? pet._id || pet.name : 'nopet'}-${idx}`} style={idx > 0 ? { backgroundColor: '#fafafa' } : {}}>
@@ -2093,9 +2095,9 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                         )}
                       </div>
                     </td>
-                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getLastVisitDate([pet], appointments, client.createdAt, client.name) : '-'}</td>
-                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getNextAppointmentBadge([pet], appointments, client.name) : <span className="td-sub">-</span>}</td>
-                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getVaccinesBadgeForClient([pet], vaccinations, client.name) : <span className="td-sub">-</span>}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getLastVisitDate(petsToAnalyze || [pet], appointments, client.createdAt, client.name) : '-'}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getNextAppointmentBadge(petsToAnalyze || [pet], appointments, client.name) : <span className="td-sub">-</span>}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getVaccinesBadgeForClient(petsToAnalyze || [pet], vaccinations, client.name) : <span className="td-sub">-</span>}</td>
                     <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {pet && (
@@ -2165,14 +2167,15 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
             .catch(err => window.showToast(err.message, 'error'))
           }
           onDeleteClient={() => {
-            window.showConfirm(`Are you sure you want to delete ${editingClient.name} and all their pets?`, () => {
-              onDelete('clients', editingClient._id)
-                .then(() => {
-                  window.showToast('Client deleted successfully!', 'success');
-                  setEditingClient(null);
-                })
-                .catch(err => window.showToast(err.message, 'error'));
-            });
+            return onDelete('clients', editingClient._id)
+              .then(() => {
+                window.showToast('Client deleted successfully!', 'success');
+                setEditingClient(null);
+              })
+              .catch(err => {
+                window.showToast(err.message, 'error');
+                throw err;
+              });
           }}
         />
       )}
@@ -5718,6 +5721,8 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
   const [ownerName, setOwnerName] = useState(client ? client.name : '');
   const [email, setEmail] = useState(client ? client.email : '');
   const [phone, setPhone] = useState(client ? client.phone : '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [pets, setPets] = useState(() => {
     if (client && client.pets && client.pets.length > 0) {
@@ -5811,11 +5816,14 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
       alerts: p.alerts || []
     }));
 
-    onSave({
+    setIsSubmitting(true);
+    Promise.resolve(onSave({
       name: ownerName,
       email,
       phone,
       pets: savedPets
+    })).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -6108,16 +6116,24 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
                 type="button"
                 className="btn btn-outline"
                 style={{ color: 'var(--red)', border: '1px solid var(--red)' }}
-                onClick={onDeleteClient}
+                onClick={() => {
+                  window.showConfirm(`Are you sure you want to delete ${client.name} and all their pets?`, () => {
+                    setIsDeleting(true);
+                    Promise.resolve(onDeleteClient()).finally(() => setIsDeleting(false));
+                  });
+                }}
+                disabled={isSubmitting || isDeleting}
               >
-                Delete Client
+                {isDeleting ? "Deleting..." : "Delete Client"}
               </button>
             ) : (
               <div />
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+              <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting || isDeleting}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting || isDeleting}>
+                {isSubmitting ? (client ? "Saving..." : "Registering...") : (client ? "Save Changes" : "Create & Continue")}
+              </button>
             </div>
           </div>
         </form>
