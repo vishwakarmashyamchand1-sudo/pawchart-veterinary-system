@@ -654,19 +654,52 @@ function VaccineModal({ initialTab, initialData, onClose, onSave }) {
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{initialData ? 'Edit Vaccine' : 'Add Vaccine'}</h2>
-        <Input label="Vaccine Name" value={name} onChange={setName} />
-        <Select label="Species" value={species} onChange={setSpecies} options={['Dog', 'Cat', 'Rabbit', 'Bird', 'Other']} />
-        <Input label="Recommended Age" value={recommendedAge} onChange={setRecommendedAge} />
         
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--text-2)', marginBottom: '8px' }}>Description</label>
-          <textarea 
-            className="input" 
-            style={{ width: '100%', minHeight: '64px', resize: 'vertical', fontFamily: 'inherit', padding: '10px 12px', fontSize: '14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-1)', color: 'var(--text)' }} 
-            value={desc} 
-            onChange={e => setDesc(e.target.value)} 
-            placeholder="e.g. Prevents fatal rabies infection."
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+          <label className="field-label">
+            Vaccine Name *
+            <input
+              className="input"
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <label className="field-label">
+              Species *
+              <select
+                className="input"
+                value={species}
+                onChange={e => setSpecies(e.target.value)}
+              >
+                {['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+
+            <label className="field-label">
+              Recommended Age *
+              <input
+                className="input"
+                required
+                value={recommendedAge}
+                onChange={e => setRecommendedAge(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="field-label">
+            Description *
+            <textarea
+              className="input"
+              required
+              style={{ minHeight: '64px', resize: 'vertical', fontFamily: 'inherit' }}
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="e.g. Prevents fatal rabies infection."
+            />
+          </label>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
@@ -925,16 +958,32 @@ function VaccinesConfig({ vaccines, create }) {
         </div>
 
         {/* SPECIES TABS */}
-        <div className="vm-tabs-bar" style={{ marginTop: '16px' }}>
+        <div className="vm-tabs-bar" style={{ marginTop: '16px', display: 'flex', gap: '43px', paddingBottom: '8px' }}>
           {SPECIES.map(sp => (
             <div 
               key={sp} 
               className={`vm-tab ${activeTab === sp ? 'active' : ''}`}
               onClick={() => setActiveTab(sp)}
-              style={{ fontWeight: '600' }}
+              style={{ 
+                fontWeight: activeTab === sp ? '800' : '700', 
+                fontSize: '12px', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              {SPECIES_ICONS[sp] || '🐾'} {sp}
-              <span className="tab-count">{tabCounts[sp] || 0}</span>
+              <span style={{ fontSize: '13px' }}>{SPECIES_ICONS[sp] || '🐾'}</span> 
+              {sp}
+              <span className="tab-count" style={{ 
+                fontSize: '10px', 
+                padding: '2px 7px', 
+                marginLeft: '4px',
+                fontWeight: '700',
+                borderRadius: '20px',
+                backgroundColor: activeTab === sp ? '#DBEAFE' : '#f1f5f9',
+                color: activeTab === sp ? '#1D4ED8' : 'var(--text-2)'
+              }}>{tabCounts[sp] || 0}</span>
             </div>
           ))}
         </div>
@@ -1316,7 +1365,7 @@ function App() {
                 {screen === 'vets' && <Vets vets={data.vets} appointments={data.appointments} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
-                {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} clients={data.clients} />}
+                {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} clients={data.clients} masterVaccines={data.vaccinemaster || []} />}
                 {screen === 'booking' && <Booking key={`booking-${bookingClient?._id || 'none'}`} vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
                 {screen === 'soap' && (
                   <Soap
@@ -3613,8 +3662,37 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
   );
 }
 
-function Vaccinations({ rows, update, clients = [] }) {
+function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
   const [viewingVax, setViewingVax] = React.useState(null);
+  const [filterVaccine, setFilterVaccine] = React.useState('');
+  const [filterStatus, setFilterStatus] = React.useState('');
+  const [filterPet, setFilterPet] = React.useState('');
+  const [filterOwner, setFilterOwner] = React.useState('');
+
+  const uniquePets = React.useMemo(() => {
+    return Array.from(new Set(rows.map(r => r.petName).filter(Boolean))).sort();
+  }, [rows]);
+
+  const uniqueOwners = React.useMemo(() => {
+    return Array.from(new Set(rows.map(r => r.ownerName).filter(Boolean))).sort();
+  }, [rows]);
+
+  const uniqueVaccineNames = React.useMemo(() => {
+    let filteredVaccines = masterVaccines;
+    
+    if (filterPet) {
+      const selectedPetRecord = rows.find(r => r.petName?.toLowerCase() === filterPet.toLowerCase());
+      if (selectedPetRecord && selectedPetRecord.species) {
+        const petSpecies = selectedPetRecord.species.toLowerCase();
+        filteredVaccines = masterVaccines.filter(v => {
+          if (!v.species) return true;
+          return v.species.toLowerCase() === petSpecies;
+        });
+      }
+    }
+    
+    return Array.from(new Set(filteredVaccines.map(v => v.name).filter(Boolean))).sort();
+  }, [masterVaccines, filterPet, rows]);
 
   const petEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
@@ -3649,6 +3727,26 @@ function Vaccinations({ rows, update, clients = [] }) {
       return { ...r, displayStatus };
     });
   }, [rows]);
+
+  const filteredRows = React.useMemo(() => {
+    return mappedRows.filter(r => {
+      const pMatch = !filterPet || (r.petName || '').toLowerCase().includes(filterPet.toLowerCase());
+      const oMatch = !filterOwner || (r.ownerName || '').toLowerCase().includes(filterOwner.toLowerCase());
+      const vMatch = !filterVaccine || (r.vaccine || '').toLowerCase() === filterVaccine.toLowerCase();
+      
+      let sMatch = true;
+      if (filterStatus) {
+        const rowStatus = String(r.displayStatus).toLowerCase();
+        const fStatus = filterStatus.toLowerCase();
+        if (fStatus === 'done') sMatch = rowStatus.includes('done');
+        else if (fStatus === 'overdue') sMatch = rowStatus.includes('overdue');
+        else if (fStatus === 'due soon') sMatch = rowStatus.includes('due in') || rowStatus.includes('due soon') || (rowStatus.includes('pending') && rowStatus !== 'not recorded');
+        else if (fStatus === 'not recorded') sMatch = rowStatus === 'not recorded';
+      }
+
+      return pMatch && oMatch && vMatch && sMatch;
+    });
+  }, [mappedRows, filterPet, filterOwner, filterVaccine, filterStatus]);
 
   const upToDate = mappedRows.filter(r => String(r.displayStatus).toLowerCase().includes('done')).length;
   const overdue = mappedRows.filter(r => String(r.displayStatus).toLowerCase().includes('overdue')).length;
@@ -3730,7 +3828,6 @@ function Vaccinations({ rows, update, clients = [] }) {
     <Screen
       title="Vaccination Tracker"
       sub="Clinic-wide • Auto-reminders enabled"
-      action={<button className="btn btn-accent" onClick={handleBatch}>Send Reminder Batch</button>}
     >
       <div className="tracker-cards">
         <div className="tracker-card green">
@@ -3756,9 +3853,98 @@ function Vaccinations({ rows, update, clients = [] }) {
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', marginBottom: '16px', padding: '16px', background: '#fff', borderRadius: '12px', border: '1px solid var(--border)' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>Pet</label>
+          <input className="input" list="pet-list" placeholder="Search pet..." value={filterPet} onChange={e => setFilterPet(e.target.value)} />
+          <datalist id="pet-list">
+            {filterPet.length > 0 && uniquePets.map(p => <option key={p} value={p} />)}
+          </datalist>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>Owner</label>
+          <input className="input" list="owner-list" placeholder="Search owner..." value={filterOwner} onChange={e => setFilterOwner(e.target.value)} />
+          <datalist id="owner-list">
+            {filterOwner.length > 0 && uniqueOwners.map(o => <option key={o} value={o} />)}
+          </datalist>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>Vaccine</label>
+          <select className="input" value={filterVaccine} onChange={e => setFilterVaccine(e.target.value)}>
+            <option value="">Search vaccine...</option>
+            {uniqueVaccineNames.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '8px' }}>Status</label>
+          <select className="input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="">All Status</option>
+            <option value="Done">Done</option>
+            <option value="Due Soon">Due Soon</option>
+            <option value="Overdue">Overdue</option>
+            <option value="Not Recorded">Not Recorded</option>
+          </select>
+        </div>
+        <button 
+          className="btn btn-outline" 
+          style={{ height: '42px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          onClick={() => { setFilterPet(''); setFilterOwner(''); setFilterVaccine(''); setFilterStatus(''); }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+          Reset Filters
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <button 
+          className="btn" 
+          style={{ background: 'transparent', border: '1px solid var(--brand)', color: 'var(--brand)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: !filterStatus ? '0 0 8px var(--brand)' : 'none' }} 
+          onClick={() => setFilterStatus('')}
+        >
+          All
+        </button>
+        <button 
+          className="btn" 
+          style={{ background: 'var(--green-pale)', border: '1px solid var(--green)', color: 'var(--green)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: filterStatus === 'Done' ? '0 0 8px var(--green)' : 'none' }} 
+          onClick={() => setFilterStatus('Done')}
+        >
+          Done
+        </button>
+        <button 
+          className="btn" 
+          style={{ background: 'var(--amber-pale)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: filterStatus === 'Due Soon' ? '0 0 8px var(--amber)' : 'none' }} 
+          onClick={() => setFilterStatus('Due Soon')}
+        >
+          Due Soon
+        </button>
+        <button 
+          className="btn" 
+          style={{ background: 'var(--red-pale)', border: '1px solid var(--red)', color: 'var(--red)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: filterStatus === 'Overdue' ? '0 0 8px var(--red)' : 'none' }} 
+          onClick={() => setFilterStatus('Overdue')}
+        >
+          Overdue
+        </button>
+        <button 
+          className="btn" 
+          style={{ background: 'var(--bg)', border: '1px solid var(--text-3)', color: 'var(--text-2)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: filterStatus === 'Not Recorded' ? '0 0 8px var(--text-3)' : 'none' }} 
+          onClick={() => setFilterStatus('Not Recorded')}
+        >
+          Not Recorded
+        </button>
+      </div>
+
       <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', 'REMINDER SENT', '']}>
-        {mappedRows.map((row) => (
-          <tr key={row._id}>
+        {filteredRows.length === 0 ? (
+          <tr>
+            <td colSpan="8" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-2)' }}>
+              <h3 style={{ marginBottom: '8px', color: 'var(--text)' }}>No Results Found</h3>
+              <p style={{ marginBottom: '16px' }}>No vaccination records match the selected filters.<br/>Try changing or clearing one or more filters.</p>
+              <button className="btn btn-outline" onClick={() => { setFilterPet(''); setFilterOwner(''); setFilterVaccine(''); setFilterStatus(''); }}>Clear Filters</button>
+            </td>
+          </tr>
+        ) : (
+          filteredRows.map((row) => (
+            <tr key={row._id}>
             <td>
               <div className="pet-cell">
                 <div className="pet-avatar">{getPetIcon(row)}</div>
@@ -3773,7 +3959,7 @@ function Vaccinations({ rows, update, clients = [] }) {
             <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
             <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
           </tr>
-        ))}
+        )))}
       </Table>
 
       {viewingVax && (
@@ -5422,7 +5608,7 @@ export function Screen({ title, sub, action, children }) {
 }
 
 function Table({ headers, children }) {
-  return <section style={{ background: 'transparent', border: 'none' }}><table className="data-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
+  return <section style={{ background: 'transparent', border: 'none' }}><table className="data-table"><thead><tr>{headers.map((header, i) => <th key={i}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></section>;
 }
 
 function AppointmentList({ rows, clients = [] }) {
