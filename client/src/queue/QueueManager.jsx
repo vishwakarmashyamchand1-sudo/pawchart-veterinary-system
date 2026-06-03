@@ -4,7 +4,7 @@ import { format12h } from '../utils/dateUtils.js';
 export function getSpeciesEmoji(species = '', breed = '') {
   const s = (species || '').toLowerCase();
   const b = (breed || '').toLowerCase();
-  if (s.includes('dog') || b.includes('retriever') || b.includes('bulldog') || b.includes('shepherd')) return '🐶';
+  if (s.includes('dog') || b.includes('retriever') || b.includes('bulldog') || b.includes('shepherd')) return '🐕';
   if (s.includes('cat') || b.includes('siamese') || b.includes('persian')) return '🐱';
   if (s.includes('rabbit') || s.includes('bunny')) return '🐰';
   if (s.includes('parrot') || s.includes('bird')) return '🦜';

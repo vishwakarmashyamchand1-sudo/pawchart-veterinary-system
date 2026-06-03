@@ -35,6 +35,22 @@ const navByRole = {
     ['Vaccines Config', 'vaccinemaster', 'shot']
   ]
 };
+const DumbbellIcon = ({ size = 14, style = {} }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
+  >
+    <rect x="6" y="11" width="12" height="2" rx="0.5" />
+    <rect x="4" y="6" width="2" height="12" rx="1" />
+    <rect x="2" y="8" width="2" height="8" rx="1" />
+    <rect x="18" y="6" width="2" height="12" rx="1" />
+    <rect x="20" y="8" width="2" height="8" rx="1" />
+  </svg>
+);
+
 const icons = {
   home: '🏠',
   vet: '🩺',
@@ -43,7 +59,7 @@ const icons = {
   shot: '💉',
   loop: '🔄',
   note: '📝',
-  scale: '⚖️',
+  scale: <DumbbellIcon size={14} />,
   chart: '📊',
   clinic: '🏥'
 };
@@ -63,8 +79,10 @@ function useApi(selectedClinicId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function load() {
-    setLoading(true);
+  async function load(isBackground = false) {
+    if (!isBackground) {
+      setLoading(true);
+    }
     setError('');
     try {
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
@@ -81,7 +99,9 @@ function useApi(selectedClinicId) {
       const newCriticalData = Object.fromEntries(criticalNames.map((name, i) => [name, criticalResults[i]]));
       
       setData(prev => ({ ...prev, ...newCriticalData }));
-      setLoading(false); // Unblock UI early
+      if (!isBackground) {
+        setLoading(false); // Unblock UI early
+      }
 
       // 2. Secondary endpoints lazy loaded
       const secondaryNames = ['vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
@@ -99,16 +119,15 @@ function useApi(selectedClinicId) {
         });
 
         secondaryResults[vaxIndex].forEach(v => {
-          if (v.status === 'Pending') {
-            if (!v.isRecorded) {
-              v.status = 'Not recorded';
-            } else {
-              if (v.dueDate < todayStr) v.status = 'Overdue';
-              else if (v.dueDate <= next30) v.status = 'Due soon';
-              else v.status = 'Upcoming';
-            }
-          } else if (v.status === 'Completed') {
-            v.status = 'Done';
+          const isCompleted = v.status === 'Completed' || v.status === 'Up to date' || v.status === 'Done' || !!v.lastDate;
+          if (!v.dueDate) {
+            v.status = 'Not recorded';
+          } else if (v.dueDate < todayStr) {
+            v.status = 'Overdue';
+          } else if (v.dueDate <= next30) {
+            v.status = 'Due soon';
+          } else {
+            v.status = isCompleted ? 'Done' : 'Upcoming';
           }
         });
       }
@@ -127,7 +146,9 @@ function useApi(selectedClinicId) {
       setData(prev => ({ ...prev, ...newSecondaryData }));
     } catch (err) {
       setError(err.message);
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   }
 
@@ -146,7 +167,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    await load();
+    await load(true);
     return createdObj;
   }
 
@@ -164,7 +185,9 @@ function useApi(selectedClinicId) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.message || `Could not update ${resource}`);
     }
-    await load();
+    const updatedObj = await res.json();
+    await load(true);
+    return updatedObj;
   }
 
   async function remove(resource, id) {
@@ -177,7 +200,7 @@ function useApi(selectedClinicId) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    await load();
+    await load(true);
   }
 
   useEffect(() => {
@@ -651,70 +674,51 @@ function VaccineModal({ initialTab, initialData, onClose, onSave }) {
   const [desc, setDesc] = useState(initialData?.desc || '');
 
   return (
-    <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>{initialData ? 'Edit Vaccine' : 'Add Vaccine'}</h2>
+    <Modal title={initialData ? 'Edit Vaccine' : 'Add Vaccine'} onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+        <label className="field-label">
+          Vaccine Name
+          <input className="input" value={name} onChange={e => setName(e.target.value)} />
+        </label>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <label className="field-label">
-            Vaccine Name *
-            <input
-              className="input"
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
+            Species
+            <select className="input" value={species} onChange={e => setSpecies(e.target.value)}>
+              {['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </label>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <label className="field-label">
-              Species *
-              <select
-                className="input"
-                value={species}
-                onChange={e => setSpecies(e.target.value)}
-              >
-                {['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-
-            <label className="field-label">
-              Recommended Age *
-              <input
-                className="input"
-                required
-                value={recommendedAge}
-                onChange={e => setRecommendedAge(e.target.value)}
-              />
-            </label>
-          </div>
-
           <label className="field-label">
-            Description *
-            <textarea
-              className="input"
-              required
-              style={{ minHeight: '64px', resize: 'vertical', fontFamily: 'inherit' }}
-              value={desc}
-              onChange={e => setDesc(e.target.value)}
-              placeholder="e.g. Prevents fatal rabies infection."
-            />
+            Recommended Age
+            <input className="input" value={recommendedAge} onChange={e => setRecommendedAge(e.target.value)} />
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge, desc })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
-        </div>
+        <label className="field-label">
+          Description
+          <textarea 
+            className="input" 
+            style={{ width: '100%', minHeight: '64px', resize: 'vertical' }} 
+            value={desc} 
+            onChange={e => setDesc(e.target.value)} 
+            placeholder="e.g. Prevents fatal rabies infection."
+          />
+        </label>
       </div>
-    </div>
+
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
+        <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={() => onSave({ name, species, recommendedAge, desc })}>{initialData ? 'Save Changes' : 'Save Vaccine'}</button>
+      </div>
+    </Modal>
   );
 }
 
 function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   const isAlreadyGiven = vaccination.status === 'Completed' || vaccination.status === 'Up to date' || vaccination.status === 'Done';
-  const [status, setStatus] = useState(isAlreadyGiven ? 'Completed' : '');
-  const [lastDate, setLastDate] = useState(vaccination.lastDate || new Date().toISOString().split('T')[0]);
+  const [status, setStatus] = useState(isAlreadyGiven ? 'Completed' : 'Pending');
+  const [hasClicked, setHasClicked] = useState(isAlreadyGiven);
+  const [lastDate, setLastDate] = useState(vaccination.lastDate || '');
   const [dueDate, setDueDate] = useState(vaccination.dueDate || '');
   const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
   const [vetName, setVetName] = useState(vaccination.vetName || '');
@@ -723,11 +727,15 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   // Calculate due date based on pet's date of birth or last given date
   const getCalculatedDueDate = () => {
     const isGivenCheck = status === 'Completed' || status === 'Up to date';
-    if (isGivenCheck && lastDate) {
+    const cleanVax = (vaccine || vaccination.vaccine || '').toLowerCase().trim();
+    if (isGivenCheck) {
+      if (!lastDate) {
+        return '';
+      }
       try {
         const ld = new Date(lastDate);
         if (!isNaN(ld.getTime())) {
-          ld.setFullYear(ld.getFullYear() + 1);
+          ld.setMonth(ld.getMonth() + 3);
           const yyyy = ld.getFullYear();
           const mm = String(ld.getMonth() + 1).padStart(2, '0');
           const dd = String(ld.getDate()).padStart(2, '0');
@@ -740,7 +748,6 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
     const dobStr = pet.dateOfBirth || pet.dob;
     if (!dobStr) return dueDate || '';
     
-    const cleanVax = (vaccine || vaccination.vaccine || '').toLowerCase().trim();
     let recAge = '12 weeks';
     if (cleanVax.includes('rabies')) {
       recAge = '12 weeks';
@@ -796,11 +803,6 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
 
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus);
-    if (newStatus === 'Completed') {
-      if (!lastDate) {
-        setLastDate(new Date().toISOString().split('T')[0]);
-      }
-    }
   };
 
   return (
@@ -835,9 +837,7 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
               width: '220px', 
               height: '40px', 
               padding: '4px',
-              cursor: 'pointer'
             }}
-            onClick={() => handleStatusChange(isGiven ? 'Pending' : 'Completed')}
           >
             {/* Sliding Background */}
             <div 
@@ -854,22 +854,63 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
               }}
             />
             {/* Labels */}
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s' }}>
+            <div 
+              onClick={() => {
+                setHasClicked(true);
+                handleStatusChange('Completed');
+              }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s', cursor: 'pointer' }}
+            >
               Given
             </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: !isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s' }}>
+            <div 
+              onClick={() => {
+                setHasClicked(true);
+                handleStatusChange('Pending');
+              }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: !isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s', cursor: 'pointer' }}
+            >
               Not Given
             </div>
           </div>
         </div>
 
-        {isGiven && (
-          <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
+        {isGiven && hasClicked && (
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="field-label">
+                Due Date
+                <input 
+                  type="date"
+                  value={computedDueDate || ''} 
+                  disabled
+                  className="input" 
+                  style={{ 
+                    marginTop: '5px',
+                    background: 'var(--bg)', 
+                    color: 'var(--text-2)',
+                    fontWeight: '600',
+                    cursor: 'not-allowed',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '9px 11px',
+                    minHeight: '38px',
+                    boxSizing: 'border-box',
+                    opacity: 1,
+                    WebkitTextFillColor: 'var(--text-2)'
+                  }} 
+                />
+              </label>
+            </div>
+          </div>
         )}
 
-        {isNotGiven && (
+        {isNotGiven && hasClicked && (
           <div style={{ marginBottom: '16px', color: 'var(--text-2)', background: 'var(--bg)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-            <strong>Due Date:</strong> {computedDueDate || 'Not Calculated'}
+            <strong>Due Date:</strong> {computedDueDate ? formatDateSafe(computedDueDate) : 'Not Calculated'}
           </div>
         )}
 
@@ -877,10 +918,10 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
           <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
           <button 
             className="btn btn-primary" 
-            disabled={!status}
+            disabled={!status || !hasClicked || (isGiven && !lastDate)}
             style={{
-              opacity: !status ? 0.6 : 1,
-              cursor: !status ? 'not-allowed' : 'pointer'
+              opacity: (!status || !hasClicked || (isGiven && !lastDate)) ? 0.6 : 1,
+              cursor: (!status || !hasClicked || (isGiven && !lastDate)) ? 'not-allowed' : 'pointer'
             }}
             onClick={() => {
               if (!status) return;
@@ -924,7 +965,7 @@ function VaccinesConfig({ vaccines, create }) {
   };
 
   const SPECIES = ['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'];
-  const SPECIES_ICONS = { Dog: '🐶', Cat: '🐱', Rabbit: '🐰', Bird: '🦜', Other: '🐾' };
+  const SPECIES_ICONS = { Dog: '🐕', Cat: '🐱', Rabbit: '🐰', Bird: '🦜', Other: '🐾' };
 
   const hardcodedVaccines = [
     { id: 'hc-1', name: 'Rabies', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
@@ -1275,13 +1316,15 @@ function App() {
                       setSelectedDoctor(d || null);
                     }
                   }}
-                  disabled={loading}
+                  disabled={!selectedClinic || loading}
                 >
                   <option value="">{!selectedClinic ? 'Select clinic first...' : 'Select doctor...'}</option>
-                  {loading ? (
-                    <option value="loading" disabled>Loading doctors...</option>
-                  ) : (
-                    data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)
+                  {selectedClinic && (
+                    loading ? (
+                      <option value="loading" disabled>Loading doctors...</option>
+                    ) : (
+                      data.vets?.map(v => <option key={v._id} value={v._id}>{v.name}</option>)
+                    )
                   )}
                 </select>
               </>
@@ -1364,7 +1407,7 @@ function App() {
                 {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} />}
                 {screen === 'vets' && <Vets vets={data.vets} appointments={data.appointments} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
-                {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} />}
+                {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} onSelectPet={setSelectedPet} />}
                 {screen === 'vax' && <Vaccinations rows={data.vaccinations} update={update} clients={data.clients} masterVaccines={data.vaccinemaster || []} />}
                 {screen === 'booking' && <Booking key={`booking-${bookingClient?._id || 'none'}`} vets={data.vets} clients={data.clients} appointments={data.appointments} create={create} bookingClient={bookingClient} setBookingClient={setBookingClient} bookingPet={bookingPet} setBookingPet={setBookingPet} go={setScreen} />}
                 {screen === 'soap' && (
@@ -1381,6 +1424,7 @@ function App() {
                     go={setScreen}
                     setBookingClient={setBookingClient}
                     setBookingPet={setBookingPet}
+                    reload={reload}
                   />
                 )}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} doctorPatients={doctorPatients} selectedDoctor={selectedDoctor} onPetSelect={setSelectedPet} role={role} />}
@@ -1633,7 +1677,7 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
           _id: follow._id,
           type: 'purple',
           petName: follow.petName,
-          title: `Follow-up pending (${getCompactPurpose(follow.purpose)})`,
+          title: `Follow-up pending (${follow.purpose || 'Recommended Follow-up'})`,
           sub: `Planned for: ${formatDateClean(follow.planDate)} · Doctor: ${follow.vetName}`
         });
       }
@@ -1745,9 +1789,24 @@ function Stat({ label, value, hint, primary, danger }) {
 function Vets({ vets, appointments = [], create, update, onDelete, selectedClinic }) {
   const [openOnboard, setOpenOnboard] = useState(false);
   const [editingVet, setEditingVet] = useState(null);
+  const [deletingVetId, setDeletingVetId] = useState(null);
 
   return (
-    <Screen
+    <>
+      {deletingVetId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🗑️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Deleting Veterinarian...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we remove this veterinarian from the clinic.
+            </p>
+          </div>
+        </div>
+      )}
+      <Screen
       title="Veterinarians"
       sub={`${selectedClinic?.name || 'Clinic'} · ${vets.length} vets on staff`}
       action={<button className="btn btn-primary" onClick={() => setOpenOnboard(true)}>+ Onboard Vet</button>}
@@ -1834,9 +1893,11 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                           style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
                           onClick={() => {
                             window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
-                              onDelete('vets', vet._id);
+                              setDeletingVetId(vet._id);
+                              Promise.resolve(onDelete('vets', vet._id)).finally(() => setDeletingVetId(null));
                             });
                           }}
+                          disabled={deletingVetId === vet._id}
                         >
                           🗑️
                         </button>
@@ -1883,6 +1944,7 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
         />
       )}
     </Screen>
+    </>
   );
 }
 
@@ -1903,7 +1965,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
 
   const petEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('parrot') || s.includes('bird')) return '🦜';
@@ -1935,7 +1997,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
 
     if (overdue > 0) return <span className="badge b-red">{overdue} overdue</span>;
     if (dueSoon > 0) return <span className="badge b-amber">{dueSoon} due soon</span>;
-    return <span className="badge b-green">Up to date</span>;
+    return <span className="badge b-green">Done</span>;
   };
 
   const getNextAppointmentBadge = (clientPets, appointments, clientName) => {
@@ -2165,14 +2227,15 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
             .catch(err => window.showToast(err.message, 'error'))
           }
           onDeleteClient={() => {
-            window.showConfirm(`Are you sure you want to delete ${editingClient.name} and all their pets?`, () => {
-              onDelete('clients', editingClient._id)
-                .then(() => {
-                  window.showToast('Client deleted successfully!', 'success');
-                  setEditingClient(null);
-                })
-                .catch(err => window.showToast(err.message, 'error'));
-            });
+            return onDelete('clients', editingClient._id)
+              .then(() => {
+                window.showToast('Client deleted successfully!', 'success');
+                setEditingClient(null);
+              })
+              .catch(err => {
+                window.showToast(err.message, 'error');
+                throw err;
+              });
           }}
         />
       )}
@@ -2243,13 +2306,20 @@ const getAgeStr = (dobStr) => {
       months--;
     }
 
-    
     let totalMonths = (years * 12) + months;
     if (totalMonths < 0) totalMonths = 0;
-    
-    return `${totalMonths}M`;
-  } catch (err) {
 
+    if (totalMonths === 0) {
+      const birthDate = new Date(birth.getFullYear(), birth.getMonth(), birth.getDate());
+      const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const diffTime = todayDate - birthDate;
+      let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) diffDays = 0;
+      return `${diffDays}d.`;
+    }
+    
+    return `${totalMonths}mo.`;
+  } catch (err) {
     return dobStr;
   }
 };
@@ -2318,7 +2388,7 @@ const getIdealRange = (species = '', breed = '') => {
   return { min: 5, max: 50 }; // Safe overall fallback
 };
 
-function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create }) {
+function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create, onSelectPet }) {
   const [currentPet, setCurrentPet] = useState(pet);
   const [activeTab, setActiveTab] = useState('visits');
   const [editingVax, setEditingVax] = useState(null);
@@ -2355,7 +2425,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id);
     if (currentIndex !== -1) {
       const prevIndex = (currentIndex - 1 + ownerPets.length) % ownerPets.length;
-      setCurrentPet(ownerPets[prevIndex]);
+      const nextPet = ownerPets[prevIndex];
+      setCurrentPet(nextPet);
+      if (onSelectPet) onSelectPet(nextPet);
     }
   };
 
@@ -2363,13 +2435,15 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
     const currentIndex = ownerPets.findIndex(p => p._id === currentPet._id || p.name.toLowerCase() === currentPet.name.toLowerCase());
     if (currentIndex !== -1) {
       const nextIndex = (currentIndex + 1) % ownerPets.length;
-      setCurrentPet(ownerPets[nextIndex]);
+      const nextPet = ownerPets[nextIndex];
+      setCurrentPet(nextPet);
+      if (onSelectPet) onSelectPet(nextPet);
     }
   };
 
   const petEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('parrot') || s.includes('bird')) return '🦜';
@@ -2407,17 +2481,16 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const today = new Date().toISOString().split('T')[0];
   const next30Days = new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const petVax = vaccinations.filter(v => v.petId ? v.petId === currentPet._id : (v.petName.toLowerCase() === currentPet.name.toLowerCase() && v.ownerName.toLowerCase() === ownerName.toLowerCase())).map(v => {
-    let displayStatus = v.status;
-    if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
-      displayStatus = 'Done';
-    } else if (displayStatus !== 'Done' && displayStatus !== 'Not recorded') {
-      if (v.dueDate < today) {
-        displayStatus = 'Overdue';
-      } else if (v.dueDate <= next30Days) {
-        displayStatus = 'Due soon';
-      } else {
-        displayStatus = 'Upcoming';
-      }
+    const isCompleted = v.status === 'Completed' || v.status === 'Up to date' || v.status === 'Done' || !!v.lastDate;
+    let displayStatus;
+    if (!v.dueDate) {
+      displayStatus = 'Not recorded';
+    } else if (v.dueDate < today) {
+      displayStatus = 'Overdue';
+    } else if (v.dueDate <= next30Days) {
+      displayStatus = 'Due soon';
+    } else {
+      displayStatus = isCompleted ? 'Done' : 'Upcoming';
     }
     return { ...v, displayStatus };
   });
@@ -2557,13 +2630,15 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
       // Find the updated pet inside updatedPets
       const savedPet = updatedPets.find(p => p._id === currentPet._id);
       if (savedPet) {
-        setCurrentPet({
+        const nextPet = {
           ...savedPet,
           ownerId: ownerClient._id,
           ownerName: ownerClient.name,
           email: ownerClient.email,
           phone: ownerClient.phone
-        });
+        };
+        setCurrentPet(nextPet);
+        if (onSelectPet) onSelectPet(nextPet);
       }
 
       setIsEditModalOpen(false);
@@ -2586,39 +2661,106 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
             <div style={{
               background: 'var(--brand)',
               borderRadius: '16px',
-              padding: '24px 16px',
+              padding: '24px 8px',
               color: '#fff',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(37,99,235,0.15)'
+              boxShadow: '0 4px 12px rgba(37,99,235,0.15)',
+              position: 'relative'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
-                {ownerPets.length > 1 ? (
-                  <button
-                    type="button"
-                    style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      border: 0,
-                      color: 'white',
-                      borderRadius: '50%',
-                      width: '28px',
-                      height: '28px',
-                      display: 'grid',
-                      placeItems: 'center',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      transition: 'background 0.2s'
-                    }}
-                    onClick={handlePrevPet}
-                    title="Previous Pet"
-                  >
-                    &lt;
-                  </button>
-                ) : <div style={{ width: '28px' }} />}
+              {/* Species Badge at Top Right */}
+              <span style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                fontSize: '11px',
+                fontWeight: '700',
+                background: '#facc15',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#0f172a'
+              }}>
+                {currentPet.species || 'Dog'}
+              </span>
+              {ownerPets.length > 1 && (
+                <button
+                  type="button"
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 0,
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    transition: 'all 0.2s ease',
+                    zIndex: 10
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                  }}
+                  onClick={handlePrevPet}
+                  title="Previous Pet"
+                >
+                  &lt;
+                </button>
+              )}
 
+              {ownerPets.length > 1 && (
+                <button
+                  type="button"
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 0,
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    transition: 'all 0.2s ease',
+                    zIndex: 10
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
+                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                  }}
+                  onClick={handleNextPet}
+                  title="Next Pet"
+                >
+                  &gt;
+                </button>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '10px' }}>
                 <div style={{ position: 'relative', fontSize: '48px', lineHeight: '1' }}>
                   {petEmoji(currentPet.species)}
                   <div
@@ -2636,30 +2778,6 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                     }}
                   />
                 </div>
-
-                {ownerPets.length > 1 ? (
-                  <button
-                    type="button"
-                    style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      border: 0,
-                      color: 'white',
-                      borderRadius: '50%',
-                      width: '28px',
-                      height: '28px',
-                      display: 'grid',
-                      placeItems: 'center',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      transition: 'background 0.2s'
-                    }}
-                    onClick={handleNextPet}
-                    title="Next Pet"
-                  >
-                    &gt;
-                  </button>
-                ) : <div style={{ width: '28px' }} />}
               </div>
 
               <h2 style={{ fontSize: '26px', margin: '12px 0 2px 0', fontWeight: '800', color: '#fff' }}>{currentPet.name}</h2>
@@ -2667,14 +2785,14 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 {currentPet.breed || 'Mixed Breed'} - {currentPet.sex || 'Male'} - {currentPet.spayedNeutered === 'Yes' ? 'Neutered/Spayed' : 'Intact'}
               </div>
 
-              <div style={{ display: 'flex', gap: '6px', marginTop: '20px', justifyContent: 'center', flexWrap: 'nowrap', width: '100%' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                  ⏱️ {calculatedAge}
+              <div style={{ display: 'flex', gap: '4px', marginTop: '20px', justifyContent: 'center', flexWrap: 'nowrap', width: '100%' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                  {calculatedAge.toLowerCase().startsWith('age') ? calculatedAge : `Age ${calculatedAge}`}
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                  ⚖️ {currentWeightSimple}
+                <span style={{ fontSize: '13px', fontWeight: '700', padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                  <DumbbellIcon size={18} /> {currentWeightSimple}
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                   🩸 {(() => {
                     const bt = currentPet.bloodType || '-';
                     return bt.replace(/positive/i, 'Pos').replace(/negative/i, 'Neg');
@@ -3198,8 +3316,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                           gap: '16px'
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
-                              ⚖️ Log New Weight
+                            <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <DumbbellIcon size={18} /> Log New Weight
                             </h3>
                             <button
                               onClick={() => setIsWeightModalOpen(false)}
@@ -3216,8 +3334,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             </button>
                           </div>
 
-                          <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            ⚖️ <strong>Auto-Capturing Current Date & Time:</strong>
+                          <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <DumbbellIcon size={14} /> <strong>Auto-Capturing Current Date & Time:</strong>
                             <div style={{ marginTop: '4px', fontWeight: '600', color: 'var(--brand)' }}>
                               {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                             </div>
@@ -3292,7 +3410,6 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 <section className="panel no-pad" style={{ background: '#fff', borderRadius: '12px' }}>
                   <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: '15px' }}>Vaccination Records</h3>
-                    <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setEditingVax({ isNew: true, status: 'Completed' })}>+ Add Vaccination</button>
                   </div>
                   <table className="data-table">
                     <thead>
@@ -3696,7 +3813,7 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
 
   const petEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('parrot') || s.includes('bird')) return '🦜';
@@ -3704,25 +3821,20 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
   };
 
   const mappedRows = React.useMemo(() => {
-    const petHistoryMap = {};
-    rows.forEach(r => {
-      const key = `${r.petName?.toLowerCase()}_${r.ownerName?.toLowerCase()}_${r.vaccine?.toLowerCase()}`;
-      if (!petHistoryMap[key]) {
-        petHistoryMap[key] = false;
-      }
-      if (String(r.status).toLowerCase().includes('completed') || String(r.status).toLowerCase().includes('done') || String(r.status).toLowerCase().includes('waived') || r.lastDate) {
-        petHistoryMap[key] = true;
-      }
-    });
+    const todayStr = new Date().toISOString().split('T')[0];
+    const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     return rows.map(r => {
-      const key = `${r.petName?.toLowerCase()}_${r.ownerName?.toLowerCase()}_${r.vaccine?.toLowerCase()}`;
-      const hasHistory = petHistoryMap[key];
-      let displayStatus = r.status;
-      if (!hasHistory && r.status === 'Pending') {
+      const isCompleted = r.status === 'Completed' || r.status === 'Up to date' || r.status === 'Done' || !!r.lastDate;
+      let displayStatus;
+      if (!r.dueDate) {
         displayStatus = 'Not recorded';
-      } else if (displayStatus === 'Completed' || displayStatus === 'Up to date') {
-        displayStatus = 'Done';
+      } else if (r.dueDate < todayStr) {
+        displayStatus = 'Overdue';
+      } else if (r.dueDate <= next30) {
+        displayStatus = 'Due soon';
+      } else {
+        displayStatus = isCompleted ? 'Done' : 'Upcoming';
       }
       return { ...r, displayStatus };
     });
@@ -4174,7 +4286,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
 
   const petEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('parrot') || s.includes('bird')) return '🦜';
@@ -4466,10 +4578,24 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }
 
   return (
-    <Screen
-      title="Book Appointment"
-      sub="Step 3 of 3 — Select time slot & confirm"
-    >
+    <>
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>📅</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Booking Appointment...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we secure this time slot.
+            </p>
+          </div>
+        </div>
+      )}
+      <Screen
+        title="Book Appointment"
+        sub="Step 3 of 3 — Select time slot & confirm"
+      >
       <div className="steps" style={{ marginBottom: '20px' }}>
         <span className="step done" style={{ cursor: 'pointer', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBookingClient(null)}>
           ✓
@@ -4772,6 +4898,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         />
       )}
     </Screen>
+    </>
   );
 }
 
@@ -4982,7 +5109,7 @@ function LegacySoap({ note, create }) {
 }
 
 function Weights({ weights, create, activePet, clients, go, doctorPatients, selectedDoctor, onPetSelect, role }) {
-  const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐶', age: '4 yrs' };
+  const pet = activePet || { name: 'Buddy', breed: 'Golden Retriever', emoji: '🐕', age: '4 yrs' };
 
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [weightLogVal, setWeightLogVal] = useState('');
@@ -5146,7 +5273,7 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   const getPetEmoji = (species = '') => {
     const s = (species || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop')) return '🐰';
     if (s.includes('bird') || s.includes('parrot')) return '🦜';
@@ -5381,8 +5508,8 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
             gap: '16px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)' }}>
-                ⚖️ Log New Weight
+              <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <DumbbellIcon size={18} /> Log New Weight
               </h3>
               <button
                 onClick={() => setIsWeightModalOpen(false)}
@@ -5399,8 +5526,8 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
               </button>
             </div>
 
-            <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-              ⚖️ <strong>Auto-Capturing Current Date & Time:</strong>
+            <div style={{ fontSize: '13px', color: 'var(--text-2)', background: 'var(--bg)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <DumbbellIcon size={14} /> <strong>Auto-Capturing Current Date & Time:</strong>
               <div style={{ marginTop: '4px', fontWeight: '600', color: 'var(--brand)' }}>
                 {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
               </div>
@@ -5475,7 +5602,7 @@ function FollowUps({ rows, selectedClinic }) {
 
   const getPetIcon = (breed) => {
     const s = String(breed || '').toLowerCase();
-    if (s.includes('dog')) return '🐶';
+    if (s.includes('dog')) return '🐕';
     if (s.includes('cat') || s.includes('siamese')) return '🐱';
     if (s.includes('rabbit') || s.includes('lop') || s.includes('bunny')) return '🐰';
     if (s.includes('parrot') || s.includes('bird')) return '🦜';
@@ -5539,7 +5666,7 @@ function FollowUps({ rows, selectedClinic }) {
                 </div>
               </td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text)' }}>{row.vetName}</td>
-              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{getCompactPurpose(row.purpose)}</td>
+              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{row.purpose || 'Recommended Follow-up'}</td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateClean(row.planDate)}</td>
               <td>
                 {row.confirmedDate ? (
@@ -5628,7 +5755,7 @@ function AppointmentList({ rows, clients = [] }) {
 
     const searchString = (species || row.petBreed || row.breed || '').toLowerCase();
 
-    if (searchString.includes('dog') || searchString.includes('retriever') || searchString.includes('bulldog') || searchString.includes('pug') || searchString.includes('shih')) return { emoji: '🐶', bg: '#eff6ff', color: '#1d4ed8' };
+    if (searchString.includes('dog') || searchString.includes('retriever') || searchString.includes('bulldog') || searchString.includes('pug') || searchString.includes('shih')) return { emoji: '🐕', bg: '#eff6ff', color: '#1d4ed8' };
     if (searchString.includes('cat') || searchString.includes('siamese') || searchString.includes('feline')) return { emoji: '🐱', bg: '#fce7f3', color: '#db2777' };
     if (searchString.includes('rabbit') || searchString.includes('lop') || searchString.includes('bunny')) return { emoji: '🐰', bg: '#fef3c7', color: '#d97706' };
     if (searchString.includes('parrot') || searchString.includes('bird') || searchString.includes('grey') || searchString.includes('parakeet')) return { emoji: '🦜', bg: '#dcfce7', color: '#16a34a' };
@@ -5711,6 +5838,7 @@ function VetModal({ vet, onClose, onSave }) {
   const [experienceYears, setExperienceYears] = useState(vet?.experienceYears || '');
   const [consultationFee, setConsultationFee] = useState(vet?.consultationFee || '');
   const [status, setStatus] = useState(vet?.status || 'Available');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -5723,7 +5851,8 @@ function VetModal({ vet, onClose, onSave }) {
       return;
     }
 
-    onSave({
+    setIsSubmitting(true);
+    Promise.resolve(onSave({
       name,
       email,
       phone,
@@ -5732,6 +5861,8 @@ function VetModal({ vet, onClose, onSave }) {
       experienceYears: experienceYears ? Number(experienceYears) : undefined,
       consultationFee: consultationFee ? Number(consultationFee) : undefined,
       status
+    })).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -5745,7 +5876,21 @@ function VetModal({ vet, onClose, onSave }) {
   ];
 
   return (
-    <Modal title={vet ? "Edit Veterinarian Details" : "Onboard Veterinarian"} onClose={onClose}>
+    <>
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🩺</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              {vet ? 'Saving Changes...' : 'Onboarding Veterinarian...'}
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we {vet ? 'update the veterinarian details' : 'register the new veterinarian'}.
+            </p>
+          </div>
+        </div>
+      )}
+      <Modal title={vet ? "Edit Veterinarian Details" : "Onboard Veterinarian"} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
           <label className="field-label">
@@ -5843,11 +5988,14 @@ function VetModal({ vet, onClose, onSave }) {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">{vet ? "Save Changes" : "Onboard"}</button>
+          <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? (vet ? "Saving..." : "Onboarding...") : (vet ? "Save Changes" : "Onboard")}
+          </button>
         </div>
       </form>
     </Modal>
+    </>
   );
 }
 
@@ -5875,6 +6023,8 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
       { name: '', species: 'Dog', breed: '', dob: '', sex: 'Male', microchip: '', spayedNeutered: 'Yes', petId: '' }
     ];
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const wrapRef = useRef(null);
 
@@ -5948,11 +6098,14 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
       alerts: p.alerts || []
     }));
 
-    onSave({
+    setIsSubmitting(true);
+    Promise.resolve(onSave({
       name: ownerName,
       email,
       phone,
       pets: savedPets
+    })).finally(() => {
+      setIsSubmitting(false);
     });
   };
 
@@ -5969,7 +6122,34 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
   };
 
   return (
-    <div
+    <>
+      {isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🗑️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Deleting Client...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we remove this client and all associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
+      {isSubmitting && !isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>{client ? '💾' : '📝'}</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              {client ? 'Saving Changes...' : 'Registering Client...'}
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we {client ? 'update' : 'create'} the client profile and associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
+      <div
       ref={wrapRef}
       className="modal-wrap"
       style={{
@@ -6245,21 +6425,30 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
                 type="button"
                 className="btn btn-outline"
                 style={{ color: 'var(--red)', border: '1px solid var(--red)' }}
-                onClick={onDeleteClient}
+                onClick={() => {
+                  window.showConfirm(`Are you sure you want to delete ${client.name} and all their pets?`, () => {
+                    setIsDeleting(true);
+                    Promise.resolve(onDeleteClient()).finally(() => setIsDeleting(false));
+                  });
+                }}
+                disabled={isSubmitting || isDeleting}
               >
-                Delete Client
+                {isDeleting ? "Deleting..." : "Delete Client"}
               </button>
             ) : (
               <div />
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{client ? "Save Changes" : "Create & Continue"}</button>
+              <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting || isDeleting}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting || isDeleting}>
+                {isSubmitting ? (client ? "Saving..." : "Registering...") : (client ? "Save Changes" : "Create & Continue")}
+              </button>
             </div>
           </div>
         </form>
       </section>
     </div>
+    </>
   );
 }
 

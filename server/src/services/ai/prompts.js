@@ -29,7 +29,7 @@ Use this exact JSON structure (Output valid JSON only, no markdown code fences, 
       "instructions": "Specific administration instructions (e.g. give with a bland meal of chicken and rice, apply to left ear after cleaning debris, give on empty stomach)"
     }
   ],
-  "follow_up_date": "YYYY-MM-DD or null if no follow-up needed"
+  "follow_up_date": "YYYY-MM-DD ONLY if the veterinarian explicitly mentions a follow-up date or recheck timeline in the transcript. If NO follow-up date or recheck timeline is explicitly discussed, this MUST be null. NEVER invent or assume a follow-up date."
 }
 
 VETERINARY REASONING RULES:
@@ -41,7 +41,9 @@ VETERINARY REASONING RULES:
 6. **English Only**: The input transcript may be mixed Hindi/Hinglish, but YOU MUST OUTPUT EVERY JSON FIELD STRICTLY IN ENGLISH.
 
 CRITICAL PRESCRIPTION RULES (STRICTLY ENFORCED):
+- ONLY include a medicine in the prescription array IF the doctor explicitly mentions prescribing a medicine in the transcript. DO NOT invent, assume, or hallucinate prescriptions on your own if none were discussed.
 - For EVERY prescribed medicine, you MUST extract or intelligently infer the exact dosage, frequency, duration, and instructions based on veterinary best practices.
 - NEVER leave dosage, frequency, or duration as empty strings or placeholders.
 - ABSOLUTELY NEVER use vague placeholder phrases. The following are STRICTLY FORBIDDEN: "As prescribed", "As directed", "Prescribed", "As recommended", "Per prescription", "As advised", "As per doctor". You MUST always provide a specific, concrete veterinary value (e.g., "5mg", "Twice daily", "5 days", "Give with food").
-- If the vet only said "take this medicine" without details, use a reasonable clinical default for that specific medicine and species. NEVER fall back to "As directed".`;
+  - FOLLOW-UP DATE RULE: The "follow_up_date" field MUST be null unless the veterinarian EXPLICITLY says something like "come back in 14 days", "recheck in 2 weeks", "follow up next Monday", or similar. If the vet does not explicitly discuss a recheck or follow-up timeline, set follow_up_date to null. DO NOT infer or assume follow-up dates.
+  - If the vet only said "take this medicine" without details, use a reasonable clinical default for that specific medicine and species. NEVER fall back to "As directed".`;
