@@ -3860,6 +3860,7 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
         else if (fStatus === 'overdue') sMatch = rowStatus.includes('overdue');
         else if (fStatus === 'due soon') sMatch = rowStatus.includes('due in') || rowStatus.includes('due soon') || (rowStatus.includes('pending') && rowStatus !== 'not recorded');
         else if (fStatus === 'not recorded') sMatch = rowStatus === 'not recorded';
+        else if (fStatus === 'upcoming') sMatch = rowStatus.includes('upcoming');
       }
 
       return pMatch && oMatch && vMatch && sMatch;
@@ -4000,6 +4001,7 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
             <option value="Done">Done</option>
             <option value="Due Soon">Due Soon</option>
             <option value="Overdue">Overdue</option>
+            <option value="Upcoming">Upcoming</option>
             <option value="Not Recorded">Not Recorded</option>
           </select>
         </div>
@@ -4041,6 +4043,13 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
           onClick={() => setFilterStatus('Overdue')}
         >
           Overdue
+        </button>
+        <button 
+          className="btn" 
+          style={{ background: 'var(--brand-pale)', border: '1px solid var(--brand)', color: 'var(--brand)', borderRadius: '20px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, transition: 'box-shadow 0.2s ease-in-out', boxShadow: filterStatus === 'Upcoming' ? '0 0 8px var(--brand)' : 'none' }} 
+          onClick={() => setFilterStatus('Upcoming')}
+        >
+          Upcoming
         </button>
         <button 
           className="btn" 
