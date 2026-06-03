@@ -19,7 +19,8 @@ export function QueueManager({
   upNext, 
   onCallNext, 
   onComplete, 
-  onStartSoap 
+  onStartSoap,
+  isCallingNext
 }) {
   const remainingCount = upNext.length;
   
@@ -247,17 +248,17 @@ export function QueueManager({
             borderRadius: '8px',
             fontSize: '13px',
             fontWeight: '700',
-            background: remainingCount > 0 ? 'var(--brand)' : 'var(--text-3)',
-            cursor: remainingCount > 0 ? 'pointer' : 'not-allowed',
-            boxShadow: remainingCount > 0 ? '0 4px 12px rgba(37, 99, 235, 0.18)' : 'none',
+            background: remainingCount > 0 && !isCallingNext ? 'var(--brand)' : 'var(--text-3)',
+            cursor: remainingCount > 0 && !isCallingNext ? 'pointer' : 'not-allowed',
+            boxShadow: remainingCount > 0 && !isCallingNext ? '0 4px 12px rgba(37, 99, 235, 0.18)' : 'none',
             border: 'none',
             color: 'white',
             transition: 'all 0.2s ease'
           }}
           onClick={onCallNext}
-          disabled={remainingCount === 0}
+          disabled={remainingCount === 0 || isCallingNext}
         >
-          Call Next →
+          {isCallingNext ? 'Calling...' : 'Call Next →'}
         </button>
         <div style={{ 
           textAlign: 'center', 

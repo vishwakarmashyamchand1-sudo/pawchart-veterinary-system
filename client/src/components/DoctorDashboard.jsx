@@ -60,23 +60,41 @@ export function DoctorDashboard({
     return rawToday.map(mapPetDetails);
   }, [appointments, selectedDoctor, selectedClinic, clients]);
 
+  const getUpNext = (appts) => {
+    return appts
+      .filter(a => a.status === 'Scheduled' || a.status === 'Delayed')
+      .sort((a, b) => {
+        const timeA = new Date(`1970-01-01T${a.time}:00`).getTime();
+        const timeB = new Date(`1970-01-01T${b.time}:00`).getTime();
+        return timeA - timeB;
+      });
+  };
+
   const nowInRoom = useMemo(() => getNowInRoom(todayAppts), [todayAppts]);
   const upNext = useMemo(() => getUpNext(todayAppts), [todayAppts]);
+  const [isCallingNext, setIsCallingNext] = useState(false);
 
   // 3. Queue progression logic
   const handleCallNext = async () => {
     if (upNext.length === 0) return;
     const nextPatient = upNext[0];
-
+    
+    setIsCallingNext(true);
     try {
+      const updates = [];
       // Mark current in room as Completed
       if (nowInRoom) {
-        await update('appointments', nowInRoom._id, { status: 'Completed' });
+        updates.push(update('appointments', nowInRoom._id, { status: 'Completed' }));
       }
       // Mark next patient as Now (Active Room)
-      await update('appointments', nextPatient._id, { status: 'Now' });
+      updates.push(update('appointments', nextPatient._id, { status: 'Now' }));
+      
+      await Promise.all(updates);
     } catch (err) {
       console.error("Queue progression failed:", err);
+      window.showToast?.("Failed to call next patient", "error");
+    } finally {
+      setIsCallingNext(false);
     }
   };
 
@@ -113,6 +131,7 @@ export function DoctorDashboard({
             onCallNext={handleCallNext}
             onComplete={handleComplete}
             onStartSoap={handleStartSoap}
+            isCallingNext={isCallingNext}
           />
 
           {/* RIGHT COLUMN: Weekly Calendar */}
