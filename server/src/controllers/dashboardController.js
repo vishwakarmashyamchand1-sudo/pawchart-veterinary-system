@@ -5,10 +5,16 @@ export const getDashboardStats = async (req, res, next) => {
   try {
     const filter = getQueryFilter(req);
     
-    const todayStr = new Date().toISOString().split('T')[0]; 
+    const getLocalStr = (d = new Date()) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const todayStr = getLocalStr();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0]; 
+    const yesterdayStr = getLocalStr(yesterday); 
 
     const next30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -31,7 +37,7 @@ export const getDashboardStats = async (req, res, next) => {
     }).sort({ date: 1, time: 1 }).limit(30).lean();
 
     const todayApptsDb = await Appointment.find({ ...filter, date: todayStr }).select('petName').lean();
-    const todayPetNames = new Set(todayApptsDb.map(a => a.petName?.toLowerCase()).filter(Boolean));
+    const todayPetNames = new Set(todayApptsDb.map(a => a.petName?.trim().toLowerCase()).filter(Boolean));
 
     // 2. Active patients (DB Size Aggregation)
     const startOfMonth = new Date();
@@ -79,9 +85,28 @@ export const getDashboardStats = async (req, res, next) => {
       {
         $group: {
           _id: { petName: { $toLower: "$petName" }, ownerName: { $toLower: "$ownerName" }, vaccine: { $toLower: "$vaccine" } },
-          hasPending: { $max: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+          hasPending: {
+            $max: {
+              $cond: [
+                {
+                  $or: [
+                    { $eq: ["$status", "Pending"] },
+                    {
+                      $and: [
+                        { $ne: ["$dueDate", null] },
+                        { $ne: ["$dueDate", ""] },
+                        { $lte: ["$dueDate", next30Days] }
+                      ]
+                    }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
           hasCompleted: { $max: { $cond: [{ $in: ["$status", ["Completed", "Waived"]] }, 1, { $cond: [{ $ne: ["$lastDate", null] }, 1, 0] }] } },
-          dueDate: { $min: { $cond: [{ $eq: ["$status", "Pending"] }, "$dueDate", null] } },
+          dueDate: { $min: "$dueDate" },
           petName: { $first: "$petName" },
           ownerName: { $first: "$ownerName" },
           vaccine: { $first: "$vaccine" },
@@ -117,7 +142,7 @@ export const getDashboardStats = async (req, res, next) => {
         overdueCount++;
       }
 
-      if (todayPetNames.has(v.petName?.toLowerCase())) {
+      if (v.petName && todayPetNames.has(v.petName.trim().toLowerCase())) {
          if (currentStatus !== 'Up to date' && currentStatus !== 'Not recorded') {
             alerts.push({
                _id: v.docId,
@@ -136,16 +161,19 @@ export const getDashboardStats = async (req, res, next) => {
     // 5. Monitoring
     let monitoring = [];
     if (todayPetNames.size > 0) {
-      const petNamesRegex = Array.from(todayPetNames).map(name => new RegExp(`^${name}$`, 'i'));
-      const rawMonitoring = await FollowUp.find({ ...filter, monitoring: true, petName: { $in: petNamesRegex } }).lean();
+      const rawMonitoring = await FollowUp.find({
+        ...filter,
+        status: { $nin: ['Completed', 'Scheduled', 'Cancelled'] }
+      }).lean();
       
-      rawMonitoring.forEach(f => {
+      monitoring = rawMonitoring.filter(f => f.petName && todayPetNames.has(f.petName.trim().toLowerCase()));
+      
+      monitoring.forEach(f => {
         if (f.status !== 'Completed' && f.status !== 'Scheduled' && f.status !== 'Cancelled' && f.planDate) {
           if (f.planDate < todayStr) f.status = 'Overdue';
           else f.status = 'Pending';
         }
       });
-      monitoring = rawMonitoring;
     }
 
     res.json({

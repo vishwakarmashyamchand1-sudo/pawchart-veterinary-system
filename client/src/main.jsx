@@ -1653,12 +1653,12 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
 
   // Get real alerts from vaccinations & follow-ups
   const alertsList = [];
-  const todayPetNames = new Set(todayAppts.map(a => a.petName?.toLowerCase()).filter(Boolean));
+  const todayPetNames = new Set(todayAppts.map(a => a.petName?.trim().toLowerCase()).filter(Boolean));
 
   // 1. Process vaccinations as alerts
   if (data?.alerts && data.alerts.length > 0) {
     data.alerts.forEach((vax) => {
-      if (todayPetNames.has(vax.petName?.toLowerCase())) {
+      if (vax.petName && todayPetNames.has(vax.petName.trim().toLowerCase())) {
         if (vax.status === 'Completed' || vax.status === 'Waived' || vax.status === 'Up to date' || vax.status === 'Done') return;
         alertsList.push({
           _id: vax._id,
@@ -1674,7 +1674,7 @@ function Dashboard({ data, appointments = [], clients = [], go }) {
   // 2. Process monitoring followups as alerts
   if (data?.monitoring && data.monitoring.length > 0) {
     data.monitoring.forEach((follow) => {
-      if (todayPetNames.has(follow.petName?.toLowerCase())) {
+      if (follow.petName && todayPetNames.has(follow.petName.trim().toLowerCase())) {
         alertsList.push({
           _id: follow._id,
           type: 'purple',
