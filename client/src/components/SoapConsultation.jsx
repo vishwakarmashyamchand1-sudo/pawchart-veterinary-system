@@ -1367,8 +1367,8 @@ export function Soap({
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
               Processing with AI...
             </h3>
-            <p style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: '1.5' }}>
-              Please wait while we analyze the consultation transcript and generate structured SOAP notes.
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we analyze the consultation transcript and generate structured consultation notes.
             </p>
           </div>
         </div>
