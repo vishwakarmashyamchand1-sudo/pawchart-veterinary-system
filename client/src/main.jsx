@@ -2000,28 +2000,31 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   const getVaccinesBadgeForClient = (clientPets, vaccinations, clientName) => {
     let overdue = 0;
     let dueSoon = 0;
-    let totalVaxes = 0;
-    let hasCompleted = false;
+    let hasAnyRecorded = false;
 
     (clientPets || []).forEach(p => {
       const petVaxes = vaccinations.filter(v => v.petId ? v.petId === p._id : (v.petName === p.name && v.ownerName === clientName));
-      totalVaxes += petVaxes.length;
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
-        if (s.includes('completed') || s.includes('waived') || v.lastDate) {
-          hasCompleted = true;
+        if (v.isRecorded || s !== 'not recorded') {
+          hasAnyRecorded = true;
         }
         if (s.includes('overdue')) overdue++;
         else if (s.includes('due') || s.includes('soon')) dueSoon++;
       });
     });
 
-    if (totalVaxes === 0 || !hasCompleted) {
+    if (!hasAnyRecorded) {
       return <span className="badge" style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' }}>Not recorded</span>;
     }
 
-    if (overdue > 0) return <span className="badge b-red">{overdue} overdue</span>;
-    if (dueSoon > 0) return <span className="badge b-amber">{dueSoon} due soon</span>;
+    if (overdue > 0) {
+      return <span className="badge b-red">{overdue} {overdue === 1 ? 'overdue' : 'overdue'}</span>;
+    }
+    if (dueSoon > 0) {
+      return <span className="badge b-amber">{dueSoon} due soon</span>;
+    }
+    
     return <span className="badge b-green">Done</span>;
   };
 
@@ -3643,14 +3646,14 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
           onSave={(updated) => {
             if (updated.isNew) {
               const payload = { ...updated, petName: currentPet.name, ownerName: owner.name, breed: currentPet.breed, clinic_id: owner.clinic_id };
-              create('vaccinations', payload)
+              return create('vaccinations', payload)
                 .then(() => {
                   window.showToast('Vaccination added successfully!', 'success');
                   setEditingVax(null);
                 })
                 .catch(err => window.showToast(err.message, 'error'));
             } else {
-              update('vaccinations', updated._id, updated)
+              return update('vaccinations', updated._id, updated)
                 .then(() => {
                   window.showToast('Vaccination updated successfully!', 'success');
                   setEditingVax(null);
