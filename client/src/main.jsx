@@ -5869,6 +5869,19 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
           </div>
         </div>
       )}
+      {isSubmitting && !isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>{client ? '💾' : '📝'}</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              {client ? 'Saving Changes...' : 'Registering Client...'}
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we {client ? 'update' : 'create'} the client profile and associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
       <div
         ref={wrapRef}
       className="modal-wrap"
