@@ -169,7 +169,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    load(true);
+    await load(true);
     return createdObj;
   }
 
@@ -188,7 +188,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not update ${resource}`);
     }
     const updatedObj = await res.json();
-    load(true);
+    await load(true);
     return updatedObj;
   }
 
@@ -202,7 +202,7 @@ function useApi(selectedClinicId) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    load(true);
+    await load(true);
   }
 
   useEffect(() => {
@@ -2003,6 +2003,25 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
     return <span className="badge b-green">Done</span>;
   };
 
+  const getOtherPetsVaccinesBadge = (otherPets, vaccinations, clientName) => {
+    if (!otherPets || otherPets.length === 0) return null;
+    let overdue = 0;
+    let dueSoon = 0;
+
+    otherPets.forEach(p => {
+      const petVaxes = vaccinations.filter(v => v.petId ? v.petId === p._id : (v.petName === p.name && v.ownerName === clientName));
+      petVaxes.forEach(v => {
+        const s = String(v.status).toLowerCase();
+        if (s.includes('overdue')) overdue++;
+        else if (s.includes('due') || s.includes('soon')) dueSoon++;
+      });
+    });
+
+    if (overdue > 0) return <span className="badge b-red" title="Other pets have overdue vaccines">+{overdue} in others</span>;
+    if (dueSoon > 0) return <span className="badge b-amber" title="Other pets have vaccines due soon">+{dueSoon} in others</span>;
+    return null;
+  };
+
   const getNextAppointmentBadge = (clientPets, appointments, clientName) => {
     const todayStr = getLocalDateString();
     const clientAppts = appointments.filter(a => {
@@ -2160,7 +2179,12 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     </td>
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getLastVisitDate([pet], appointments, client.createdAt, client.name) : '-'}</td>
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getNextAppointmentBadge([pet], appointments, client.name) : <span className="td-sub">-</span>}</td>
-                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getVaccinesBadgeForClient([pet], vaccinations, client.name) : <span className="td-sub">-</span>}</td>
+                    <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {pet ? getVaccinesBadgeForClient([pet], vaccinations, client.name) : <span className="td-sub">-</span>}
+                        {idx === 0 && pets.length > 1 && !isExpanded && getOtherPetsVaccinesBadge(pets.slice(1), vaccinations, client.name)}
+                      </div>
+                    </td>
                     <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {pet && (
