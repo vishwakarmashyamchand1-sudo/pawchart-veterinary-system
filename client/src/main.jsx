@@ -4332,7 +4332,21 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
   }
 
   return (
-    <Screen
+    <>
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>📅</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Booking Appointment...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we secure this time slot.
+            </p>
+          </div>
+        </div>
+      )}
+      <Screen
       title="Book Appointment"
       sub="Step 3 of 3 — Select time slot & confirm"
     >
@@ -4638,6 +4652,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
         />
       )}
     </Screen>
+    </>
   );
 }
 
@@ -5840,8 +5855,22 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
   };
 
   return (
-    <div
-      ref={wrapRef}
+    <>
+      {isDeleting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>🗑️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Deleting Client...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we remove this client and all associated pet records.
+            </p>
+          </div>
+        </div>
+      )}
+      <div
+        ref={wrapRef}
       className="modal-wrap"
       style={{
         position: 'absolute',
@@ -6139,6 +6168,7 @@ function ClientModal({ onClose, onSave, client, onDeleteClient }) {
         </form>
       </section>
     </div>
+    </>
   );
 }
 
