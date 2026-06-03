@@ -14,11 +14,12 @@ export function Soap({
   vaccinations = [], 
   weights = [], 
   followups = [],
-  create, 
+  create,
   update, 
   go,
   setBookingClient,
-  setBookingPet
+  setBookingPet,
+  reload
 }) {
   // Bounding selected appointment fallback to avoid blank preview screens
   const activeAppointment = appointment || appointments.find(a => a.status === 'Now' || a.status === 'Scheduled') || appointments[0] || {
@@ -111,6 +112,7 @@ export function Soap({
   const [rawTranscriptText, setRawTranscriptText] = useState('');
   const [isRecognitionSupported, setIsRecognitionSupported] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyTab, setHistoryTab] = useState('soap');
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
@@ -449,6 +451,7 @@ export function Soap({
       return;
     }
 
+    setIsSubmitting(true);
     create('soapnotes', {
       petName: activeAppointment.petName,
       ownerName: activeAppointment.ownerName,
@@ -474,9 +477,12 @@ export function Soap({
         setShowSendModal(true);
       }).catch(err => {
         window.showToast?.("Failed to complete appointment status: " + err.message, "error");
+      }).finally(() => {
+        setIsSubmitting(false);
       });
     }).catch(err => {
       alert("Failed to save Consultation note: " + err.message);
+      setIsSubmitting(false);
     });
   };
 
@@ -615,7 +621,12 @@ export function Soap({
                   <button 
                     key={tab.key}
                     type="button"
-                    onClick={() => setHistoryTab(tab.key)}
+                    onClick={() => {
+                      setHistoryTab(tab.key);
+                      if (tab.key === 'followup' && typeof reload === 'function') {
+                        reload(true);
+                      }
+                    }}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -791,7 +802,6 @@ export function Soap({
                     </div>
                   )
                 )}
-
                 {historyTab === 'followup' && (
                   petFollowups.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -800,13 +810,13 @@ export function Soap({
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <strong style={{ fontSize: '13px', color: 'var(--text)' }}>Follow-up Checkup</strong>
                             <span className="badge b-blue" style={{ fontSize: '10px' }}>
-                              {(!f.date || isNaN(new Date(f.date).getTime())) ? f.status : (f.status === 'Completed' ? 'Completed' : 'Scheduled')}
+                              {(!(f.confirmedDate || f.planDate) || isNaN(new Date(f.confirmedDate || f.planDate).getTime())) ? f.status : (f.status === 'Completed' ? 'Completed' : 'Scheduled')}
                             </span>
                           </div>
                           <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '4px' }}>
-                            {(!f.date || isNaN(new Date(f.date).getTime())) 
+                            {(!(f.confirmedDate || f.planDate) || isNaN(new Date(f.confirmedDate || f.planDate).getTime())) 
                               ? 'Scheduled for follow up soon' 
-                              : `Scheduled follow up on ${new Date(f.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${f.time || '-'}`
+                              : `Scheduled follow up on ${new Date(f.confirmedDate || f.planDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${f.time || '-'}`
                             }
                           </span>
                         </div>
@@ -1325,26 +1335,40 @@ export function Soap({
             <button 
               className="btn btn-primary"
               onClick={handleApprove}
-              disabled={isGenerating || !isApproved}
+              disabled={isGenerating || !isApproved || isSubmitting}
               style={{ 
                 flex: 1, 
-                background: (isGenerating || !isApproved) ? '#374151' : '#10b981', 
-                borderColor: (isGenerating || !isApproved) ? '#374151' : '#10b981', 
-                color: (isGenerating || !isApproved) ? '#9ca3af' : '#fff', 
+                background: (isGenerating || !isApproved || isSubmitting) ? '#374151' : '#10b981', 
+                borderColor: (isGenerating || !isApproved || isSubmitting) ? '#374151' : '#10b981', 
+                color: (isGenerating || !isApproved || isSubmitting) ? '#9ca3af' : '#fff', 
                 padding: '12px', 
                 borderRadius: '8px', 
                 fontWeight: '800',
-                cursor: (isGenerating || !isApproved) ? 'not-allowed' : 'pointer',
+                cursor: (isGenerating || !isApproved || isSubmitting) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s'
               }}
             >
-              ✉️ Send to Patient
+              {isSubmitting ? 'Sending...' : '✉️ Send to Patient'}
             </button>
           </div>
 
         </div>
 
       </div>
+
+      {isSubmitting && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 1.5s infinite' }}>✉️</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              Sending to Patient...
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Please wait while we finalize the consultation notes and send them to the patient.
+            </p>
+          </div>
+        </div>
+      )}
 
       {isGenerating && (
         <div className="modal-wrap" style={{ display: 'flex', zIndex: 9999, background: 'rgba(15, 23, 42, 0.75)', alignItems: 'center', justifyItems: 'center' }}>
