@@ -718,8 +718,8 @@ function VaccineModal({ initialTab, initialData, onClose, onSave }) {
 
 function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   const isAlreadyGiven = vaccination.status === 'Completed' || vaccination.status === 'Up to date' || vaccination.status === 'Done';
-  const [status, setStatus] = useState(isAlreadyGiven ? 'Completed' : 'Pending');
-  const [hasClicked, setHasClicked] = useState(isAlreadyGiven);
+  const [status, setStatus] = useState(vaccination.isRecorded ? (isAlreadyGiven ? 'Completed' : 'Pending') : null);
+  const [hasClicked, setHasClicked] = useState(!!vaccination.isRecorded);
   const [lastDate, setLastDate] = useState(vaccination.lastDate || '');
   const [dueDate, setDueDate] = useState(vaccination.dueDate || '');
   const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
@@ -846,13 +846,14 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
               style={{
                 position: 'absolute',
                 top: '4px',
-                left: isGiven ? '4px' : '110px',
+                left: isGiven ? '4px' : (status ? '110px' : '57px'),
                 width: '106px',
                 height: '32px',
                 borderRadius: '26px',
                 background: isGiven ? '#22c55e' : '#ef4444',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                opacity: status ? 1 : 0
               }}
             />
             {/* Labels */}
@@ -870,7 +871,7 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
                 setHasClicked(true);
                 handleStatusChange('Pending');
               }}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: !isGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s', cursor: 'pointer' }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, color: isNotGiven ? '#fff' : 'var(--text-2)', fontWeight: '700', fontSize: '13px', transition: 'color 0.3s', cursor: 'pointer' }}
             >
               Not Given
             </div>
