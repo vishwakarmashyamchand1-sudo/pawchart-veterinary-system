@@ -2003,7 +2003,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
     return <span className="badge b-green">Done</span>;
   };
 
-  const getOtherPetsVaccinesBadge = (otherPets, vaccinations, clientName) => {
+  const getOtherPetsVaccinesBadge = (otherPets, vaccinations, clientName, onExpand) => {
     if (!otherPets || otherPets.length === 0) return null;
     let overdue = 0;
     let dueSoon = 0;
@@ -2017,8 +2017,8 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
       });
     });
 
-    if (overdue > 0) return <span className="badge b-red" title="Other pets have overdue vaccines">+{overdue} in others</span>;
-    if (dueSoon > 0) return <span className="badge b-amber" title="Other pets have vaccines due soon">+{dueSoon} in others</span>;
+    if (overdue > 0) return <span className="badge b-red" title="Other pets have overdue vaccines. Click to expand." style={{ cursor: 'pointer' }} onClick={onExpand}>+{overdue} in others</span>;
+    if (dueSoon > 0) return <span className="badge b-amber" title="Other pets have vaccines due soon. Click to expand." style={{ cursor: 'pointer' }} onClick={onExpand}>+{dueSoon} in others</span>;
     return null;
   };
 
@@ -2182,7 +2182,10 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {pet ? getVaccinesBadgeForClient([pet], vaccinations, client.name) : <span className="td-sub">-</span>}
-                        {idx === 0 && pets.length > 1 && !isExpanded && getOtherPetsVaccinesBadge(pets.slice(1), vaccinations, client.name)}
+                        {idx === 0 && pets.length > 1 && !isExpanded && getOtherPetsVaccinesBadge(pets.slice(1), vaccinations, client.name, (e) => {
+                          e.stopPropagation();
+                          setExpandedClients(prev => ({ ...prev, [client._id]: !prev[client._id] }));
+                        })}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
