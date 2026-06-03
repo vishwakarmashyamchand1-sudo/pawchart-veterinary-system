@@ -3831,7 +3831,9 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
     return rows.map(r => {
       const isCompleted = r.status === 'Completed' || r.status === 'Up to date' || r.status === 'Done' || !!r.lastDate;
       let displayStatus;
-      if (!r.dueDate) {
+      if (!r.isRecorded) {
+        displayStatus = 'Not recorded';
+      } else if (!r.dueDate) {
         displayStatus = 'Not recorded';
       } else if (r.dueDate < todayStr) {
         displayStatus = 'Overdue';
