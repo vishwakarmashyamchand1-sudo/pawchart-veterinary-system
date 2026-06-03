@@ -87,7 +87,7 @@ function useApi(selectedClinicId, role, screen) {
       // Define required endpoints per role and screen
       const screenConfigs = {
         admin: {
-          dashboard: ['dashboard', 'appointments'],
+          dashboard: ['dashboard', 'appointments', 'clients'],
           vets: ['vets', 'appointments'],
           clients: ['clients', 'vaccinations', 'weights', 'followups', 'soapnotes', 'appointments'],
           petprofile: ['clients', 'appointments', 'vaccinations', 'soapnotes', 'weights'],
@@ -1360,7 +1360,7 @@ function App() {
               )
             ) : (
               <>
-                {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} go={setScreen} />}
+                {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} clients={data.clients} go={setScreen} />}
                 {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} />}
                 {screen === 'vets' && <Vets vets={data.vets} appointments={data.appointments} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
@@ -1564,7 +1564,7 @@ function MonitoringBox({ count = 3 }) {
   );
 }
 
-function Dashboard({ data, appointments = [], go }) {
+function Dashboard({ data, appointments = [], clients = [], go }) {
   const stats = data?.stats || {};
 
   // Real time date
