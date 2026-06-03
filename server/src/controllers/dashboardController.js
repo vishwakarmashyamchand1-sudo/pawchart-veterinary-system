@@ -85,7 +85,8 @@ export const getDashboardStats = async (req, res, next) => {
           petName: { $first: "$petName" },
           ownerName: { $first: "$ownerName" },
           vaccine: { $first: "$vaccine" },
-          docId: { $first: "$_id" }
+          docId: { $first: "$_id" },
+          isRecorded: { $max: { $cond: [{ $eq: ["$isRecorded", true] }, 1, 0] } }
         }
       },
       { $match: { hasPending: 1 } }
@@ -97,15 +98,19 @@ export const getDashboardStats = async (req, res, next) => {
 
     vaxAgg.forEach(v => {
       let currentStatus = 'Pending';
-      if (!v.hasCompleted) {
+      if (!v.isRecorded) {
         currentStatus = 'Not recorded';
-      } else if (v.dueDate) {
-        if (v.dueDate < todayStr) currentStatus = 'Overdue';
-        else if (v.dueDate <= next30Days) currentStatus = 'Due soon';
-        else currentStatus = 'Up to date';
+      } else if (!v.dueDate) {
+        currentStatus = 'Not recorded';
+      } else if (v.dueDate < todayStr) {
+        currentStatus = 'Overdue';
+      } else if (v.dueDate <= next30Days) {
+        currentStatus = 'Due soon';
+      } else {
+        currentStatus = v.hasCompleted ? 'Up to date' : 'Upcoming';
       }
 
-      if (currentStatus !== 'Up to date' && currentStatus !== 'Not recorded') {
+      if (currentStatus !== 'Up to date' && currentStatus !== 'Not recorded' && currentStatus !== 'Upcoming') {
         vaxDue++;
       }
       if (currentStatus === 'Overdue') {

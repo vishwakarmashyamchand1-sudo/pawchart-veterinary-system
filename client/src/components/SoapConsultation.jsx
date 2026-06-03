@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../main.jsx';
 import { getSpeciesEmoji } from '../queue/QueueManager.jsx';
 import { createSpeechRecognition } from '../utils/speech.js';
-import { format12h } from '../utils/dateUtils.js';
+import { format12h, formatDateClean } from '../utils/dateUtils.js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';// Centralized API Base URL
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -736,7 +736,11 @@ export function Soap({
                         <div key={v._id || idx} style={{ borderBottom: idx < petVax.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <strong style={{ fontSize: '13px', color: 'var(--text)' }}>{v.vaccine || v.name}</strong>
-                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>Due: {v.displayStatus === 'Not recorded' ? '-' : (v.dueDate || v.date)}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>
+                              <span style={{ display: 'inline-block', width: '180px', flexShrink: 0 }}>Last Given: {v.lastDate ? formatDateClean(v.lastDate) : '—'}</span>
+                              <span style={{ marginRight: '8px' }}>•</span>
+                              <span>Due: {v.displayStatus === 'Not recorded' ? '—' : formatDateClean(v.dueDate || v.date)}</span>
+                            </span>
                           </div>
                            <span className={`badge b-${getBadgeColor(v.displayStatus)}`} style={{ fontSize: '10px' }}>
                              {v.displayStatus || 'Due'}
@@ -901,11 +905,11 @@ export function Soap({
               fontSize: '22px',
               flexShrink: 0
             }}>
-              👤
+              {getSpeciesEmoji(activePet.species, activePet.breed)}
             </div>
             <div>
               <strong style={{ fontSize: '18px', color: '#0f172a', display: 'block' }}>
-                {activeOwner.name} (Pet: {activePet.name})
+                {activePet.name} (Owner - {activeOwner.name})
               </strong>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '14px' }}>
                 <span>{activePet.species || 'Dog'}</span>
@@ -1099,11 +1103,11 @@ export function Soap({
             fontSize: '22px',
             flexShrink: 0
           }}>
-            👤
+            {getSpeciesEmoji(activePet.species, activePet.breed)}
           </div>
           <div>
             <strong style={{ fontSize: '18px', color: '#0f172a', display: 'block' }}>
-              {activeOwner.name} (Pet: {activePet.name})
+              {activePet.name} (Owner - {activeOwner.name})
             </strong>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '14px' }}>
               <span>{activePet.species || 'Dog'}</span>

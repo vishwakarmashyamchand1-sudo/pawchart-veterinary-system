@@ -87,7 +87,7 @@ function useApi(selectedClinicId) {
     try {
       const headers = selectedClinicId ? { 'x-clinic-id': selectedClinicId } : {};
       const fetchResource = async (name) => {
-        const res = await fetch(`${API_URL}/${name}?page=1&limit=50`, { headers });
+        const res = await fetch(`${API_URL}/${name}?page=1&limit=10000`, { headers });
         if (!res.ok) throw new Error(`API request failed: ${name}`);
         const data = await res.json();
         return (data && data.data && Array.isArray(data.data)) ? data.data : data;
@@ -120,7 +120,9 @@ function useApi(selectedClinicId) {
 
         secondaryResults[vaxIndex].forEach(v => {
           const isCompleted = v.status === 'Completed' || v.status === 'Up to date' || v.status === 'Done' || !!v.lastDate;
-          if (!v.dueDate) {
+          if (!v.isRecorded) {
+            v.status = 'Not recorded';
+          } else if (!v.dueDate) {
             v.status = 'Not recorded';
           } else if (v.dueDate < todayStr) {
             v.status = 'Overdue';
@@ -2483,7 +2485,9 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   const petVax = vaccinations.filter(v => v.petId ? v.petId === currentPet._id : (v.petName.toLowerCase() === currentPet.name.toLowerCase() && v.ownerName.toLowerCase() === ownerName.toLowerCase())).map(v => {
     const isCompleted = v.status === 'Completed' || v.status === 'Up to date' || v.status === 'Done' || !!v.lastDate;
     let displayStatus;
-    if (!v.dueDate) {
+    if (!v.isRecorded) {
+      displayStatus = 'Not recorded';
+    } else if (!v.dueDate) {
       displayStatus = 'Not recorded';
     } else if (v.dueDate < today) {
       displayStatus = 'Overdue';
@@ -5770,7 +5774,7 @@ function AppointmentList({ rows, clients = [] }) {
         rows.map((row) => {
           const { emoji, bg } = getPetMeta(row);
           let badgeVal = '';
-          if (row.petName === 'Buddy') badgeVal = 'Now';
+          if (row.petName === 'Buddy') badgeVal = 'Scheduled';
           else if (row.petName === 'Luna') badgeVal = 'Follow-up';
 
           return (
@@ -5790,7 +5794,7 @@ function AppointmentList({ rows, clients = [] }) {
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text)' }}>{format12h(row.time)}</strong>
                 {badgeVal && (
-                  <span className={`badge b-${badgeVal === 'Now' ? 'blue' : 'purple'}`} style={{ marginTop: '4px', fontSize: '10px', padding: '1px 6px' }}>
+                  <span className={`badge b-${badgeVal === 'Scheduled' ? 'blue' : 'purple'}`} style={{ marginTop: '4px', fontSize: '10px', padding: '1px 6px' }}>
                     {badgeVal}
                   </span>
                 )}
@@ -5814,13 +5818,14 @@ function Name({ title, sub }) {
 }
 
 function Badge({ value, tone }) {
-  const isOverdue = String(value).includes('Overdue') || String(value).includes('alert') || String(value).includes('overdue');
-  const isAvailable = String(value).includes('Available') || String(value).includes('Up to date') || String(value).includes('active') || String(value).includes('Done');
-  const isPending = String(value).includes('Pending') || String(value).includes('Due') || String(value).includes('soon') || String(value).includes('Consultation');
-  const isGray = String(value).includes('Not recorded');
+  const displayVal = value === 'Now' ? 'Scheduled' : value;
+  const isOverdue = String(displayVal).includes('Overdue') || String(displayVal).includes('alert') || String(displayVal).includes('overdue') || String(displayVal).includes('Missed') || String(displayVal).includes('missed') || String(displayVal).includes('Cancelled') || String(displayVal).includes('cancelled');
+  const isAvailable = String(displayVal).includes('Available') || String(displayVal).includes('Up to date') || String(displayVal).includes('active') || String(displayVal).includes('Done') || String(displayVal).includes('Completed') || String(displayVal).includes('completed');
+  const isPending = String(displayVal).includes('Pending') || String(displayVal).includes('Due') || String(displayVal).includes('soon') || String(displayVal).includes('Consultation');
+  const isGray = String(displayVal).includes('Not recorded');
 
   const color = tone || (isOverdue ? 'red' : isAvailable ? 'green' : isPending ? 'amber' : isGray ? 'gray' : 'blue');
-  return <span className={`badge b-${color}`}>{value}</span>;
+  return <span className={`badge b-${color}`}>{displayVal}</span>;
 }
 
 function Input({ label, value, onChange, type = 'text' }) {
