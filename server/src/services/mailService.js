@@ -834,7 +834,7 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
               petName: soapNote.petName,
               ownerName: soapNote.ownerName,
               vetName: soapNote.vetName || 'Assigned Veterinarian',
-              purpose: soapNote.plan || 'Recommended Follow-up',
+              purpose: 'Follow-up Checkup',
               planDate: targetDate,
               confirmedDate: '',
               time: '',
@@ -847,7 +847,7 @@ export async function triggerMailFlows(resource, created, clinicId, host) {
           } else {
             followUp.planDate = targetDate;
             followUp.vetName = soapNote.vetName || 'Assigned Veterinarian';
-            followUp.purpose = soapNote.plan || 'Recommended Follow-up';
+            followUp.purpose = 'Follow-up Checkup';
             if (clinicId || soapNote.clinic_id) {
               followUp.clinic_id = clinicId || soapNote.clinic_id;
             }
