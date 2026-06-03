@@ -2210,14 +2210,15 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
             .catch(err => window.showToast(err.message, 'error'))
           }
           onDeleteClient={() => {
-            window.showConfirm(`Are you sure you want to delete ${editingClient.name} and all their pets?`, () => {
-              onDelete('clients', editingClient._id)
-                .then(() => {
-                  window.showToast('Client deleted successfully!', 'success');
-                  setEditingClient(null);
-                })
-                .catch(err => window.showToast(err.message, 'error'));
-            });
+            return onDelete('clients', editingClient._id)
+              .then(() => {
+                window.showToast('Client deleted successfully!', 'success');
+                setEditingClient(null);
+              })
+              .catch(err => {
+                window.showToast(err.message, 'error');
+                throw err;
+              });
           }}
         />
       )}
