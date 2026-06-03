@@ -5512,7 +5512,9 @@ function FollowUps({ rows, selectedClinic }) {
                 </div>
               </td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text)' }}>{row.vetName}</td>
-              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>{row.purpose || 'Recommended Follow-up'}</td>
+              <td style={{ fontSize: '13px', fontWeight: '600', color: 'var(--brand)' }}>
+                {(row.purpose && row.purpose.length > 50) ? 'Follow-up Checkup' : (row.purpose || 'Follow-up Checkup')}
+              </td>
               <td style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>{formatDateClean(row.planDate)}</td>
               <td>
                 {row.confirmedDate ? (
