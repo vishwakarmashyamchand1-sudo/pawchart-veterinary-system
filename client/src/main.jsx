@@ -79,7 +79,7 @@ function useApi(selectedClinicId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function load(isBackground = false) {
+  async function load(isBackground = false, resourcesToFetch = null) {
     if (!isBackground) {
       setLoading(true);
     }
@@ -94,18 +94,27 @@ function useApi(selectedClinicId) {
       };
 
       // 1. Critical endpoints first
-      const criticalNames = ['dashboard', 'vets', 'clients', 'appointments'];
-      const criticalResults = await Promise.all(criticalNames.map(fetchResource));
-      const newCriticalData = Object.fromEntries(criticalNames.map((name, i) => [name, criticalResults[i]]));
+      const allCritical = ['dashboard', 'vets', 'clients', 'appointments'];
+      const criticalNames = resourcesToFetch ? allCritical.filter(n => resourcesToFetch.includes(n)) : allCritical;
       
-      setData(prev => ({ ...prev, ...newCriticalData }));
+      if (criticalNames.length > 0) {
+        const criticalResults = await Promise.all(criticalNames.map(fetchResource));
+        const newCriticalData = Object.fromEntries(criticalNames.map((name, i) => [name, criticalResults[i]]));
+        setData(prev => ({ ...prev, ...newCriticalData }));
+      }
+      
       if (!isBackground) {
         setLoading(false); // Unblock UI early
       }
 
       // 2. Secondary endpoints lazy loaded
-      const secondaryNames = ['vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
-      const secondaryResults = await Promise.all(secondaryNames.map(fetchResource));
+      const allSecondary = ['vaccinations', 'followups', 'weights', 'soapnotes', 'vaccinemaster'];
+      const secondaryNames = resourcesToFetch ? allSecondary.filter(n => resourcesToFetch.includes(n)) : allSecondary;
+      
+      let secondaryResults = [];
+      if (secondaryNames.length > 0) {
+        secondaryResults = await Promise.all(secondaryNames.map(fetchResource));
+      }
       
       const todayStr = new Date().toISOString().split('T')[0];
       const next30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -144,8 +153,10 @@ function useApi(selectedClinicId) {
         });
       }
 
-      const newSecondaryData = Object.fromEntries(secondaryNames.map((name, i) => [name, secondaryResults[i]]));
-      setData(prev => ({ ...prev, ...newSecondaryData }));
+      if (secondaryNames.length > 0) {
+        const newSecondaryData = Object.fromEntries(secondaryNames.map((name, i) => [name, secondaryResults[i]]));
+        setData(prev => ({ ...prev, ...newSecondaryData }));
+      }
     } catch (err) {
       setError(err.message);
       if (!isBackground) {
@@ -169,7 +180,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    await load(true);
+    await load(true, [resource, 'dashboard']);
     return createdObj;
   }
 
@@ -188,7 +199,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not update ${resource}`);
     }
     const updatedObj = await res.json();
-    await load(true);
+    await load(true, [resource, 'dashboard']);
     return updatedObj;
   }
 
@@ -202,7 +213,7 @@ function useApi(selectedClinicId) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    await load(true);
+    await load(true, [resource, 'dashboard']);
   }
 
   useEffect(() => {
@@ -725,6 +736,7 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   const [vaccine, setVaccine] = useState(vaccination.vaccine || '');
   const [vetName, setVetName] = useState(vaccination.vetName || '');
   const [notes, setNotes] = useState(vaccination.notes || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate due date based on pet's date of birth or last given date
   const getCalculatedDueDate = () => {
@@ -918,17 +930,25 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
         )}
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <button className="btn" style={{ background: 'transparent', color: 'var(--text-2)' }} onClick={onClose}>Cancel</button>
+          <button 
+            className="btn" 
+            style={{ background: 'transparent', color: 'var(--text-2)' }} 
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
           <button 
             className="btn btn-primary" 
-            disabled={!status || !hasClicked || (isGiven && !lastDate)}
+            disabled={!status || !hasClicked || (isGiven && !lastDate) || isSubmitting}
             style={{
               opacity: (!status || !hasClicked || (isGiven && !lastDate)) ? 0.6 : 1,
               cursor: (!status || !hasClicked || (isGiven && !lastDate)) ? 'not-allowed' : 'pointer'
             }}
             onClick={() => {
               if (!status) return;
-              onSave({ 
+              setIsSubmitting(true);
+              Promise.resolve(onSave({ 
                 ...vaccination, 
                 vaccine: vaccination.isNew ? vaccine : vaccination.vaccine, 
                 dueDate: computedDueDate, 
@@ -937,10 +957,12 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
                 vetName: isGiven ? vetName : '', 
                 notes: isGiven ? notes : '',
                 isRecorded: true
+              })).finally(() => {
+                setIsSubmitting(false);
               });
             }}
           >
-            Save Record
+            {isSubmitting ? 'Saving...' : 'Save Record'}
           </button>
         </div>
       </div>
