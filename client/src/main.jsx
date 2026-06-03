@@ -169,7 +169,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    await load(true);
+    load(true);
     return createdObj;
   }
 
@@ -188,7 +188,7 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not update ${resource}`);
     }
     const updatedObj = await res.json();
-    await load(true);
+    load(true);
     return updatedObj;
   }
 
@@ -202,7 +202,7 @@ function useApi(selectedClinicId) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    await load(true);
+    load(true);
   }
 
   useEffect(() => {
@@ -1430,7 +1430,7 @@ function App() {
                   />
                 )}
                 {screen === 'weight' && <Weights weights={data.weights} create={create} go={setScreen} activePet={activePet} clients={data.clients} doctorPatients={doctorPatients} selectedDoctor={selectedDoctor} onPetSelect={setSelectedPet} role={role} />}
-                {screen === 'followup' && <FollowUps rows={role === 'doctor' && selectedDoctor ? (data.followups || []).filter(f => f.vetName === selectedDoctor.name) : (data.followups || [])} selectedClinic={selectedClinic} />}
+                {screen === 'followup' && <FollowUps rows={role === 'doctor' && selectedDoctor ? (data.followups || []).filter(f => f.vetName === selectedDoctor.name) : (data.followups || [])} selectedClinic={selectedClinic} clients={data.clients || []} />}
                 {screen === 'calendar' && (
                   role === 'doctor' ? (
                     !selectedDoctor ? (
@@ -5612,15 +5612,29 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
   );
 }
 
-function FollowUps({ rows, selectedClinic }) {
+function FollowUps({ rows, selectedClinic, clients = [] }) {
   const monitoringCount = rows.filter(r => r.monitoring || String(r.status).toLowerCase() === 'pending').length;
 
-  const getPetIcon = (breed) => {
-    const s = String(breed || '').toLowerCase();
-    if (s.includes('dog')) return '🐕';
-    if (s.includes('cat') || s.includes('siamese')) return '🐱';
-    if (s.includes('rabbit') || s.includes('lop') || s.includes('bunny')) return '🐰';
-    if (s.includes('parrot') || s.includes('bird')) return '🦜';
+  const getPetIcon = (row) => {
+    const normalize = (str) => String(str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const rowOwner = normalize(row.ownerName);
+    const rowPet = normalize(row.petName);
+
+    // Resolve strictly by finding the pet within the client records
+    if (clients && clients.length > 0) {
+      const client = clients.find(c => normalize(c.name) === rowOwner);
+      if (client && client.pets) {
+        const pet = client.pets.find(p => normalize(p.name) === rowPet);
+        if (pet) {
+          if (pet.emoji) return pet.emoji;
+          const s = normalize(pet.species || pet.breed || '');
+          if (s.includes('dog')) return '🐕';
+          if (s.includes('cat')) return '🐱';
+          if (s.includes('rabbit') || s.includes('lop') || s.includes('bunny')) return '🐰';
+          if (s.includes('parrot') || s.includes('bird')) return '🦜';
+        }
+      }
+    }
     return '🐾';
   };
 
@@ -5676,7 +5690,7 @@ function FollowUps({ rows, selectedClinic }) {
             <tr key={row._id} style={isScheduled ? { background: 'rgba(16, 185, 129, 0.04)' } : undefined}>
               <td>
                 <div className="pet-cell" style={{ gap: '8px' }}>
-                  <div className="pet-avatar" style={{ fontSize: '16px' }}>{getPetIcon(row.breed || row.petName)}</div>
+                  <div className="pet-avatar" style={{ fontSize: '16px' }}>{getPetIcon(row)}</div>
                   <Name title={row.petName} sub={row.ownerName} />
                 </div>
               </td>
