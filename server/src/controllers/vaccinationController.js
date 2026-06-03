@@ -95,16 +95,11 @@ export const updateVaccination = async (req, res, next) => {
     
     // If it's being marked Completed right now
     if (updateData.status === 'Completed' && existing.status !== 'Completed') {
-      const isFirstVaccine = !existing.lastDate;
-      const baseDate = isFirstVaccine ? existing.dueDate : (updateData.lastDate || new Date().toISOString().split('T')[0]);
-      
       Object.assign(existing, updateData);
       existing.lastDate = updateData.lastDate || new Date().toISOString().split('T')[0];
       
-      // Update due date in-place for the next cycle
-      const interval = isFirstVaccine ? '3 months' : '1 year';
-      
-      const nextDueDate = calculateDueDate(baseDate, interval);
+      // Update due date in-place for the next cycle: always 3 months from lastDate (or use client dueDate if sent)
+      const nextDueDate = updateData.dueDate || calculateDueDate(existing.lastDate, '3 months');
       if (nextDueDate) {
         existing.dueDate = nextDueDate;
       }

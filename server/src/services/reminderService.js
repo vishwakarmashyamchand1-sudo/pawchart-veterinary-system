@@ -142,7 +142,7 @@ export async function runAutomatedRemindersAudit() {
     console.log(`   🔍 Scanning for missed appointments scheduled before today: ${todayStr}`);
     const missedAppts = await Appointment.find({
       date: { $lt: todayStr },
-      status: 'Scheduled'
+      status: { $in: ['Scheduled', 'Now'] }
     });
     
     console.log(`   ⚠️ Found ${missedAppts.length} missed appointments requiring status transitions & alerts.`);
