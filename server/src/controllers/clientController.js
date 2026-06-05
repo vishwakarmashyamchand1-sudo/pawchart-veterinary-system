@@ -174,3 +174,68 @@ export const deletePet = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateClient = async (req, res, next) => {
+  try {
+    const filter = { _id: req.params.id, ...getQueryFilter(req) };
+    const oldClient = await Client.findOne(filter);
+    if (!oldClient) return res.status(404).json({ message: 'Client not found' });
+
+    // Track name changes
+    const clientNameChanged = req.body.name && req.body.name !== oldClient.name;
+    const petNameChanges = [];
+    const newlyAddedPets = [];
+
+    if (req.body.pets && Array.isArray(req.body.pets)) {
+      for (const newPet of req.body.pets) {
+        if (!newPet._id) {
+          newlyAddedPets.push(newPet);
+          continue;
+        }
+        const oldPet = oldClient.pets.id(newPet._id);
+        if (oldPet && newPet.name && newPet.name !== oldPet.name) {
+          petNameChanges.push({ oldName: oldPet.name, newName: newPet.name });
+        }
+      }
+    }
+
+    const updated = await Client.findOneAndUpdate(filter, req.body, { new: true, runValidators: true });
+
+    // Auto-generate vaccines for newly added pets
+    if (newlyAddedPets.length > 0) {
+      const oldPetIds = oldClient.pets.map(p => p._id.toString());
+      const newPetsWithIds = updated.pets.filter(p => !oldPetIds.includes(p._id.toString()));
+      if (newPetsWithIds.length > 0) {
+         await generateVaccinesForPets(newPetsWithIds, updated.name, updated.clinic_id, updated._id);
+      }
+    }
+
+    // Cascade name updates
+    const { default: mongoose } = await import('mongoose');
+    const models = mongoose.models;
+
+    if (clientNameChanged) {
+        const cascadeQuery = { ownerName: oldClient.name, clinic_id: oldClient.clinic_id };
+        const updateData = { ownerName: updated.name };
+        if (models.Appointment) await models.Appointment.updateMany(cascadeQuery, updateData);
+        if (models.Vaccination) await models.Vaccination.updateMany(cascadeQuery, updateData);
+        if (models.FollowUp) await models.FollowUp.updateMany(cascadeQuery, updateData);
+        if (models.WeightLog) await models.WeightLog.updateMany(cascadeQuery, updateData);
+        if (models.SoapNote) await models.SoapNote.updateMany(cascadeQuery, updateData);
+    }
+
+    for (const change of petNameChanges) {
+        const cascadeQuery = { petName: change.oldName, ownerName: updated.name, clinic_id: oldClient.clinic_id };
+        const updateData = { petName: change.newName };
+        if (models.Appointment) await models.Appointment.updateMany(cascadeQuery, updateData);
+        if (models.Vaccination) await models.Vaccination.updateMany(cascadeQuery, updateData);
+        if (models.FollowUp) await models.FollowUp.updateMany(cascadeQuery, updateData);
+        if (models.WeightLog) await models.WeightLog.updateMany(cascadeQuery, updateData);
+        if (models.SoapNote) await models.SoapNote.updateMany(cascadeQuery, updateData);
+    }
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};

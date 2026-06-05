@@ -1,5 +1,5 @@
 import express from 'express';
-import { searchClients, createClient, addPet, updatePet, deletePet, generatePetId } from '../controllers/clientController.js';
+import { searchClients, createClient, addPet, updatePet, deletePet, generatePetId, updateClient } from '../controllers/clientController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { Client } from '../models.js';
 import { createCrudHandlers } from '../utils/crudFactory.js';
@@ -33,7 +33,7 @@ const { getAll, getOne, create, update, remove } = createCrudHandlers(Client, 'C
 router.get('/', optionalAuth, getAll);
 router.get('/:id', optionalAuth, getOne);
 router.post('/', optionalAuth, createClient);
-router.patch('/:id', optionalAuth, preUpdateClient, update);
+router.patch('/:id', optionalAuth, preUpdateClient, updateClient);
 router.delete('/:id', optionalAuth, remove);
 
 export default router;
