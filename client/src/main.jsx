@@ -180,7 +180,11 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not create ${resource}`);
     }
     const createdObj = await res.json();
-    await load(true, [resource, 'dashboard']);
+    let toFetch = [resource, 'dashboard'];
+    if (resource === 'clients') {
+      toFetch = ['clients', 'dashboard', 'vaccinations', 'appointments', 'followups', 'weights', 'soapnotes'];
+    }
+    await load(true, toFetch);
     return createdObj;
   }
 
@@ -199,7 +203,11 @@ function useApi(selectedClinicId) {
       throw new Error(errData.message || `Could not update ${resource}`);
     }
     const updatedObj = await res.json();
-    await load(true, [resource, 'dashboard']);
+    let toFetch = [resource, 'dashboard'];
+    if (resource === 'clients') {
+      toFetch = ['clients', 'dashboard', 'vaccinations', 'appointments', 'followups', 'weights', 'soapnotes'];
+    }
+    await load(true, toFetch);
     return updatedObj;
   }
 
@@ -213,7 +221,11 @@ function useApi(selectedClinicId) {
       headers
     });
     if (!res.ok) throw new Error(`Could not delete ${resource}`);
-    await load(true, [resource, 'dashboard']);
+    let toFetch = [resource, 'dashboard'];
+    if (resource === 'clients') {
+      toFetch = ['clients', 'dashboard', 'vaccinations', 'appointments', 'followups', 'weights', 'soapnotes'];
+    }
+    await load(true, toFetch);
   }
 
   useEffect(() => {
@@ -970,7 +982,7 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   );
 }
 
-function VaccinesConfig({ vaccines, create }) {
+function VaccinesConfig({ vaccines, create, onDelete }) {
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('Dog');
 
@@ -990,20 +1002,10 @@ function VaccinesConfig({ vaccines, create }) {
   };
 
   const SPECIES = ['Dog', 'Cat', 'Rabbit', 'Bird', 'Other'];
-  const SPECIES_ICONS = { Dog: '🐕', Cat: '🐱', Rabbit: '🐰', Bird: '🦜', Other: '🐾' };
-
-  const hardcodedVaccines = [
-    { id: 'hc-1', name: 'Rabies', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
-    { id: 'hc-2', name: 'DHPP', species: 'Dog', recommendedAge: '8 weeks', desc: 'Protects against major canine viral diseases.', mandatory: true },
-    { id: 'hc-3', name: 'Bordetella', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents kennel cough infection.', mandatory: true },
-    { id: 'hc-7', name: 'Rabies', species: 'Cat', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.', mandatory: true },
-    { id: 'hc-8', name: 'FVRCP', species: 'Cat', recommendedAge: '8 weeks', desc: 'Protects against core feline viral diseases.', mandatory: true },
-    { id: 'hc-11', name: 'RHDV2', species: 'Rabbit', recommendedAge: '6 weeks', desc: 'Protects against rabbit hemorrhagic disease.', mandatory: true },
-    { id: 'hc-14', name: 'Polyomavirus', species: 'Bird', recommendedAge: '4 weeks', desc: 'Protects against avian polyomavirus infection.', mandatory: true }
-  ];
+  const SPECIES_ICONS = { Dog: '🐶', Cat: '🐱', Rabbit: '🐰', Bird: '🐦', Other: '🐾' };
 
   // Filter out any incomplete records that lack a proper description
-  const combinedVaccines = [...hardcodedVaccines, ...vaccines].filter(v => v.desc && v.desc.trim() !== '' && v.desc !== '—');
+  const combinedVaccines = (vaccines || []).filter(v => v.desc && v.desc.trim() !== '' && v.desc !== '—');
 
   const currentList = combinedVaccines.filter(v => v.species === activeTab);
 
@@ -1068,7 +1070,8 @@ function VaccinesConfig({ vaccines, create }) {
                   <tr>
                     <th style={{ width: '25%', padding: '12px 16px', fontSize: '11px' }}>Vaccine Name</th>
                     <th style={{ width: '50%', padding: '12px 16px', fontSize: '11px' }}>Description</th>
-                    <th style={{ width: '25%', padding: '12px 16px', fontSize: '11px' }}>Recommended Age</th>
+                    <th style={{ width: '20%', padding: '12px 16px', fontSize: '11px' }}>Recommended Age</th>
+                    <th style={{ width: '5%', padding: '12px 16px', fontSize: '11px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1082,6 +1085,24 @@ function VaccinesConfig({ vaccines, create }) {
                       </td>
                       <td style={{ padding: '16px', fontSize: '14px' }}>
                         {v.recommendedAge}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <button
+                          title="Delete Vaccine"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete ${v.name}?`)) {
+                              onDelete('vaccinemaster', v._id)
+                                .then(() => window.showToast('Vaccine deleted successfully!', 'success'))
+                                .catch(err => alert(err.message));
+                            }
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1429,7 +1450,7 @@ function App() {
             ) : (
               <>
                 {screen === 'dashboard' && <Dashboard data={data.dashboard} appointments={data.appointments} clients={data.clients} go={setScreen} />}
-                {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} />}
+                {screen === 'vaccinemaster' && role === 'superadmin' && <VaccinesConfig vaccines={data.vaccinemaster || []} create={create} onDelete={remove} />}
                 {screen === 'vets' && <Vets vets={data.vets} appointments={data.appointments} create={create} update={update} onDelete={remove} selectedClinic={selectedClinic} />}
                 {screen === 'clients' && <Clients clients={data.clients} create={create} update={update} onDelete={remove} appointments={data.appointments} vaccinations={data.vaccinations} go={setScreen} onSelectPet={setSelectedPet} />}
                 {screen === 'petprofile' && <PetProfile pet={activePet} clients={data.clients} appointments={data.appointments} vaccinations={data.vaccinations} soapnotes={data.soapnotes} weights={data.weights} go={setScreen} onSetBookingClient={setBookingClient} onSetBookingPet={setBookingPet} update={update} create={create} onSelectPet={setSelectedPet} />}
@@ -1840,7 +1861,7 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ paddingLeft: '18px' }}>NAME</th>
+              <th>NAME</th>
               <th>SPECIALIZATION</th>
               <th>EXPERIENCE</th>
               <th>CONSULTATION FEE</th>
@@ -1907,14 +1928,14 @@ function Vets({ vets, appointments = [], create, update, onDelete, selectedClini
                     <td style={{ textAlign: 'right', paddingRight: '24px' }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         <button
-                          className="btn btn-outline"
+                          className="btn btn-outline action-btn-hover"
                           style={{ padding: '6px 12px', fontSize: '12px' }}
                           onClick={() => setEditingVet(vet)}
                         >
                           Edit
                         </button>
                         <button
-                          className="btn btn-outline"
+                          className="btn btn-outline action-btn-hover"
                           style={{ padding: '6px 8px', color: 'var(--red)', border: '1px solid #cbd5e1' }}
                           onClick={() => {
                             window.showConfirm(`Are you sure you want to delete Dr. ${vet.name}?`, () => {
@@ -1998,53 +2019,45 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   };
 
   const getVaccinesBadgeForClient = (clientPets, vaccinations, clientName) => {
-    let overdue = 0;
-    let dueSoon = 0;
-    let hasAnyRecorded = false;
+    let maxOverdue = 0;
+    let maxDueSoon = 0;
+    let anyPetNotRecorded = false;
+    let allPetsNotRecorded = true;
 
     (clientPets || []).forEach(p => {
+      let petOverdue = 0;
+      let petDueSoon = 0;
+      let petHasAnyRecorded = false;
+
       const petVaxes = vaccinations.filter(v => v.petId ? v.petId === p._id : (v.petName === p.name && v.ownerName === clientName));
       petVaxes.forEach(v => {
         const s = String(v.status).toLowerCase();
         if (v.isRecorded || s !== 'not recorded') {
-          hasAnyRecorded = true;
+          petHasAnyRecorded = true;
         }
-        if (s.includes('overdue')) overdue++;
-        else if (s.includes('due') || s.includes('soon')) dueSoon++;
+        if (s.includes('overdue')) petOverdue++;
+        else if (s.includes('due') || s.includes('soon')) petDueSoon++;
       });
+
+      if (!petHasAnyRecorded) anyPetNotRecorded = true;
+      if (petHasAnyRecorded) allPetsNotRecorded = false;
+
+      if (petOverdue > maxOverdue) maxOverdue = petOverdue;
+      if (petDueSoon > maxDueSoon) maxDueSoon = petDueSoon;
     });
 
-    if (!hasAnyRecorded) {
+    if (clientPets.length > 0 && allPetsNotRecorded) {
       return <span className="badge" style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' }}>Not recorded</span>;
     }
 
-    if (overdue > 0) {
-      return <span className="badge b-red">{overdue} {overdue === 1 ? 'overdue' : 'overdue'}</span>;
+    if (maxOverdue > 0) {
+      return <span className="badge b-red">{maxOverdue} {maxOverdue === 1 ? 'overdue' : 'overdue'}</span>;
     }
-    if (dueSoon > 0) {
-      return <span className="badge b-amber">{dueSoon} due soon</span>;
+    if (maxDueSoon > 0) {
+      return <span className="badge b-amber">{maxDueSoon} due soon</span>;
     }
     
     return <span className="badge b-green">Done</span>;
-  };
-
-  const getOtherPetsVaccinesBadge = (otherPets, vaccinations, clientName, onExpand) => {
-    if (!otherPets || otherPets.length === 0) return null;
-    let overdue = 0;
-    let dueSoon = 0;
-
-    otherPets.forEach(p => {
-      const petVaxes = vaccinations.filter(v => v.petId ? v.petId === p._id : (v.petName === p.name && v.ownerName === clientName));
-      petVaxes.forEach(v => {
-        const s = String(v.status).toLowerCase();
-        if (s.includes('overdue')) overdue++;
-        else if (s.includes('due') || s.includes('soon')) dueSoon++;
-      });
-    });
-
-    if (overdue > 0) return <span className="badge b-red" title="Other pets have overdue vaccines. Click to expand." style={{ cursor: 'pointer' }} onClick={onExpand}>+{overdue} in others</span>;
-    if (dueSoon > 0) return <span className="badge b-amber" title="Other pets have vaccines due soon. Click to expand." style={{ cursor: 'pointer' }} onClick={onExpand}>+{dueSoon} in others</span>;
-    return null;
   };
 
   const getNextAppointmentBadge = (clientPets, appointments, clientName) => {
@@ -2106,7 +2119,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
 
     let badgeColor = 'blue';
     if (next.type === 'Follow-up' || next.type === 'Follow Up' || next.reason?.toLowerCase().includes('follow')) {
-      prefix = 'Follow-up ';
+      prefix = 'Follow-up ' + prefix;
       badgeColor = 'purple';
     } else if (next.date !== todayStr) {
       badgeColor = 'amber';
@@ -2130,7 +2143,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
   return (
     <Screen
       title="Clients & Pets"
-      sub={`${clients.reduce((sum, c) => sum + (c.pets || []).length, 0)} pets across ${clients.length} client accounts · Owner is the account, each pet is a separate patient`}
+      sub={<span style={{ color: '#2563eb', fontWeight: 500 }}>{clients.reduce((sum, c) => sum + (c.pets || []).length, 0)} pets across {clients.length} client accounts &middot; Owner is the account, each pet is a separate patient</span>}
       action={<button className="btn btn-primary" onClick={() => setOpen(true)}>+ Register New Client</button>}
     >
       <div className="search-row">
@@ -2152,7 +2165,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
               <th>LAST VISIT</th>
               <th>NEXT APPOINTMENT</th>
               <th>VACCINES</th>
-              <th style={{ textAlign: 'right', paddingRight: '24px' }}>ACTIONS</th>
+              <th style={{ textAlign: 'right', paddingRight: '64px' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
@@ -2174,7 +2187,23 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     </td>
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {pet ? (
+                        {!pet ? (
+                          <span className="td-sub">No pets</span>
+                        ) : (idx === 0 && !isExpanded && pets.length === 2) ? (
+                          pets.map(p => (
+                            <span
+                              key={p._id || p.name}
+                              className="pet-chip"
+                              style={{ cursor: 'pointer', marginBottom: 0 }}
+                              onClick={() => {
+                                onSelectPet(p);
+                                go('petprofile');
+                              }}
+                            >
+                              {petEmoji(p.species)} {p.name}
+                            </span>
+                          ))
+                        ) : (
                           <span
                             className="pet-chip"
                             style={{ cursor: 'pointer', marginBottom: 0 }}
@@ -2185,10 +2214,8 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                           >
                             {petEmoji(pet.species)} {pet.name}
                           </span>
-                        ) : (
-                          <span className="td-sub">No pets</span>
                         )}
-                        {idx === 0 && pets.length > 1 && (
+                        {idx === 0 && pets.length > 2 && !isExpanded && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2197,7 +2224,19 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                             className="btn btn-outline"
                             style={{ padding: '2px 8px', fontSize: '11px', borderRadius: '12px', height: '24px' }}
                           >
-                            {isExpanded ? 'Collapse' : `+${pets.length - 1} More`}
+                            +{pets.length - 1}
+                          </button>
+                        )}
+                        {idx === 0 && pets.length > 2 && isExpanded && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedClients(prev => ({ ...prev, [client._id]: !prev[client._id] }));
+                            }}
+                            className="btn btn-outline"
+                            style={{ padding: '2px 8px', fontSize: '11px', borderRadius: '12px', height: '24px' }}
+                          >
+                            Collapse
                           </button>
                         )}
                       </div>
@@ -2206,39 +2245,40 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>{pet ? getNextAppointmentBadge([pet], appointments, client.name) : <span className="td-sub">-</span>}</td>
                     <td style={{ borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {pet ? getVaccinesBadgeForClient([pet], vaccinations, client.name) : <span className="td-sub">-</span>}
-                        {idx === 0 && pets.length > 1 && !isExpanded && getOtherPetsVaccinesBadge(pets.slice(1), vaccinations, client.name, (e) => {
-                          e.stopPropagation();
-                          setExpandedClients(prev => ({ ...prev, [client._id]: !prev[client._id] }));
-                        })}
+                        {pet ? getVaccinesBadgeForClient(
+                          (idx === 0 && !isExpanded) ? pets : [pet], 
+                          vaccinations, 
+                          client.name
+                        ) : <span className="td-sub">-</span>}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: '24px', borderTop: idx > 0 ? 'none' : undefined }}>
                       <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {pet && (
                           <button
-                            className="btn btn-outline"
-                            style={{ padding: '6px 8px', color: 'var(--text-2)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            className="btn btn-outline action-btn-hover"
+                            style={{ padding: '6px 12px', fontSize: '13px', color: '#1e3a8a', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '16px', background: '#fff', transition: 'all 0.2s' }}
                             onClick={() => {
                               onSelectPet(pet);
                               go('petprofile');
                             }}
                             title={`View ${pet.name}'s Profile`}
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ display: 'block' }}>
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </svg>
+                            View &rarr;
                           </button>
                         )}
                         {idx === 0 && (
                           <button
-                            className="btn btn-outline"
-                            style={{ padding: '6px 12px', fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', border: '1px solid #cbd5e1' }}
+                            className="btn btn-outline action-btn-hover"
+                            style={{ padding: '6px', color: 'var(--text-3)', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                             onClick={() => setEditingClient(client)}
                             title="Edit Client & Pets"
                           >
-                            Edit
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="12" cy="5" r="2"></circle>
+                              <circle cx="12" cy="12" r="2"></circle>
+                              <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
                           </button>
                         )}
                       </div>
@@ -2370,10 +2410,10 @@ const getAgeStr = (dobStr) => {
       const diffTime = todayDate - birthDate;
       let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       if (diffDays < 0) diffDays = 0;
-      return `${diffDays}d.`;
+      return `${diffDays}d`;
     }
     
-    return `${totalMonths}mo.`;
+    return `${totalMonths}mo`;
   } catch (err) {
     return dobStr;
   }
@@ -2728,7 +2768,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               position: 'relative'
             }}>
               {/* Species Badge at Top Right */}
-              <span style={{
+              <div style={{
                 position: 'absolute',
                 top: '12px',
                 right: '12px',
@@ -2739,10 +2779,24 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 borderRadius: '999px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
-                color: '#0f172a'
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}>
                 {currentPet.species || 'Dog'}
-              </span>
+                <div
+                  title={vaxIndicatorTooltip}
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: vaxIndicatorColor,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                  }}
+                />
+              </div>
+
               {ownerPets.length > 1 && (
                 <button
                   type="button"
@@ -2820,20 +2874,6 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '10px' }}>
                 <div style={{ position: 'relative', fontSize: '48px', lineHeight: '1' }}>
                   {petEmoji(currentPet.species)}
-                  <div
-                    title={vaxIndicatorTooltip}
-                    style={{
-                      position: 'absolute',
-                      bottom: '0',
-                      right: '-4px',
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      background: vaxIndicatorColor,
-                      border: '2px solid var(--primary)',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}
-                  />
                 </div>
               </div>
 
@@ -2847,7 +2887,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                   {calculatedAge.toLowerCase().startsWith('age') ? calculatedAge : `Age ${calculatedAge}`}
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: '700', padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                  <DumbbellIcon size={18} /> {currentWeightSimple}
+                  {currentWeightSimple}
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: '700', padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                   🩸 {(() => {
@@ -3672,6 +3712,7 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
   const [insurance, setInsurance] = useState(pet.insurance || '');
   const [bloodType, setBloodType] = useState(pet.bloodType || '');
   const [weight, setWeight] = useState(pet.weightRange || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const wrapRef = useRef(null);
 
@@ -3697,14 +3738,19 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
     bloodGroupOptions = ['Unknown', 'Not Tested'];
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave({
-      microchip: microchip || undefined,
-      insurance: insurance || undefined,
-      bloodType: bloodType || undefined,
-      weightRange: weight || undefined
-    });
+    setIsSaving(true);
+    try {
+      await Promise.resolve(onSave({
+        microchip: microchip || undefined,
+        insurance: insurance || undefined,
+        bloodType: bloodType || undefined,
+        weightRange: weight || undefined
+      }));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -3827,8 +3873,15 @@ function PetEditModal({ pet, owner, onClose, onSave }) {
             flexShrink: 0,
             flexWrap: 'wrap'
           }}>
-            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save Changes</button>
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSaving}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <span className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite', marginRight: '6px' }}></span>
+                  Saving Changes...
+                </>
+              ) : 'Save Changes'}
+            </button>
           </div>
         </form>
       </section>

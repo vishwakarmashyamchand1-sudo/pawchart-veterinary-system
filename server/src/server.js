@@ -246,18 +246,22 @@ if (!process.env.VERCEL) {
   try {
     await connectDb();
     
-    // Seed default vaccines if none exist
-    const count = await VaccineMaster.countDocuments();
-    if (count === 0) {
-      await VaccineMaster.insertMany([
-        { name: 'Rabies', species: 'Dog', recommendedAge: '12-16 weeks' },
-        { name: 'DHPP', species: 'Dog', recommendedAge: '6-8 weeks' },
-        { name: 'Rabies', species: 'Cat', recommendedAge: '12-16 weeks' },
-        { name: 'FVRCP', species: 'Cat', recommendedAge: '6-8 weeks' },
-        { name: 'RHDV2', species: 'Rabbit', recommendedAge: '10 weeks' },
-        { name: 'Polyomavirus', species: 'Bird', recommendedAge: '4-5 weeks' }
-      ]);
-      console.log('✅ Seeded default vaccine master list');
+    // Seed default core vaccines if they don't exist
+    const coreVaccines = [
+      { name: 'Rabies', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.' },
+      { name: 'DHPP', species: 'Dog', recommendedAge: '8 weeks', desc: 'Protects against major canine viral diseases.' },
+      { name: 'Bordetella', species: 'Dog', recommendedAge: '12 weeks', desc: 'Prevents kennel cough infection.' },
+      { name: 'Rabies', species: 'Cat', recommendedAge: '12 weeks', desc: 'Prevents fatal rabies infection.' },
+      { name: 'FVRCP', species: 'Cat', recommendedAge: '8 weeks', desc: 'Protects against core feline viral diseases.' },
+      { name: 'RHDV2', species: 'Rabbit', recommendedAge: '6 weeks', desc: 'Protects against rabbit hemorrhagic disease.' },
+      { name: 'Polyomavirus', species: 'Bird', recommendedAge: '4 weeks', desc: 'Protects against avian polyomavirus infection.' }
+    ];
+
+    for (const vax of coreVaccines) {
+      const exists = await VaccineMaster.findOne({ name: vax.name, species: vax.species });
+      if (!exists) {
+        await VaccineMaster.create(vax);
+      }
     }
 
     await initReminderScheduler();

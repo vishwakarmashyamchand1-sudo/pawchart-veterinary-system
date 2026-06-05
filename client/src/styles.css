@@ -323,3 +323,4 @@ button{cursor:pointer}
 .vm-empty { text-align: center; padding: 40px 20px; color: var(--text-2); }
 .vm-empty i { font-size: 32px; opacity: 0.4; margin-bottom: 10px; display: block; }
 .vm-empty p { font-size: 13px; }
+.action-btn-hover:hover { background: #f1f5f9 !important; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
