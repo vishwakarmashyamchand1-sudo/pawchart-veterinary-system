@@ -435,7 +435,23 @@ export function Soap({
   const planLower = draft.plan.toLowerCase();
   const showOtomaxBadge = planLower.includes('otomax') || planLower.includes('drops');
   const showRabiesBadge = (activePet.alerts && activePet.alerts.some(a => a.toLowerCase().includes('rabies'))) || planLower.includes('rabies') || activePet.name === 'Buddy';
-  const showFollowupBadge = planLower.includes('follow-up') || planLower.includes('14 days') || planLower.includes('recheck');
+  let followupBadgeText = null;
+  if (draft.follow_up_date) {
+    const diffTime = new Date(draft.follow_up_date) - new Date();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0) {
+      followupBadgeText = `Follow-up in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    } else {
+      followupBadgeText = 'Follow-up overdue';
+    }
+  } else {
+    const match = planLower.match(/(\d+)\s*days/);
+    if (match) {
+      followupBadgeText = `Follow-up in ${match[1]} days`;
+    } else if (planLower.includes('follow-up') || planLower.includes('recheck')) {
+      followupBadgeText = 'Follow-up recommended';
+    }
+  }
 
   // Format timer MM:SS
   const formatTimer = (secs) => {
@@ -467,7 +483,7 @@ export function Soap({
       tags: [
         showOtomaxBadge && 'Otomax 4 drops - 7 days',
         showRabiesBadge && 'Rabies booster due',
-        showFollowupBadge && 'Follow-up in 14 days'
+        followupBadgeText
       ].filter(Boolean)
     }).then(() => {
       // Transition appointment status to Completed in the DB
@@ -772,8 +788,15 @@ export function Soap({
                         return (
                           <>
                             <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
-                              <div style={{ flex: 1, padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <div style={{ flex: 1, padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
                                 <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Current Weight</div>
+                                {chartData.length > 0 && (
+                                  <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                                    <span style={{ background: 'var(--bg-2)', color: 'var(--text-2)', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: '600', textTransform: 'none' }}>
+                                      Recorded on {new Date(sortedWeights[sortedWeights.length - 1].date || sortedWeights[sortedWeights.length - 1].createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                  </div>
+                                )}
                                 <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text)' }}>{currentWeight.toFixed(1)} <span style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>lbs</span></div>
                               </div>
                               <div style={{ flex: 1, padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
