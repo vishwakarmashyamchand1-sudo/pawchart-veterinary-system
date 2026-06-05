@@ -827,6 +827,33 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   const isGiven = status === 'Completed' || status === 'Up to date';
   const isNotGiven = status === 'Pending' || status === 'Not recorded';
 
+  const getOverdueText = () => {
+    if (!hasClicked || !computedDueDate) return null;
+    const due = new Date(computedDueDate);
+    const now = new Date();
+    due.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+    if (due >= now) return null;
+
+    let diffTime = now.getTime() - due.getTime();
+    let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return `Overdue by ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    } else if (diffDays < 365) {
+      const diffMonths = Math.floor(diffDays / 30);
+      return `Overdue by ${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
+    } else {
+      const diffYears = Math.floor(diffDays / 365);
+      const remainingMonths = Math.floor((diffDays % 365) / 30);
+      let str = `Overdue by ${diffYears} year${diffYears !== 1 ? 's' : ''}`;
+      if (remainingMonths > 0) {
+        str += ` and ${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+      }
+      return str;
+    }
+  };
+
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus);
   };
@@ -834,11 +861,11 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
   return (
     <div className="modal-wrap" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
-        <h2 style={{ marginBottom: '16px', fontSize: '20px', color: 'var(--text)' }}>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', color: 'var(--text)' }}>
           {vaccination.isNew ? 'Add Vaccination' : 'Record Vaccination'}
         </h2>
 
-        <div style={{ marginBottom: '16px', color: 'var(--text-2)' }}>
+        <div style={{ margin: '0 0 16px 0', color: 'var(--text-2)' }}>
           <strong>Vaccine:</strong> {vaccination.isNew ? (
             <input 
               className="input" 
@@ -851,7 +878,7 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
         </div>
 
         {/* STATUS TOGGLE BUTTON GROUP */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 16px 0' }}>
           <strong style={{ color: 'var(--text-2)' }}>Status:</strong>
           
           <div 
@@ -902,42 +929,63 @@ function PetVaccinationEditModal({ vaccination, pet, onClose, onSave }) {
           </div>
         </div>
 
-        {isGiven && hasClicked && (
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <Input label="Date Given" type="date" value={lastDate} onChange={setLastDate} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label className="field-label">
-                Due Date
-                <input 
-                  type="date"
-                  value={computedDueDate || ''} 
-                  disabled
-                  className="input" 
-                  style={{ 
-                    marginTop: '5px',
-                    background: 'var(--bg)', 
-                    color: 'var(--text-2)',
-                    fontWeight: '600',
-                    cursor: 'not-allowed',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '8px',
-                    padding: '9px 11px',
-                    minHeight: '38px',
-                    boxSizing: 'border-box',
-                    opacity: 1,
-                    WebkitTextFillColor: 'var(--text-2)'
-                  }} 
-                />
-              </label>
-            </div>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <label className="field-label">
+              Vaccination Completed On
+              <input 
+                type="date"
+                value={(!hasClicked || isNotGiven) ? '' : lastDate} 
+                onChange={e => setLastDate(e.target.value)}
+                disabled={!hasClicked || isNotGiven}
+                className="input" 
+                style={{ 
+                  marginTop: '5px',
+                  background: (!hasClicked || isNotGiven) ? 'var(--bg)' : '#fff', 
+                  color: (!hasClicked || isNotGiven) ? 'var(--text-2)' : 'var(--text)',
+                  fontWeight: '600',
+                  cursor: (!hasClicked || isNotGiven) ? 'not-allowed' : 'text',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '9px 11px',
+                  minHeight: '38px',
+                  boxSizing: 'border-box',
+                  opacity: (!hasClicked || isNotGiven) ? 0.7 : 1,
+                  WebkitTextFillColor: (!hasClicked || isNotGiven) ? 'var(--text-2)' : 'var(--text)'
+                }} 
+              />
+            </label>
           </div>
-        )}
-
-        {isNotGiven && hasClicked && (
-          <div style={{ marginBottom: '16px', color: 'var(--text-2)', background: 'var(--bg)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-            <strong>Due Date:</strong> {computedDueDate ? formatDateSafe(computedDueDate) : 'Not Calculated'}
+          <div style={{ flex: 1 }}>
+            <label className="field-label">
+              Next Vaccination Due Date
+              <input 
+                type="date"
+                value={!hasClicked ? '' : (computedDueDate || '')} 
+                disabled
+                className="input" 
+                style={{ 
+                  marginTop: '5px',
+                  background: 'var(--bg)', 
+                  color: 'var(--text-2)',
+                  fontWeight: '600',
+                  cursor: 'not-allowed',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '9px 11px',
+                  minHeight: '38px',
+                  boxSizing: 'border-box',
+                  opacity: !hasClicked ? 0.7 : 1,
+                  WebkitTextFillColor: 'var(--text-2)'
+                }} 
+              />
+            </label>
+          </div>
+        </div>
+        
+        {getOverdueText() && (
+          <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: '700', marginTop: '-8px', marginBottom: '16px' }}>
+            {getOverdueText()}
           </div>
         )}
 
@@ -2130,7 +2178,7 @@ function Clients({ clients, create, update, onDelete, appointments, vaccinations
 
   const getLastVisitDate = (clientPets, appointments, clientCreatedAt, clientName) => {
     const pastAppts = appointments.filter(a => {
-      if (a.status !== 'Completed' && new Date(a.date) >= new Date()) return false;
+      if (a.status !== 'Completed') return false;
       return (clientPets || []).some(p => a.petId ? a.petId === p._id : (a.petName.toLowerCase() === p.name.toLowerCase() && a.ownerName === clientName));
     });
     if (pastAppts.length > 0) {
@@ -2386,7 +2434,7 @@ const formatMonthSafe = (dateStr) => {
   return months[d.getUTCMonth()] || '';
 };
 
-const getAgeStr = (dobStr) => {
+const getAgeStr = (dobStr, showYears = true) => {
   if (!dobStr) return '';
   try {
     const birth = new Date(dobStr);
@@ -2411,6 +2459,13 @@ const getAgeStr = (dobStr) => {
       let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       if (diffDays < 0) diffDays = 0;
       return `${diffDays}d`;
+    }
+    
+    if (showYears && totalMonths >= 12) {
+      const y = Math.floor(totalMonths / 12);
+      const m = totalMonths % 12;
+      if (m === 0) return `${y} yrs`;
+      return `${y} yrs ${m}mo`;
     }
     
     return `${totalMonths}mo`;
@@ -2442,45 +2497,76 @@ const parseWeightRange = (rangeStr) => {
   return null;
 };
 
-const getIdealRange = (species = '', breed = '') => {
+const getAgeInMonths = (dobStr) => {
+  if (!dobStr) return null;
+  try {
+    const birth = new Date(dobStr);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
+    if (days < 0) months--;
+    let totalMonths = (years * 12) + months;
+    if (totalMonths < 0) totalMonths = 0;
+    return totalMonths;
+  } catch (err) {
+    return null;
+  }
+};
+
+const getIdealRange = (species = '', breed = '', ageInMonths = null) => {
   const s = (species || '').toLowerCase();
   const b = (breed || '').toLowerCase();
 
+  let min = 5;
+  let max = 50;
+
   // Dogs
   if (s.includes('dog')) {
-    if (b.includes('retriever') || b.includes('shepherd')) return { min: 60, max: 80 };
-    if (b.includes('bulldog')) return { min: 40, max: 55 };
-    if (b.includes('beagle')) return { min: 20, max: 30 };
-    if (b.includes('poodle')) {
-      if (b.includes('toy') || b.includes('mini')) return { min: 6, max: 15 };
-      return { min: 45, max: 70 };
+    if (b.includes('retriever') || b.includes('shepherd')) { min = 60; max = 80; }
+    else if (b.includes('bulldog')) { min = 40; max = 55; }
+    else if (b.includes('beagle')) { min = 20; max = 30; }
+    else if (b.includes('poodle')) {
+      if (b.includes('toy') || b.includes('mini')) { min = 6; max = 15; }
+      else { min = 45; max = 70; }
     }
-    if (b.includes('french')) return { min: 16, max: 28 };
-    return { min: 25, max: 75 }; // Default dog
+    else if (b.includes('french')) { min = 16; max = 28; }
+    else { min = 25; max = 75; } // Default dog
   }
-
   // Cats
-  if (s.includes('cat')) {
-    if (b.includes('maine coon')) return { min: 11, max: 25 };
-    if (b.includes('siamese') || b.includes('persian')) return { min: 7, max: 12 };
-    return { min: 8, max: 15 }; // Default cat
+  else if (s.includes('cat')) {
+    if (b.includes('maine coon')) { min = 11; max = 25; }
+    else if (b.includes('siamese') || b.includes('persian')) { min = 7; max = 12; }
+    else { min = 8; max = 15; } // Default cat
   }
-
   // Rabbits
-  if (s.includes('rabbit') || s.includes('lop')) {
-    if (b.includes('flemish')) return { min: 10, max: 22 };
-    if (b.includes('netherland') || b.includes('dwarf')) return { min: 1.5, max: 3.5 };
-    return { min: 3, max: 10 }; // Default rabbit
+  else if (s.includes('rabbit') || s.includes('lop')) {
+    if (b.includes('flemish')) { min = 10; max = 22; }
+    else if (b.includes('netherland') || b.includes('dwarf')) { min = 1.5; max = 3.5; }
+    else { min = 3; max = 10; } // Default rabbit
   }
-
   // Birds
-  if (s.includes('bird') || s.includes('parrot')) {
-    if (b.includes('macaw')) return { min: 2, max: 4.5 };
-    if (b.includes('cockatiel')) return { min: 0.15, max: 0.25 };
-    return { min: 0.1, max: 4 }; // Default bird
+  else if (s.includes('bird') || s.includes('parrot')) {
+    if (b.includes('macaw')) { min = 2; max = 4.5; }
+    else if (b.includes('cockatiel')) { min = 0.15; max = 0.25; }
+    else { min = 0.1; max = 4; } // Default bird
   }
 
-  return { min: 5, max: 50 }; // Safe overall fallback
+  // Adjust for age if less than 12 months
+  if (ageInMonths !== null && ageInMonths < 12) {
+    let multiplier = 1;
+    if (ageInMonths <= 2) multiplier = 0.2;
+    else if (ageInMonths <= 4) multiplier = 0.4;
+    else if (ageInMonths <= 6) multiplier = 0.6;
+    else if (ageInMonths <= 9) multiplier = 0.8;
+    else multiplier = 0.9;
+    
+    min = Math.max(0.1, Number((min * multiplier).toFixed(1)));
+    max = Math.max(0.2, Number((max * multiplier).toFixed(1)));
+  }
+
+  return { min, max };
 };
 
 function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weights, go, onSetBookingClient, onSetBookingPet, update, create, onSelectPet }) {
@@ -2563,7 +2649,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
   })();
 
   const currentWeightSimple = (() => {
-    if (petWeights.length === 0) return '-';
+    if (petWeights.length === 0) return 'lbs';
     const sorted = [...petWeights].sort((a, b) => new Date(a.date) - new Date(b.date));
     const latest = sorted[sorted.length - 1];
     return `${latest.value.toFixed(1)} ${latest.unit || 'lbs'}`;
@@ -3091,15 +3177,27 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                             })()}
                             {visit.tags && visit.tags.length > 0 && (
                               <div className="chips">
-                                {visit.tags.map(t => (
-                                  <span
-                                    className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`}
-                                    key={t}
-                                    style={{ fontSize: '11px', padding: '2px 8px' }}
-                                  >
-                                    {t}
-                                  </span>
-                                ))}
+                                {visit.tags.map(t => {
+                                  let text = t;
+                                  if (t.startsWith('Follow-up') && visit.follow_up_date) {
+                                    const visitDate = new Date(visit.date || visit.createdAt);
+                                    const followUpDate = new Date(visit.follow_up_date);
+                                    const diffTime = followUpDate - visitDate;
+                                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                                    if (diffDays >= 0) {
+                                      text = `Follow-up in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+                                    }
+                                  }
+                                  return (
+                                    <span
+                                      className={`badge b-${t.includes('✓') || t.includes('Resolved') ? 'green' : t.includes('booster') || t.includes('needed') ? 'amber' : 'blue'}`}
+                                      key={t}
+                                      style={{ fontSize: '11px', padding: '2px 8px' }}
+                                    >
+                                      {text}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -3121,7 +3219,8 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                 const petBreed = currentPet.breed || 'Golden Retriever';
 
                 const parsedRange = parseWeightRange(currentPet.weightRange);
-                const idealRange = parsedRange || getIdealRange(petSpecies, petBreed);
+                const ageInMonths = currentPet.dateOfBirth || currentPet.dob ? getAgeInMonths(currentPet.dateOfBirth || currentPet.dob) : null;
+                const idealRange = parsedRange || getIdealRange(petSpecies, petBreed, ageInMonths);
                 const idealMin = idealRange.min;
                 const idealMax = idealRange.max;
 
@@ -3532,7 +3631,7 @@ function PetProfile({ pet, clients, appointments, vaccinations, soapnotes, weigh
                                 style={{ padding: '4px 8px', fontSize: '12px' }}
                                 onClick={() => setEditingVax(v)}
                               >
-                                Edit / Record
+                                {v.isRecorded ? 'Edit' : 'Record'}
                               </button>
                             </td>
                           </tr>
@@ -3989,7 +4088,7 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
         method: 'POST'
       });
       if (res.ok) {
-        window.showToast?.('Automated Reminder Queued successfully!');
+        window.showToast?.('Email sent successfully');
         update('vaccinations', id, { reminderStatus: 'Resent just now' });
       } else {
         alert("Failed to queue reminder.");
@@ -4011,7 +4110,25 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
       return <button className="btn btn-accent btn-sm" onClick={() => handleTriggerReminder(row._id)}>Notify Owner</button>;
     }
 
-    return <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => handleNotify(row, 'Resent just now')}>Resend</button>;
+    let sentDateStr = '';
+    if (row.reminderStatus) {
+      if (row.reminderStatus.includes('just now') || row.reminderStatus.includes('manually') || row.reminderStatus.includes('automatically')) {
+        const d = new Date();
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        sentDateStr = `${months[d.getMonth()]} ${d.getDate()}`;
+      } else {
+        const match = row.reminderStatus.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2}/);
+        if (match) sentDateStr = match[0];
+        else sentDateStr = 'recently';
+      }
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+        <button className="btn btn-outline btn-sm" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} onClick={() => handleNotify(row, 'Resent just now')}>Resend</button>
+        <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>Email sent on {sentDateStr}</span>
+      </div>
+    );
   };
 
   const handleBatch = async () => {
@@ -4166,10 +4283,10 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
         </button>
       </div>
 
-      <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', 'REMINDER SENT', '']}>
+      <Table headers={['PET', 'OWNER', 'VACCINE', 'LAST GIVEN', 'NEXT DUE', 'STATUS', '']}>
         {filteredRows.length === 0 ? (
           <tr>
-            <td colSpan="8" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-2)' }}>
+            <td colSpan="7" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-2)' }}>
               <h3 style={{ marginBottom: '8px', color: 'var(--text)' }}>No Results Found</h3>
               <p style={{ marginBottom: '16px' }}>No vaccination records match the selected filters.<br/>Try changing or clearing one or more filters.</p>
               <button className="btn btn-outline" onClick={() => { setFilterPet(''); setFilterOwner(''); setFilterVaccine(''); setFilterStatus(''); }}>Clear Filters</button>
@@ -4189,7 +4306,6 @@ function Vaccinations({ rows, update, clients = [], masterVaccines = [] }) {
             <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{row.lastDate ? formatDateSafe(row.lastDate) : '-'}</td>
             <td style={{ ...getDueDateStyle(row.displayStatus), whiteSpace: 'nowrap' }}>{row.displayStatus === 'Not recorded' ? '-' : formatDateSafe(row.dueDate)}</td>
             <td><Badge value={row.displayStatus} /></td>
-            <td>{getReminderStatusDisplay(row.reminderStatus)}</td>
             <td style={{ textAlign: 'right' }}>{getActionButtons(row)}</td>
           </tr>
         )))}
@@ -4797,7 +4913,7 @@ function Booking({ vets, clients, appointments, create, bookingClient, setBookin
                       )}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-                      {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth) || pet.age || '-'}
+                      {pet.species} · {pet.breed || 'Mixed Breed'} · {getAgeStr(pet.dob || pet.dateOfBirth, true) || pet.age || '-'}
                     </div>
                     {petAppt && (
                       <div style={{
@@ -5258,7 +5374,8 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
 
   // Resolve ideal range dynamically from pet.weightRange or shared species/breed-aware helper
   const parsedRange = parseWeightRange(pet.weightRange);
-  const idealRange = parsedRange || getIdealRange(petSpecies, petBreed);
+  const ageInMonths = pet.dateOfBirth || pet.dob ? getAgeInMonths(pet.dateOfBirth || pet.dob) : null;
+  const idealRange = parsedRange || getIdealRange(petSpecies, petBreed, ageInMonths);
   const idealMin = idealRange.min;
   const idealMax = idealRange.max;
 
@@ -5474,8 +5591,15 @@ function Weights({ weights, create, activePet, clients, go, doctorPatients, sele
         </div>
 
         <div className="grid-three" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '18px' }}>
-          <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '20px', position: 'relative' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '4px', fontWeight: '700', letterSpacing: '.06em' }}>CURRENT WEIGHT</div>
+            {hasWeights && currentWeightRecord && (
+              <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                <span style={{ background: 'var(--bg-2)', color: 'var(--text-2)', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: '600' }}>
+                  Recorded on {formatDateSafe(currentWeightRecord.date)}
+                </span>
+              </div>
+            )}
             <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--text)' }}>
               {hasWeights ? currentWeight.toFixed(1) : '-'} <span style={{ fontSize: '14px', color: 'var(--text-3)', fontWeight: '400' }}>{hasWeights ? currentUnit : ''}</span>
             </div>
